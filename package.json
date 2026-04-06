@@ -1,0 +1,54 @@
+{
+  "name": "biz-arena",
+  "version": "0.1.0",
+  "private": true,
+  "author": "Damir Nadrov",
+  "copyright": "Damir Nadrov",
+  "description": "Biz Arena — LAN-ready browser business strategy prototype inspired by Virtonomics and Simformer.",
+  "scripts": {
+    "start": "node server.js",
+    "check": "C:\\Progra~1\\nodejs\\node.exe --check server.js && C:\\Progra~1\\nodejs\\node.exe --check public/app.js && C:\\Progra~1\\nodejs\\node.exe --check server/game-rules.js && C:\\Progra~1\\nodejs\\node.exe --check server/http/routes.js && C:\\Progra~1\\nodejs\\node.exe --check server/room/actions.js && C:\\Progra~1\\nodejs\\node.exe --check desktop/main.js && C:\\Progra~1\\nodejs\\node.exe --check desktop/preload.js",
+    "test": "C:\\Progra~1\\nodejs\\node.exe test\\game-rules.test.js && C:\\Progra~1\\nodejs\\node.exe test\\server-refactor.test.js && C:\\Progra~1\\nodejs\\node.exe test\\stabilization.test.js",
+    "desktop": "electron .",
+    "desktop:dev": "electron .",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win nsis portable"
+  },
+  "main": "desktop/main.js",
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.bizarena.desktop",
+    "productName": "Biz Arena",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "desktop/**/*",
+      "public/**/*",
+      "server/**/*",
+      "server.js",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Biz Arena"
+    }
+  }
+}

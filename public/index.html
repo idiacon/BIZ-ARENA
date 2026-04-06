@@ -1,0 +1,580 @@
+﻿<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Biz Arena</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <section id="main-menu-screen" class="screen active">
+        <header class="hero hero-single">
+          <div class="hero-copy panel hero-card-large">
+            <p class="eyebrow">LAN business league</p>
+            <h1>Biz Arena</h1>
+            <p id="build-badge" class="hero-note">v0.1.0 вЂў desktop showcase build</p>
+            <p class="lead" data-i18n="hero_lead">
+              Milestone 11: execution queue steps can now be launched from the strategy panel.
+            </p>
+            <div class="badge-row badge-row-wide">
+              <span class="badge" data-i18n="badge_rooms">Rooms</span>
+              <span class="badge" data-i18n="badge_progress">Boardroom goals</span>
+              <span class="badge" data-i18n="badge_research">Advisors + policies</span>
+            </div>
+            <div class="hero-demo-card">
+              <strong>Р РµР¶РёРј РїРѕРєР°Р·Р°</strong>
+              <p class="muted small">РњРѕР¶РЅРѕ СЃСЂР°Р·Сѓ Р·Р°РїСѓСЃС‚РёС‚СЊ РґРµРјРѕ-РјР°С‚С‡ СЃ Р±РѕС‚Р°РјРё Рё РїРѕРєР°Р·Р°С‚СЊ РёРіСЂРѕРІРѕР№ С†РёРєР» Р±РµР· СЂСѓС‡РЅРѕР№ РїРѕРґРіРѕС‚РѕРІРєРё РєРѕРјРЅР°С‚С‹.</p>
+            </div>
+          </div>
+          <div class="panel hero-card menu-card">
+            <div class="panel-header panel-header-tight">
+              <h2 data-i18n="main_menu_title">Main menu</h2>
+              <span id="session-status" class="status off">Not connected</span>
+            </div>
+            <div class="menu-grid">
+              <button type="button" data-open-screen="play-menu-screen" data-i18n="menu_play">Play</button>
+              <button type="button" id="profile-toggle" class="ghost" data-open-screen="profile-screen" data-i18n="profile_button">Profile</button>
+              <button type="button" id="settings-toggle" class="ghost" data-open-screen="settings-screen" data-i18n="settings_button">Settings</button>
+              <button type="button" class="ghost" data-open-screen="about-screen" data-i18n="menu_about">About</button>
+            </div>
+            <p class="muted small" data-i18n="main_menu_hint">Choose a section to continue. This build adds board policies, season goals, advisors, and richer career tracking.</p>
+          </div>
+        </header>
+      </section>
+
+      <section id="play-menu-screen" class="screen hidden">
+        <div class="screen-shell narrow-stack">
+          <div class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="play_menu_title">Play</h2>
+              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+            </div>
+            <div class="menu-grid">
+              <button type="button" data-open-screen="create-room-screen" data-i18n="menu_create_game">Create game</button>
+              <button type="button" id="demo-start-button">Р”РµРјРѕ-РјР°С‚С‡ РґР»СЏ РїРѕРєР°Р·Р°</button>
+              <button type="button" class="ghost" data-open-screen="join-room-screen" data-i18n="menu_join_game">Join game</button>
+              <button type="button" class="ghost" data-open-screen="lobby-screen" data-requires-connection="true" data-i18n="menu_continue_lobby">Current lobby</button>
+              <button type="button" class="ghost" data-open-screen="game-screen" data-requires-running-game="true" data-i18n="menu_continue_game">Current game</button>
+            </div>
+            <p class="muted small" data-i18n="play_menu_hint">Create a room, join by code, or return to your active session.</p>
+            <div class="panel-subtitle" data-i18n="runtime_title">v0.1 host info</div>
+            <div id="runtime-meta" class="info-stack placeholder">
+              <div data-i18n="runtime_loading">Checking local launch infoвЂ¦</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="create-room-screen" class="screen hidden">
+        <div class="screen-shell narrow-stack">
+          <div class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="create_room_screen">Create game</h2>
+              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+            </div>
+            <form id="create-form" class="stack-form">
+              <label>
+                <span data-i18n="room_name">Room name</span>
+                <input id="room-name" type="text" maxlength="24" data-i18n-placeholder="room_name_placeholder" placeholder="Sunday League" required />
+              </label>
+              <label>
+                <span data-i18n="company_name">Company name</span>
+                <input id="create-company-name" type="text" maxlength="24" data-i18n-placeholder="company_name_placeholder" placeholder="North Capital" required />
+              </label>
+              <label>
+                <span data-i18n="scenario_title">Scenario</span>
+                <select id="create-scenario-select">
+                  <option value="standard" data-i18n="scenario_standard">Balanced growth</option>
+                  <option value="boom" data-i18n="scenario_boom">Consumer boom</option>
+                  <option value="crunch" data-i18n="scenario_crunch">Supply crunch</option>
+                  <option value="tech" data-i18n="scenario_tech">Tech acceleration</option>
+                </select>
+              </label>
+              <button type="submit" data-i18n="create_room_btn">Create and host</button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <section id="join-room-screen" class="screen hidden">
+        <div class="screen-shell narrow-stack">
+          <div class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="join_room_screen">Join game</h2>
+              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+            </div>
+            <form id="join-form" class="stack-form">
+              <label>
+                <span data-i18n="room_code">Room code</span>
+                <input id="room-code" type="text" maxlength="5" data-i18n-placeholder="room_code_placeholder" placeholder="ABCDE" required />
+              </label>
+              <label>
+                <span data-i18n="company_name">Company name</span>
+                <input id="join-company-name" type="text" maxlength="24" data-i18n-placeholder="company_name_placeholder" placeholder="South Trade" required />
+              </label>
+              <button type="submit" data-i18n="join_room_btn">Join room</button>
+            </form>
+            <p class="muted small" data-i18n="join_hint">Host launches the match after everyone joins with the room code.</p>
+          </div>
+        </div>
+      </section>
+
+      <section id="profile-screen" class="screen hidden">
+        <div class="screen-shell">
+          <div id="profile-panel" class="panel screen-panel span-2">
+            <div class="panel-header">
+              <h2 data-i18n="profile_title">Profile</h2>
+              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+            </div>
+            <span id="profile-status" class="muted">вЂ”</span>
+            <div class="profile-grid top-gap">
+              <div class="avatar-box">
+                <img id="profile-avatar-preview" alt="avatar preview" />
+                <div id="profile-avatar-fallback" class="avatar-fallback">BA</div>
+              </div>
+              <div class="stack-form">
+                <label>
+                  <span data-i18n="username">Username</span>
+                  <input id="profile-username" type="text" maxlength="24" data-i18n-placeholder="username_placeholder" placeholder="BizPlayer" />
+                </label>
+                <label>
+                  <span data-i18n="avatar_upload">Avatar</span>
+                  <input id="profile-avatar" type="file" accept="image/*" />
+                </label>
+                <div class="button-pair two-cols">
+                  <button id="save-profile" type="button" data-i18n="save_profile">Save profile</button>
+                  <button id="clear-avatar" type="button" class="ghost" data-i18n="remove_avatar">Remove avatar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="career_title">Career</h2>
+              <span class="muted" data-i18n="career_hint">Persistent server-side progress for this username</span>
+            </div>
+            <div id="career-overview" class="stats-grid placeholder">
+              <div data-i18n="career_placeholder">Career stats appear after profile sync.</div>
+            </div>
+            <div class="panel-subtitle" data-i18n="achievement_title">Achievements</div>
+            <div id="achievement-list" class="info-stack placeholder">
+              <div data-i18n="achievement_empty">Achievements unlock during long-term play.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="settings-screen" class="screen hidden">
+        <div class="screen-shell narrow-stack">
+          <div id="settings-panel" class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="settings_title">Settings</h2>
+              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+            </div>
+            <span class="muted" data-i18n="settings_local">Stored locally on this device</span>
+            <div class="settings-grid top-gap">
+              <label>
+                <span data-i18n="language">Language</span>
+                <select id="language-select">
+                  <option value="ru">Р СѓСЃСЃРєРёР№</option>
+                  <option value="en">English</option>
+                  <option value="tt">РўР°С‚Р°СЂС‡Р°</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="font_size">Font size</span>
+                <select id="font-size-select">
+                  <option value="14">Small</option>
+                  <option value="16">Medium</option>
+                  <option value="18">Large</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="background_theme">Background</span>
+                <select id="background-select">
+                  <option value="navy" data-i18n="bg_navy">Navy</option>
+                  <option value="midnight" data-i18n="bg_midnight">Midnight</option>
+                  <option value="aurora" data-i18n="bg_aurora">Aurora</option>
+                </select>
+              </label>
+              <button id="save-settings" type="button" data-i18n="save_settings">Save settings</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="about-screen" class="screen hidden">
+        <div class="screen-shell narrow-stack">
+          <div class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="about_title">About</h2>
+              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+            </div>
+            <div class="info-stack">
+              <article class="market-item">
+                <strong>РџСЂРѕРµРєС‚</strong>
+                <p class="muted">РЈС‡РµР±РЅС‹Р№ Р±РёР·РЅРµСЃ-СЃРёРјСѓР»СЏС‚РѕСЂ РґР»СЏ Р»РѕРєР°Р»СЊРЅРѕРіРѕ LAN-РїРѕРєР°Р·Р° Рё РґРµРјРѕРЅСЃС‚СЂР°С†РёРё СЃС‚СЂР°С‚РµРіРёС‡РµСЃРєРёС… РёРіСЂРѕРІС‹С… РјРµС…Р°РЅРёРє.</p>
+              </article>
+              <article class="market-item">
+                <strong data-i18n="about_stage_title">Current build</strong>
+                <p class="muted" data-i18n="about_stage_body">Biz Arena is now a Milestone 11 prototype with an execution queue that can trigger matching next-step actions directly from the Intel panel.</p>
+              </article>
+              <article class="market-item">
+                <strong data-i18n="about_flow_title">Longer progression</strong>
+                <p class="muted" data-i18n="about_flow_body">Profiles now keep deeper achievements, while each season adds executive policies, goals, advisors, and contracts.</p>
+              </article>
+              <article class="market-item">
+                <strong data-i18n="about_author_title">Created by</strong>
+                <p class="muted" data-i18n="about_author_body">РќР°РґСЂРѕРІ Р”Р°РјРёСЂ РР»СЊРЅСѓСЂРѕРІРёС‡</p>
+              </article>
+              <article class="market-item">
+                <strong>Учебная цель</strong>
+                <p class="muted">Проект показывает клиент-серверную архитектуру, persistence, desktop-упаковку и UI для экономической стратегии.</p>
+              </article>
+              <article class="market-item">
+                <strong>Организация</strong>
+                <p class="muted">АФ КНИТУ-КАИ</p>
+              </article>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="lobby-screen" class="screen hidden">
+        <div class="screen-shell">
+          <section class="panel span-2 screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="lobby_title">Lobby</h2>
+              <div class="inline-actions">
+                <span id="room-code-chip" class="muted">Code: вЂ”</span>
+                <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+              </div>
+            </div>
+            <div id="room-overview" class="room-shell placeholder">
+              <div data-i18n="room_placeholder">Create a room or join by code.</div>
+            </div>
+          </section>
+
+          <section class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="room_settings_title">Room settings</h2>
+              <span class="muted" data-i18n="room_settings_hint">Only host can edit in lobby</span>
+            </div>
+            <form id="room-settings-form" class="stack-form">
+              <label>
+                <span data-i18n="max_players">Max players</span>
+                <select id="max-players-select">
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="demand_profile">Demand profile</span>
+                <select id="demand-profile-select">
+                  <option value="standard" data-i18n="demand_standard">Standard</option>
+                  <option value="aggressive" data-i18n="demand_aggressive">Aggressive</option>
+                  <option value="lean" data-i18n="demand_lean">Lean</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="scenario_title">Scenario</span>
+                <select id="scenario-select"></select>
+              </label>
+              <label>
+                <span data-i18n="day_limit_title">Season length</span>
+                <select id="day-limit-select">
+                  <option value="10">10</option>
+                  <option value="14">14</option>
+                  <option value="18">18</option>
+                  <option value="24">24</option>
+                </select>
+              </label>
+              <div class="button-pair">
+                <button id="toggle-ready" type="button" class="ghost" data-i18n="toggle_ready">Ready</button>
+                <button id="save-room-settings" type="submit" data-i18n="save_room_settings">Save room settings</button>
+              </div>
+            </form>
+            <div class="panel-subtitle" data-i18n="save_slot_title">Save slot</div>
+            <div class="stack-form">
+              <span id="save-slot-status" class="muted" data-i18n="save_slot_empty">No room save yet.</span>
+              <div class="button-pair two-cols">
+                <button id="save-room-button" type="button" data-i18n="save_room_action">Save room</button>
+                <button id="load-room-button" type="button" class="ghost" data-i18n="load_room_action">Load save</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="companies_room">Companies in room</h2>
+              <span id="player-count" class="muted">0 players</span>
+            </div>
+            <div id="player-list" class="leaderboard"></div>
+          </section>
+
+          <section class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="leaderboard_title">Leaderboard</h2>
+              <span class="muted" data-i18n="by_networth">By net worth</span>
+            </div>
+            <div id="leaderboard" class="leaderboard"></div>
+          </section>
+
+          <section class="panel span-2 screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="events_title">Events</h2>
+              <span class="muted" data-i18n="room_history">Room history</span>
+            </div>
+            <div id="event-log" class="event-log"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="game-screen" class="screen hidden">
+        <div class="screen-shell">
+          <section class="panel screen-panel span-2">
+            <div id="game-hud" class="hud-grid"></div>
+          </section>
+
+          <section class="panel screen-panel span-2">
+            <div class="panel-header">
+              <h2 data-i18n="game_control_center">Control center</h2>
+              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+            </div>
+            <div class="game-tabs">
+              <button type="button" class="ghost tab-button active" data-game-tab="overview" data-i18n="tab_overview">Overview</button>
+              <button type="button" class="ghost tab-button" data-game-tab="operations" data-i18n="tab_operations">Operations</button>
+              <button type="button" class="ghost tab-button" data-game-tab="market" data-i18n="tab_market">Market</button>
+	              <button type="button" class="ghost tab-button" data-game-tab="competitors" data-i18n="tab_competitors">Competitors</button>
+	              <button type="button" class="ghost tab-button" data-game-tab="intel" data-i18n="tab_intel">Intel</button>
+	              <button type="button" class="ghost tab-button" data-game-tab="events" data-i18n="tab_events">Events</button>
+            </div>
+          </section>
+
+          <section class="panel screen-panel span-2 game-panel" data-game-panel="overview">
+            <div class="panel-header">
+              <h2 data-i18n="my_company">My company</h2>
+              <div class="inline-actions">
+                <span id="day-counter" class="status">Day 1</span>
+                <span class="muted" data-i18n="overview_hint">Core company indicators</span>
+              </div>
+            </div>
+            <div id="company-overview" class="stats-grid placeholder">
+              <div data-i18n="company_placeholder">Data appears after joining a room.</div>
+            </div>
+            <div class="panel-subtitle" data-i18n="tick_breakdown_title">Tick breakdown</div>
+            <div id="tick-breakdown" class="market-stack placeholder">
+              <div data-i18n="tick_breakdown_empty">Start the match to inspect revenue, costs, and tick profit.</div>
+            </div>
+          </section>
+
+          <section class="panel screen-panel span-2 game-panel hidden" data-game-panel="operations">
+            <div class="panel-header">
+              <h2 data-i18n="management_title">Operations</h2>
+              <span class="muted" data-i18n="management_hint">Business actions unlock after match start</span>
+            </div>
+            <div class="actions-grid four-cols">
+              <div class="action-card">
+                <h3 data-i18n="price_title">Price</h3>
+                <p class="muted small" data-i18n="price_hint_card">Change your market positioning for the next tick.</p>
+                <input id="price-input" type="range" min="60" max="260" step="5" value="140" />
+                <div class="range-row"><span data-i18n="cheap">Cheap</span><strong id="price-value">140</strong><span data-i18n="premium">Premium</span></div>
+                <button data-action="set-price" data-i18n="apply_price">Apply price</button>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="product_focus">Product</h3>
+                <p class="muted small" data-i18n="product_hint_card">Switch to another category before the next production cycle.</p>
+                <select id="product-select"></select>
+                <button data-action="set-product" data-source="product-select" data-i18n="apply_product">Apply product</button>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="city_focus">City market</h3>
+                <p class="muted small" data-i18n="city_hint_card">Choose the city where your company competes the hardest.</p>
+                <select id="city-select"></select>
+                <button data-action="set-city" data-source="city-select" data-i18n="apply_city">Apply city</button>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="specialization_title">Specialization</h3>
+                <p class="muted small" data-i18n="specialization_hint_card">Pick the long-term edge that shapes your company style.</p>
+                <select id="specialization-select"></select>
+                <button data-action="set-specialization" data-source="specialization-select" data-i18n="apply_specialization">Apply specialization</button>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="board_policy_title">Board policy</h3>
+                <p class="muted small" data-i18n="board_policy_hint_card">Set the executive focus for demand, efficiency, contracts, or R&D.</p>
+                <select id="board-policy-select"></select>
+                <button data-action="set-board-policy" data-source="board-policy-select" data-i18n="apply_board_policy">Apply policy</button>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="operating_plan_title">Operating plan</h3>
+                <p class="muted small" data-i18n="operating_plan_hint_card">The autopilot executes one relevant business action before each tick.</p>
+                <select id="strategy-select"></select>
+                <button data-action="set-strategy" data-source="strategy-select" data-i18n="apply_operating_plan">Enable autopilot</button>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="supply_title">Supply chain</h3>
+                <p class="muted small" data-i18n="supply_hint_card">Raw materials keep production alive. Upgrades reduce pressure over time.</p>
+                <div class="button-pair">
+                  <button data-action="buy-raw" data-value="20" data-i18n="buy_raw">Buy raw x20</button>
+                  <button data-action="upgrade-supply" data-i18n="upgrade_supply">Upgrade supply</button>
+                </div>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="team_title">Team</h3>
+                <p class="muted small" data-i18n="team_hint_card">Grow carefully: staff costs hit every tick.</p>
+                <div class="button-pair">
+                  <button data-action="hire" data-value="3" data-i18n="hire_btn">Hire +3</button>
+                  <button data-action="fire" data-value="2" data-i18n="fire_btn">Fire -2</button>
+                  <button data-action="raise-salary" data-i18n="raise_salary">Raise salary</button>
+                  <button data-action="cut-salary" data-i18n="cut_salary">Cut salary</button>
+                </div>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="growth_title">Growth / finance</h3>
+                <p class="muted small" data-i18n="growth_hint_card">Expansion improves scale, but debt and upkeep can sink a weak company.</p>
+                <div class="button-pair">
+                  <button data-action="build-factory" data-i18n="build_factory">Build factory</button>
+                  <button data-action="build-store" data-i18n="build_store">Open store</button>
+                  <button data-action="upgrade-quality" data-i18n="upgrade_quality">Upgrade quality</button>
+                  <button data-action="automation" data-i18n="automation">Automation</button>
+                  <button data-action="marketing" data-i18n="marketing">Marketing</button>
+                  <button data-action="take-loan" data-value="30000" data-i18n="loan">Loan 30k</button>
+                  <button data-action="repay-loan" data-value="10000" data-i18n="repay">Repay 10k</button>
+                </div>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="research_title">Research lab</h3>
+                <p class="muted small" data-i18n="research_hint_card">Queue a Milestone 4 research project to gain permanent match bonuses.</p>
+                <select id="research-select"></select>
+                <button data-action="start-research" data-source="research-select" data-i18n="start_research">Start research</button>
+              </div>
+              <div class="action-card">
+                <h3 data-i18n="room_match">Room and match</h3>
+                <p class="muted small" data-i18n="save_hint_card">Host can store a room snapshot and restore it later.</p>
+                <div class="button-pair">
+                  <button id="save-room-button-game" type="button" data-i18n="save_room_action">Save room</button>
+                  <button id="load-room-button-game" type="button" class="ghost" data-i18n="load_room_action">Load save</button>
+                  <button data-action="leave-room" class="ghost" data-i18n="leave_room">Leave room</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel screen-panel game-panel hidden" data-game-panel="market">
+            <div class="panel-header">
+              <h2 data-i18n="market_title">Market</h2>
+              <span class="muted" data-i18n="market_live_hint">Live room economy</span>
+            </div>
+            <div id="market-overview" class="market-stack"></div>
+            <div class="panel-subtitle" data-i18n="event_title">Live event</div>
+            <div id="market-event" class="market-stack"></div>
+            <div class="panel-subtitle" data-i18n="contract_title">Contracts</div>
+            <div id="contract-board" class="market-stack"></div>
+            <div class="panel-subtitle" data-i18n="segments_title">Hot segments</div>
+            <div id="segments-overview" class="market-stack"></div>
+          </section>
+
+	          <section class="panel screen-panel game-panel hidden" data-game-panel="competitors">
+	            <div class="panel-header">
+	              <h2 data-i18n="competitors_title">Competitors</h2>
+	              <span class="muted" data-i18n="competitors_hint">Track the room leaders and rival companies</span>
+	            </div>
+	            <div id="competitor-list" class="leaderboard"></div>
+	            <div class="panel-subtitle" data-i18n="leaderboard_title">Leaderboard</div>
+	            <div id="leaderboard-game" class="leaderboard"></div>
+	          </section>
+
+	          <section class="panel screen-panel game-panel hidden" data-game-panel="intel">
+	            <div class="panel-header">
+	              <h2 data-i18n="intel_title">Strategic intelligence</h2>
+		              <span class="muted" data-i18n="intel_hint">Market outlook, CEO brief, focus plan, pivot preview, and an execution queue with one-click actions.</span>
+	            </div>
+	            <div class="panel-subtitle" data-i18n="forecast_title">Segment forecast</div>
+	            <div id="intel-overview" class="market-stack placeholder">
+	              <div data-i18n="intel_empty">Intel appears after you join a room.</div>
+	            </div>
+	            <div class="panel-subtitle" data-i18n="focus_plan_title">Focus plan</div>
+	            <div class="actions-grid">
+	              <label>
+	                <span data-i18n="focus_city">Target city</span>
+	                <select id="focus-city-select"></select>
+	              </label>
+	              <label>
+	                <span data-i18n="focus_product">Target product</span>
+	                <select id="focus-product-select"></select>
+	              </label>
+	              <button id="save-focus-plan" type="button" data-i18n="apply_focus_plan">Save focus</button>
+	            </div>
+	            <div class="panel-subtitle" data-i18n="brief_title">CEO brief</div>
+	            <div id="intel-brief" class="market-stack placeholder">
+	              <div data-i18n="intel_empty">Intel appears after you join a room.</div>
+	            </div>
+	          </section>
+
+	          <section class="panel screen-panel game-panel hidden" data-game-panel="events">
+            <div class="panel-header">
+              <h2 data-i18n="events_title">Events</h2>
+              <span class="muted" data-i18n="events_hint_card">Review what happened recently in the room</span>
+            </div>
+            <div id="event-log-game" class="event-log"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="results-screen" class="screen hidden">
+        <div class="screen-shell">
+          <section class="panel span-2 screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="results_title">Match results</h2>
+              <div class="inline-actions">
+                <span id="results-status" class="status">Finished</span>
+                <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+              </div>
+            </div>
+            <div id="results-overview" class="room-shell placeholder">
+              <div data-i18n="results_placeholder">Results appear after the match ends.</div>
+            </div>
+            <div class="button-pair top-gap">
+              <button id="play-again" type="button" data-i18n="play_again">Play again</button>
+              <button id="export-results" type="button" class="ghost">Экспорт итогов</button>
+              <button id="leave-after-results" type="button" class="ghost" data-i18n="leave_room">Leave room</button>
+            </div>
+          </section>
+
+          <section class="panel screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="leaderboard_title">Leaderboard</h2>
+              <span class="muted" data-i18n="by_networth">By net worth</span>
+            </div>
+            <div id="leaderboard-results" class="leaderboard"></div>
+          </section>
+
+          <section class="panel span-2 screen-panel">
+            <div class="panel-header">
+              <h2 data-i18n="events_title">Events</h2>
+              <span class="muted" data-i18n="room_history">Room history</span>
+            </div>
+            <div id="event-log-results" class="event-log"></div>
+          </section>
+        </div>
+      </section>
+    </div>
+
+    <template id="stat-card-template">
+      <article class="stat-card">
+        <span class="label"></span>
+        <strong class="value"></strong>
+        <small class="hint"></small>
+      </article>
+    </template>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

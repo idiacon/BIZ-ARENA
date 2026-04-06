@@ -1,0 +1,26 @@
+END USER LICENSE AGREEMENT (EULA)
+Biz Arena v0.1
+
+1. General
+1.1. This agreement governs the use of the Biz Arena software product.
+1.2. By installing or using the software, the user accepts these terms.
+
+2. License
+2.1. The software is provided for educational, demonstration, and local gameplay purposes.
+2.2. Redistribution of modified versions without clear attribution of changes is prohibited.
+
+3. Disclaimer
+3.1. The software is provided "as is", without warranty of uninterrupted operation.
+3.2. The authors are not liable for direct or indirect damages arising from its use.
+
+4. User Data
+4.1. The software may store local profile, progress, and room save data on the user's device.
+4.2. The user is responsible for backing up their local data.
+
+5. Termination
+5.1. Violation of these terms may terminate the right to use the software.
+
+6. Final Terms
+6.1. Installing the software constitutes full acceptance of this agreement.
+
+Copyright Biz Arena Project
