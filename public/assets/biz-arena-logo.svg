@@ -1,0 +1,40 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="baBg" x1="74" y1="46" x2="438" y2="468" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0B2C4E"/>
+      <stop offset="1" stop-color="#040B14"/>
+    </linearGradient>
+    <linearGradient id="baFrame" x1="112" y1="78" x2="398" y2="434" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#76F4FF"/>
+      <stop offset="0.48" stop-color="#15B9FF"/>
+      <stop offset="1" stop-color="#5B7FFF"/>
+    </linearGradient>
+    <linearGradient id="baBody" x1="142" y1="112" x2="364" y2="390" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#7EF3A1"/>
+      <stop offset="0.5" stop-color="#55D8FF"/>
+      <stop offset="1" stop-color="#4E8DFF"/>
+    </linearGradient>
+    <linearGradient id="baGold" x1="150" y1="352" x2="376" y2="250" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFE375"/>
+      <stop offset="1" stop-color="#FFB12C"/>
+    </linearGradient>
+    <filter id="baGlow" x="48" y="46" width="416" height="420" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="11"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 0.05 0 0 0 0 0.68 0 0 0 0 1 0 0 0 0.34 0"/>
+      <feBlend in="SourceGraphic"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="104" fill="url(#baBg)"/>
+  <path opacity="0.18" d="M98 178H414M98 256H414M98 334H414M178 98V414M256 98V414M334 98V414" stroke="#194568" stroke-width="6"/>
+  <g filter="url(#baGlow)">
+    <path d="M256 62L406 146V366L256 450L106 366V146L256 62Z" fill="#07182A" stroke="url(#baFrame)" stroke-width="16" stroke-linejoin="round"/>
+    <path d="M158 330L256 142L354 330" stroke="url(#baBody)" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M196 284H318" stroke="#07182A" stroke-width="34" stroke-linecap="round"/>
+    <path d="M198 284H316" stroke="url(#baGold)" stroke-width="18" stroke-linecap="round"/>
+    <path d="M152 366H360" stroke="url(#baGold)" stroke-width="18" stroke-linecap="round"/>
+    <path d="M176 344C206 378 228 392 256 392C284 392 306 378 336 344" stroke="#76F4FF" stroke-width="12" stroke-linecap="round" opacity="0.82"/>
+    <path d="M256 142V392" stroke="#07182A" stroke-width="22" stroke-linecap="round" opacity="0.96"/>
+    <path d="M256 166V370" stroke="url(#baBody)" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="256" cy="142" r="13" fill="#07182A" stroke="#76F4FF" stroke-width="8"/>
+  </g>
+</svg>

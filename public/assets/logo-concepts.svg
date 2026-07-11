@@ -1,0 +1,14 @@
+<svg width="1280" height="420" viewBox="0 0 1280 420" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1280" height="420" rx="26" fill="#06111D"/>
+  <path opacity="0.3" d="M0 70H1280M0 140H1280M0 210H1280M0 280H1280M0 350H1280M160 0V420M320 0V420M480 0V420M640 0V420M800 0V420M960 0V420M1120 0V420" stroke="#173B62" stroke-width="2"/>
+  <g transform="translate(220 42) scale(.54)"><image href="logo-concept-01-arena-growth.svg" width="512" height="512"/></g>
+  <g transform="translate(785 42) scale(.54)"><image href="logo-concept-02-market-pulse.svg" width="512" height="512"/></g>
+  <g fill="#F2F7FF" font-family="Inter, Arial, sans-serif" font-weight="800" font-size="28">
+    <text x="230" y="344">01 Biz Arena Core</text>
+    <text x="795" y="344">02 Market Pulse</text>
+  </g>
+  <g fill="#A9BDD8" font-family="Inter, Arial, sans-serif" font-size="17">
+    <text x="230" y="374">main game logo: arena, production, growth</text>
+    <text x="795" y="374">secondary module mark: demand, price, sales</text>
+  </g>
+</svg>

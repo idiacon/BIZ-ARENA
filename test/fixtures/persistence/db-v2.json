@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 2,
+  "accounts": {
+    "v2_student": {
+      "userName": "V2 Student",
+      "gamesPlayed": 4
+    }
+  },
+  "savedRooms": {
+    "V2ROOM": {
+      "meta": {
+        "schemaVersion": 2,
+        "roomCode": "V2ROOM",
+        "roomName": "Retained V2 Room"
+      },
+      "snapshot": {
+        "schemaVersion": 2,
+        "code": "V2ROOM",
+        "name": "Retained V2 Room",
+        "hostPlayerId": "player_v2",
+        "status": "paused",
+        "day": 3,
+        "tick": 7,
+        "winnerPlayerId": null,
+        "log": [
+          {
+            "message": "V2 event"
+          }
+        ],
+        "marketHistory": [],
+        "segmentSnapshots": [],
+        "settings": {
+          "scenarioKey": "factory",
+          "difficulty": "normal"
+        },
+        "activeEvent": null,
+        "contractBoard": [],
+        "lastSavedAt": "2026-01-02T03:04:05.000Z",
+        "players": [
+          {
+            "id": "player_v2",
+            "name": "V2 Company",
+            "userName": "V2 Student",
+            "money": 275000
+          }
+        ]
+      }
+    }
+  }
+}

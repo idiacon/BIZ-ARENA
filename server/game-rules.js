@@ -25,6 +25,11 @@ function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+function toNumber(value, fallback = 0) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+}
+
 function demandMultiplier(profile) {
   if (profile === 'aggressive') return 1.2;
   if (profile === 'lean') return 0.82;
@@ -199,23 +204,36 @@ function buildPlayerIntel({ player, room, availableResearchCount = 0 }) {
 function buildFocusPlan({ player, focusCityKey, focusProductKey, forecastSegments = [] }) {
   const missingSteps = [];
   let readinessScore = 0;
+  const manufacturerMode = Boolean(player.factory);
 
   const pushStep = (condition, stepKey, score) => {
     if (condition) readinessScore += score;
     else if (!missingSteps.includes(stepKey)) missingSteps.push(stepKey);
   };
 
-  pushStep(player.cityKey === focusCityKey, 'switch_city', 20);
-  pushStep(player.productKey === focusProductKey, 'switch_product', 20);
-  pushStep(player.rawStock >= 14, 'buy_raw', 15);
-  pushStep(player.supplyLevel >= 2, 'upgrade_supply', 10);
-  pushStep(player.marketing >= 2, 'boost_marketing', 10);
-  pushStep(player.quality >= 2, 'upgrade_quality', 10);
-  pushStep(player.stores >= 2, 'expand_retail', 10);
-  pushStep(player.money >= 30000, 'build_cash', 5);
+  if (manufacturerMode) {
+    const componentStock = Object.values(player.factory?.inventory || {}).reduce((sum, amount) => sum + Number(amount || 0), 0);
+    const workerCount = (player.factory?.workers || []).length;
+    pushStep(player.productKey === focusProductKey, 'switch_product', 20);
+    pushStep(componentStock >= 8 || player.factory?.finishedGoods > 0, 'buy_raw', 20);
+    pushStep(workerCount > 0, 'upgrade_supply', 15);
+    pushStep(player.quality >= 2, 'upgrade_quality', 15);
+    pushStep(player.money >= 30000, 'build_cash', 10);
+  } else {
+    pushStep(player.cityKey === focusCityKey, 'switch_city', 20);
+    pushStep(player.productKey === focusProductKey, 'switch_product', 20);
+    pushStep(player.rawStock >= 14, 'buy_raw', 15);
+    pushStep(player.supplyLevel >= 2, 'upgrade_supply', 10);
+    pushStep(player.marketing >= 2, 'boost_marketing', 10);
+    pushStep(player.quality >= 2, 'upgrade_quality', 10);
+    pushStep(player.stores >= 2, 'expand_retail', 10);
+    pushStep(player.money >= 30000, 'build_cash', 5);
+  }
 
-  const focusForecast = forecastSegments.find(segment => segment.cityKey === focusCityKey && segment.productKey === focusProductKey) || null;
-  if (focusForecast && focusForecast.forecastDemand >= 120) readinessScore += 10;
+  const focusForecast = manufacturerMode
+    ? null
+    : forecastSegments.find(segment => segment.cityKey === focusCityKey && segment.productKey === focusProductKey) || null;
+  if (!manufacturerMode && focusForecast && focusForecast.forecastDemand >= 120) readinessScore += 10;
 
   let readinessLevel = 'low';
   if (readinessScore >= 75) readinessLevel = 'high';
@@ -230,6 +248,17 @@ function buildFocusPlan({ player, focusCityKey, focusProductKey, forecastSegment
 }
 
 function buildPivotPreview({ player, focusPlan, forecastSegments = [] }) {
+  if (player.factory) {
+    const sameProduct = player.productKey === (player.focusProductKey || player.productKey);
+    return {
+      currentDemand: 0,
+      targetDemand: focusPlan?.forecastDemand || 0,
+      demandDelta: 0,
+      timing: sameProduct ? 'hold' : 'prepare_then_pivot',
+      reasons: sameProduct ? ['already_aligned'] : ['needs_setup'],
+    };
+  }
+
   const currentSegment = forecastSegments.find(segment => segment.cityKey === player.cityKey && segment.productKey === player.productKey) || null;
   const targetSegment = forecastSegments.find(segment => segment.cityKey === (player.focusCityKey || player.cityKey) && segment.productKey === (player.focusProductKey || player.productKey)) || currentSegment;
 
@@ -307,6 +336,24 @@ function manualExecutionAction(blockedReason = 'manual_choice', extra = {}) {
 }
 
 function buildExecutionAction({ key, player, room, availableResearchKeys = [] }) {
+  if (player.factory) {
+    switch (key) {
+      case 'switch_city':
+        return blockedExecutionAction('already_aligned');
+      case 'switch_product':
+        return player.productKey !== (player.focusProductKey || player.productKey)
+          ? manualExecutionAction('manual_choice')
+          : blockedExecutionAction('already_aligned');
+      case 'buy_raw':
+      case 'upgrade_supply':
+      case 'upgrade_quality':
+      case 'build_cash':
+        return manualExecutionAction('manual_choice');
+      default:
+        break;
+    }
+  }
+
   switch (key) {
     case 'switch_city':
       return player.cityKey !== (player.focusCityKey || player.cityKey)
@@ -526,6 +573,61 @@ function buildFinancialBreakdown({
   };
 }
 
+function buildSimulationScore({
+  netWorth = 0,
+  money = 0,
+  debt = 0,
+  reputation = 0,
+  completedContracts = 0,
+  completedResearch = 0,
+  innovation = 0,
+  soldLastTick = 0,
+  seasonGoal = null,
+  lastTickBreakdown = null,
+} = {}) {
+  const safeNetWorth = toNumber(netWorth);
+  const safeMoney = toNumber(money);
+  const safeDebt = toNumber(debt);
+  const safeReputation = clamp(Math.round(toNumber(reputation, 50)), 0, 100);
+  const safeContracts = Math.max(0, Math.round(toNumber(completedContracts)));
+  const safeResearch = Math.max(0, Math.round(toNumber(completedResearch)));
+  const safeInnovation = Math.max(0, Math.round(toNumber(innovation)));
+  const safeSold = Math.max(0, Math.round(toNumber(soldLastTick)));
+  const profit = toNumber(lastTickBreakdown?.profit, 0);
+
+  const goalTarget = Math.max(0, toNumber(seasonGoal?.target, 0));
+  const goalProgress = Math.max(0, toNumber(seasonGoal?.progress, 0));
+  const goalRatio = goalTarget > 0 ? clamp(goalProgress / goalTarget, 0, 1.2) : 0;
+
+  const financial = clamp(Math.round(safeNetWorth / 3000), 0, 120);
+  const liquidity = clamp(Math.round(safeMoney / 5000), 0, 45);
+  const contracts = clamp(safeContracts * 18, 0, 60);
+  const innovationScore = clamp(safeInnovation * 14 + safeResearch * 6, 0, 65);
+  const execution = clamp(Math.round(goalRatio * 35) + Math.round(safeSold * 1.5), 0, 60);
+  const discipline = profit > 0 ? 8 : 0;
+  const resilienceBonus = clamp(Math.round(safeReputation / 25), 0, 4);
+  const debtPenalty = clamp(Math.round(safeDebt / 20000) - resilienceBonus, 0, 35);
+
+  const total = clamp(
+    financial + liquidity + contracts + innovationScore + execution + discipline - debtPenalty,
+    0,
+    350
+  );
+
+  return {
+    total,
+    components: {
+      financial,
+      liquidity,
+      contracts,
+      innovation: innovationScore,
+      execution,
+      discipline,
+      debtPenalty,
+    },
+  };
+}
+
 module.exports = {
   BOARD_POLICIES,
   OPERATING_PLANS,
@@ -544,4 +646,5 @@ module.exports = {
   buildPivotPreview,
   buildExecutionPlan,
   buildFinancialBreakdown,
+  buildSimulationScore,
 };

@@ -1,0 +1,32 @@
+{
+  "accounts": {
+    "legacy_student": {
+      "userName": "Legacy Student",
+      "gamesPlayed": 2
+    }
+  },
+  "savedRooms": {
+    "V1ROOM": {
+      "meta": {
+        "roomCode": "V1ROOM",
+        "roomName": "Legacy V1 Room"
+      },
+      "snapshot": {
+        "code": "V1ROOM",
+        "name": "Legacy V1 Room",
+        "hostPlayerId": "player_legacy",
+        "settings": {
+          "scenarioKey": "factory"
+        },
+        "players": [
+          {
+            "id": "player_legacy",
+            "name": "Legacy Company",
+            "userName": "Legacy Student",
+            "money": 125000
+          }
+        ]
+      }
+    }
+  }
+}
