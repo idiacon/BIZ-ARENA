@@ -550,8 +550,11 @@ async function main() {
     await openScreen(studentBrowser.cdp, 'game-screen');
     await waitFor(
       studentBrowser.cdp,
-      `document.querySelector('.turn-review-card')?.dataset.turnReviewContract === 'cause-effect-v1' && document.querySelectorAll('[data-turn-review-section]').length >= 3`,
-      'student cause-effect turn review',
+      `document.querySelector('.turn-review-card')?.dataset.turnReviewContract === 'cause-effect-v1'
+        && document.querySelectorAll('[data-turn-review-section]').length >= 3
+        && document.querySelector('.decision-round-card')?.dataset.decisionRoundContract === 'decision-round-v2'
+        && document.querySelectorAll('.decision-option-item').length >= 3`,
+      'student cause-effect turn review and strategic decision',
     );
     await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', DESKTOP);
     await evaluate(studentBrowser.cdp, `document.querySelector('.app-sidebar-nav [data-role-tab="student"][data-game-tab="operations"]')?.click()`);
@@ -569,6 +572,26 @@ async function main() {
     await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', ULTRAWIDE);
     await sleep(350);
     await capture(studentBrowser.cdp, '10-student-turn-review-3440x1440.png', scrollBelowSticky('.turn-review-card'));
+    const studentDecisionTextAudit = await collectTextVisibilityAudit(studentBrowser.cdp, 'student strategic decision text', [
+      '.decision-round-card .factory-node-label',
+      '.decision-round-card h3',
+      '.decision-round-status',
+      '.decision-option-item:first-child strong',
+      '.decision-option-item:first-child .decision-option-effect',
+      '.decision-option-item:first-child .decision-option-action',
+    ]);
+    for (const viewport of QA_VIEWPORTS) {
+      await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', viewport);
+      await sleep(250);
+      await evaluate(studentBrowser.cdp, scrollBelowSticky('.decision-round-card'));
+      layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, `student strategic decision ${viewport.width}px`));
+    }
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MIN_DESKTOP);
+    await sleep(350);
+    await capture(studentBrowser.cdp, '11-student-strategic-decision-1000x760.png', scrollBelowSticky('.decision-round-card'));
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', ULTRAWIDE);
+    await sleep(350);
+    await capture(studentBrowser.cdp, '12-student-strategic-decision-3440x1440.png', scrollBelowSticky('.decision-round-card'));
 
     const audit = {
       capturedAt: new Date().toISOString(),
@@ -585,6 +608,8 @@ async function main() {
         '08-student-turn-review-1440x900.png',
         '09-student-turn-review-1000x760.png',
         '10-student-turn-review-3440x1440.png',
+        '11-student-strategic-decision-1000x760.png',
+        '12-student-strategic-decision-3440x1440.png',
       ],
       checks: {
         teacherGameVisible: await evaluate(teacherBrowser.cdp, 'Boolean(document.querySelector("#game-screen.active"))'),
@@ -592,9 +617,16 @@ async function main() {
         studentLobbyTextAudit,
         studentDesktopTopbarTextAudit,
         studentDesktopNavigationTextAudit,
+        studentDecisionTextAudit,
         studentTurnReviewContract: await evaluate(studentBrowser.cdp, `({
           contract: document.querySelector('.turn-review-card')?.dataset.turnReviewContract || '',
           sections: [...document.querySelectorAll('[data-turn-review-section]')].map(node => node.dataset.turnReviewSection),
+        })`),
+        studentDecisionContract: await evaluate(studentBrowser.cdp, `({
+          contract: document.querySelector('.decision-round-card')?.dataset.decisionRoundContract || '',
+          status: document.querySelector('.decision-round-card')?.dataset.decisionRoundStatus || '',
+          options: document.querySelectorAll('.decision-option-item').length,
+          labels: [...document.querySelectorAll('.decision-option-item strong')].map(node => node.textContent.trim()),
         })`),
         studentOperationsLayout: await evaluate(studentBrowser.cdp, `(() => {
           const pick = selector => {

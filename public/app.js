@@ -2495,36 +2495,51 @@ function renderDecisionRoundCard() {
   if (!round && !latest && !canForceRound) return '';
 
   if (round && round.status === 'pending') {
-    const options = (round.options || []).map(option => `
-      <article class="decision-option-item">
-        <div>
-          <strong>${decisionText(option.labelKey, option.key)}</strong>
-          <small>${decisionText(option.effectSummaryKey, '')}</small>
-          ${option.isDefault ? `<span class="mini-badge top-gap">${t('decision_round_default_safe')}</span>` : ''}
+    const options = (round.options || []).map((option, index) => {
+      const optionLabel = decisionText(option.labelKey, option.key);
+      const effectSummary = decisionText(option.effectSummaryKey, '');
+      return `
+      <article class="decision-option-item" data-default-option="${option.isDefault ? 'true' : 'false'}">
+        <div class="decision-option-copy">
+          <div class="decision-option-title-row">
+            <span class="decision-option-index" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
+            <strong>${escapeHtml(optionLabel)}</strong>
+          </div>
+          <small class="decision-option-effect">${escapeHtml(effectSummary)}</small>
+          ${option.isDefault ? `<span class="mini-badge decision-option-safe">${t('decision_round_default_safe')}</span>` : ''}
         </div>
         <button
           type="button"
-          class="ghost"
+          class="ghost decision-option-action"
           data-decision-option="1"
-          data-round-id="${round.id}"
-          data-option-key="${option.key}"
+          data-decision-option-index="${index}"
+          data-round-id="${escapeHtml(round.id)}"
+          data-option-key="${escapeHtml(option.key)}"
+          aria-label="${escapeHtml(`${t('decision_round_choose')}: ${optionLabel}`)}"
           ${canResolve ? '' : 'disabled'}
         >${t('decision_round_choose')}</button>
       </article>
-    `).join('');
+    `;
+    }).join('');
 
     return `
-      <section class="decision-round-card">
+      <section class="decision-round-card is-pending" data-decision-round-contract="decision-round-v2" data-decision-round-status="pending" aria-labelledby="decision-round-heading">
         <div class="decision-round-head">
-          <div>
-            <span class="factory-node-label">${t('decision_round_card_title')}</span>
-            <h3>${decisionText(round.titleKey, t('decision_round_pending'))}</h3>
+          <div class="decision-round-heading-group">
+            <span class="decision-round-symbol">${gameIcon('crisis')}</span>
+            <div>
+              <span class="factory-node-label">${t('decision_round_card_title')}</span>
+              <h3 id="decision-round-heading">${escapeHtml(decisionText(round.titleKey, t('decision_round_pending')))}</h3>
+            </div>
           </div>
-          <span class="mini-badge">${t('decision_round_pending')}</span>
+          <span class="mini-badge decision-round-status">${t('decision_round_pending')}</span>
         </div>
-        <p class="muted">${decisionText(round.descriptionKey, t('decision_round_card_hint'))}</p>
-        <small>${t('decision_round_expires')}: ${round.expiresDay}</small>
-        <div class="decision-option-grid top-gap">${options}</div>
+        <p class="decision-round-description">${escapeHtml(decisionText(round.descriptionKey, t('decision_round_card_hint')))}</p>
+        <div class="decision-round-meta">
+          <span>${t('decision_round_expires')} <strong>${escapeHtml(round.expiresDay)}</strong></span>
+          <span>${t('decision_round_card_hint')}</span>
+        </div>
+        <div class="decision-option-grid">${options}</div>
       </section>
     `;
   }
@@ -2534,16 +2549,19 @@ function renderDecisionRoundCard() {
     : t('decision_round_no_history');
 
   return `
-    <section class="decision-round-card">
+    <section class="decision-round-card is-resolved" data-decision-round-contract="decision-round-v2" data-decision-round-status="resolved" aria-labelledby="decision-round-heading">
       <div class="decision-round-head">
-        <div>
-          <span class="factory-node-label">${t('decision_round_card_title')}</span>
-          <h3>${t('decision_round_no_active')}</h3>
+        <div class="decision-round-heading-group">
+          <span class="decision-round-symbol">${gameIcon('check')}</span>
+          <div>
+            <span class="factory-node-label">${t('decision_round_card_title')}</span>
+            <h3 id="decision-round-heading">${t('decision_round_no_active')}</h3>
+          </div>
         </div>
-        <span class="mini-badge">${t('decision_round_resolved')}</span>
+        <span class="mini-badge decision-round-status">${t('decision_round_resolved')}</span>
       </div>
-      <p class="muted">${t('decision_round_card_hint')}</p>
-      <small>${t('decision_round_last_resolution')}: ${resolutionText}</small>
+      <p class="decision-round-description">${t('decision_round_card_hint')}</p>
+      <div class="decision-round-meta"><span>${t('decision_round_last_resolution')}: <strong>${escapeHtml(resolutionText)}</strong></span></div>
       ${latest?.resolution === 'auto_safe' ? `<div class="top-gap muted small">${t('decision_round_auto_safe_notice')}</div>` : ''}
       ${canForceRound ? `
         <div class="top-gap">

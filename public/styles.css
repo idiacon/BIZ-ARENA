@@ -3448,6 +3448,221 @@ body[data-performance-mode="lite"] .role-entry-option:hover {
   gap: 14px;
 }
 
+.decision-round-card {
+  position: relative;
+  display: grid;
+  gap: 12px;
+  width: min(100%, 1580px);
+  margin-inline: auto;
+  overflow: hidden;
+  border: 1px solid rgba(255, 190, 61, 0.34);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  padding: 16px;
+}
+
+.decision-round-card::before {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--warn);
+  content: "";
+}
+
+.decision-round-card.is-resolved {
+  border-color: rgba(55, 224, 131, 0.28);
+}
+
+.decision-round-card.is-resolved::before {
+  background: var(--success);
+}
+
+.decision-round-head,
+.decision-round-heading-group,
+.decision-option-title-row {
+  display: flex;
+  align-items: center;
+}
+
+.decision-round-head {
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.decision-round-heading-group {
+  min-width: 0;
+  gap: 10px;
+}
+
+.decision-round-heading-group > div {
+  min-width: 0;
+}
+
+.decision-round-heading-group h3 {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.decision-round-symbol {
+  display: inline-grid;
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid rgba(255, 190, 61, 0.35);
+  border-radius: 7px;
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+.decision-round-symbol .game-ui-icon {
+  width: 19px;
+  height: 19px;
+}
+
+.decision-round-card.is-resolved .decision-round-symbol {
+  border-color: rgba(55, 224, 131, 0.35);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.decision-round-status {
+  flex: 0 0 auto;
+  border-color: rgba(255, 190, 61, 0.35);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-weight: 700;
+}
+
+.decision-round-card.is-resolved .decision-round-status {
+  border-color: rgba(55, 224, 131, 0.35);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.decision-round-description {
+  max-width: 88ch;
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.decision-round-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 18px;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.decision-round-meta span:first-child {
+  color: var(--text-primary);
+  font-family: var(--font-data);
+}
+
+.decision-round-meta strong {
+  color: var(--warn);
+}
+
+.decision-option-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.decision-option-item {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 12px;
+  min-width: 0;
+  min-height: 172px;
+  border: 1px solid var(--line-subtle);
+  border-radius: 8px;
+  background: var(--surface-panel-soft);
+  padding: 12px;
+  transition:
+    border-color var(--motion-fast) var(--motion-ease-out),
+    background-color var(--motion-fast) var(--motion-ease-out);
+}
+
+.decision-option-item:hover,
+.decision-option-item:focus-within {
+  border-color: rgba(109, 117, 255, 0.68);
+  background: var(--surface-panel-raised);
+}
+
+.decision-option-item[data-default-option="true"] {
+  border-color: rgba(55, 224, 131, 0.32);
+}
+
+.decision-option-copy {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.decision-option-title-row {
+  align-items: flex-start;
+  gap: 9px;
+  min-width: 0;
+}
+
+.decision-option-title-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
+.decision-option-index {
+  flex: 0 0 auto;
+  color: var(--accent-2);
+  font-family: var(--font-data);
+  font-size: 0.75rem;
+  line-height: 1.6;
+}
+
+.decision-option-effect {
+  display: block;
+  min-height: 38px;
+  border-top: 1px solid var(--line-subtle);
+  padding-top: 9px;
+  color: var(--text-secondary);
+  font-family: var(--font-data);
+  font-size: 0.78rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.decision-option-safe {
+  margin-top: auto;
+  border-color: rgba(55, 224, 131, 0.28);
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.decision-option-action {
+  width: 100%;
+  min-height: 40px;
+}
+
+@media (max-width: 920px) {
+  .decision-option-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .decision-round-head {
+    align-items: flex-start;
+  }
+
+  .decision-option-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .factory-map-header,
 .factory-team-strip,
 .factory-detail,

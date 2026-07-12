@@ -2794,6 +2794,23 @@ test('UI contract: students do not see an empty strategic decision card', () => 
   assert.match(renderDecisionRoundCard, /if \(!round && !latest && !canForceRound\) return '';/);
 });
 
+test('UI contract: strategic decisions use a localized responsive decision surface', () => {
+  const appJs = readPublicAppSources();
+  const styles = readPublicStyles();
+  const translations = fs.readFileSync(path.join(__dirname, '..', 'public', 'translations.js'), 'utf8');
+  const renderDecisionRoundCard = sourceFunctionBlock(appJs, 'renderDecisionRoundCard');
+
+  assert.match(renderDecisionRoundCard, /data-decision-round-contract="decision-round-v2"/);
+  assert.match(renderDecisionRoundCard, /class="decision-option-effect"/);
+  assert.match(renderDecisionRoundCard, /data-decision-option-index=/);
+  assert.match(styles, /\.decision-option-grid[\s\S]*grid-template-columns/);
+  assert.match(styles, /\.decision-option-item[\s\S]*min-width: 0/);
+  assert.match(styles, /@media \(max-width: 920px\)[\s\S]*\.decision-option-grid/);
+  assert.match(translations, /"decision_round_card_title": "Стратегическая дилемма"/);
+  assert.match(translations, /"decision_round_choose": "Выбрать решение"/);
+  assert.match(translations, /"decision_round_workforce_title": "Политика персонала"/);
+});
+
 test('UI contract: entry screens show only real navigation and room actions', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
 
