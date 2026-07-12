@@ -367,6 +367,13 @@ async function main() {
     await evaluate('document.querySelector(\'[data-game-tab="competitors"]\').click()');
     await waitFor('!!document.querySelector(\'[data-game-panel="competitors"]:not(.hidden)\')', 'personnel tab');
     await screenshot('05-personnel.png', 'window.scrollTo(0, 0)');
+    await setViewport(MIN_DESKTOP);
+    await assertViewport('personnel 1000x760');
+    await screenshot('05-personnel-1000x760.png', 'window.scrollTo(0, 0)');
+    await setViewport(ULTRAWIDE);
+    await assertViewport('personnel 3440x1440');
+    await screenshot('05-personnel-3440x1440.png', 'window.scrollTo(0, 0)');
+    await setViewport(VIEWPORT);
     await evaluate('document.querySelector(\'[data-game-tab="purchase"]\').click()');
     await waitFor('!!document.querySelector(\'[data-game-panel="purchase"]:not(.hidden)\')', 'purchase tab');
     await screenshot('05-purchase.png', 'window.scrollTo(0, 0)');

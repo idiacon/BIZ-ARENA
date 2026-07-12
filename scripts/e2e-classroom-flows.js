@@ -15,6 +15,11 @@ const DESKTOP_VIEWPORTS = [
   { width: 2560, height: 1440 },
   { width: 3440, height: 1440 },
 ];
+const SCREEN_PREREQUISITES = Object.freeze({
+  'lobby-screen': 'typeof state !== "undefined" && Boolean(state.room)',
+  'game-screen': 'typeof state !== "undefined" && Boolean(state.room && ["running", "paused"].includes(state.room.status))',
+  'results-screen': 'typeof state !== "undefined" && Boolean(state.room && state.room.status === "finished")',
+});
 
 function postJson(url, payload) {
   return new Promise((resolve, reject) => {
@@ -54,6 +59,8 @@ function stop(child) { try { child?.kill(); } catch {} }
 function remove(dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
 
 async function openScreen(cdp, screenId) {
+  const prerequisite = SCREEN_PREREQUISITES[screenId];
+  if (prerequisite) await waitFor(cdp, prerequisite, `${screenId} state prerequisite`);
   const opened = await evaluate(cdp, `(() => {
     if (document.querySelector(${JSON.stringify(`#${screenId}.active`)})) return true;
     const trigger = document.querySelector(${JSON.stringify(`[data-open-screen="${screenId}"]`)});

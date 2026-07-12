@@ -2627,6 +2627,9 @@ test('QA contract: classroom E2E covers the supported desktop viewport range', (
   assert.match(e2eScript, /width:\s*1920,\s*height:\s*1080/);
   assert.match(e2eScript, /width:\s*2560,\s*height:\s*1440/);
   assert.match(e2eScript, /width:\s*3440,\s*height:\s*1440/);
+  assert.match(e2eScript, /const SCREEN_PREREQUISITES = Object\.freeze\(\{/);
+  assert.match(e2eScript, /game-screen[\s\S]*state\.room[\s\S]*running[\s\S]*paused/);
+  assert.match(e2eScript, /await waitFor\(cdp, prerequisite, `\$\{screenId\} state prerequisite`\)/);
 });
 
 test('UI contract: factory last action messages are localized before rendering', () => {
@@ -2889,6 +2892,30 @@ test('UI contract: leaderboard and event log hide raw internal labels', () => {
 
   assert.match(captureScript, /raw event log labels/);
   assert.match(captureScript, /AI Manager\|cleared the sell order\|strategic round/);
+});
+
+test('UI contract: personnel terminal separates advice, team, and candidate metrics', () => {
+  const appJs = readPublicAppSources();
+  const styles = readPublicStyles();
+  const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-defense-screenshots.js'), 'utf8');
+  const renderCompetitors = sourceFunctionBlock(appJs, 'renderCompetitors');
+
+  assert.match(renderCompetitors, /dataset\.personnelContract = 'personnel-terminal-v2'/);
+  assert.match(renderCompetitors, /class="personnel-card-head"/);
+  assert.match(renderCompetitors, /class="personnel-score"/);
+  assert.match(renderCompetitors, /class="personnel-card-meta"/);
+  assert.match(renderCompetitors, /class="personnel-candidate-metrics"/);
+  assert.match(renderCompetitors, /class="personnel-reason"/);
+
+  assert.match(styles, /\.personnel-terminal\s*{/);
+  assert.match(styles, /\.personnel-coach\s*{[\s\S]*grid-template-columns/);
+  assert.match(styles, /\.personnel-coach-stats\s*{[\s\S]*grid-template-columns: repeat\(3/);
+  assert.match(styles, /\.personnel-summary\s*{[\s\S]*grid-template-columns: repeat\(3/);
+  assert.match(styles, /\.personnel-candidate-metrics\s*{[\s\S]*grid-template-columns: repeat\(3/);
+  assert.match(styles, /\.personnel-card-meta\s*{[\s\S]*display: block/);
+
+  assert.match(captureScript, /personnel 1000x760/);
+  assert.match(captureScript, /personnel 3440x1440/);
 });
 
 test('classroom package includes LAN diagnostics helpers and readable README text', () => {

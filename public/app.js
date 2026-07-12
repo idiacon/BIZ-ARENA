@@ -2489,23 +2489,19 @@ function decisionText(key, fallback = '') {
 function readableInternalKey(value) {
   return String(value || '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
 }
-
 function localizedDecisionRoundLabel(roundKey) {
   const key = String(roundKey || '').trim();
   return decisionText(DECISION_ROUND_TITLE_KEYS[key], readableInternalKey(key));
 }
-
 function localizedDecisionOptionLabel(optionKey) {
   const key = String(optionKey || '').trim();
   return decisionText(DECISION_OPTION_LABEL_KEYS[key], readableInternalKey(key));
 }
-
 function localizedParticipantName(value) {
   const name = String(value || '').trim();
   if (state.settings.language === 'ru' && name === 'AI Manager') return 'ИИ-менеджер';
   return name;
 }
-
 function supportsStrategicDecisionRounds() {
   if (!isFactoryRoom()) return false;
   const scenarioKey = state.room?.settings?.scenarioKey;
@@ -4942,6 +4938,7 @@ function renderPlayerList() {
 function renderCompetitors() {
   elements.competitorList.innerHTML = '';
   elements.competitorList.classList.remove('personnel-terminal');
+  delete elements.competitorList.dataset.personnelContract;
   const players = state.room?.players || [];
   if (!players.length) {
     elements.competitorList.innerHTML = `<div class="leader">${t('no_players')}</div>`;
@@ -4957,6 +4954,7 @@ function renderCompetitors() {
     const candidateHintById = new Map(candidateHints.map(item => [item.id, item]));
     const payroll = workers.reduce((sum, worker) => sum + Number(worker.expectedSalary || 0), 0);
     elements.competitorList.classList.add('personnel-terminal');
+    elements.competitorList.dataset.personnelContract = 'personnel-terminal-v2';
     elements.competitorList.innerHTML = `
       ${personnelSummary ? `
         <section class="personnel-coach ${escapeHtml(personnelSummary.bottleneck || 'people')}">
@@ -4990,15 +4988,17 @@ function renderCompetitors() {
         </article>
       </section>
       <section class="personnel-board">
-        <div>
+        <div class="personnel-section personnel-current-team">
           <div class="factory-node-label">Текущая команда</div>
           <div class="personnel-list">
             ${workers.length ? workers.map(worker => `
               <article class="person-card active">
-                <strong>${escapeHtml(worker.name)}</strong>
-                <small>${escapeHtml(worker.role)} • ${worker.experienceYears} лет • ${money(worker.expectedSalary)}</small>
+                <div class="personnel-card-head">
+                  <div><span class="factory-node-label">В команде</span><strong>${escapeHtml(worker.name)}</strong></div>
+                  <span class="personnel-score"><b>${worker.suitability || 0}</b><small>/100</small></span>
+                </div>
+                <small class="personnel-card-meta">${escapeHtml(worker.role)} • ${worker.experienceYears} лет • ${money(worker.expectedSalary)} за ход</small>
                 <span class="market-depth-bar"><i style="width:${Math.max(8, worker.suitability || 0)}%"></i></span>
-                <b>${worker.suitability || 0}/100</b>
               </article>
             `).join('') : `<div class="trade-empty">Команда ещё не нанята.</div>`}
           </div>
@@ -5011,16 +5011,18 @@ function renderCompetitors() {
               const isRecommended = hint?.id === personnelSummary.recommendedCandidateId;
               return `
               <article class="person-card ${isRecommended ? 'recommended' : ''} ${escapeHtml(hint?.status || '')}">
-                <span class="factory-node-label">${isRecommended ? 'Лучший выбор' : escapeHtml(candidate.role || 'Кандидат')}</span>
-                <strong>${escapeHtml(candidate.name)}</strong>
-                <small>${escapeHtml(candidate.role)} • ${candidate.experienceYears} лет • ${money(candidate.expectedSalary)}</small>
+                <div class="personnel-card-head">
+                  <div><span class="factory-node-label">${isRecommended ? 'Лучший выбор' : escapeHtml(candidate.role || 'Кандидат')}</span><strong>${escapeHtml(candidate.name)}</strong></div>
+                  <span class="personnel-score"><b>${candidate.suitability || 0}</b><small>/100</small></span>
+                </div>
+                <small class="personnel-card-meta">${escapeHtml(candidate.role)} • ${candidate.experienceYears} лет опыта</small>
                 <span class="market-depth-bar"><i style="width:${Math.max(8, candidate.suitability || 0)}%"></i></span>
                 <div class="personnel-candidate-metrics">
-                  <span><b>${candidate.suitability || 0}</b><small>пригодность</small></span>
+                  <span><b>${money(candidate.expectedSalary)}</b><small>за ход</small></span>
                   <span><b>${hint?.capacityGain ? `+${hint.capacityGain}` : '0'}</b><small>мощность</small></span>
                   <span><b>${hint?.paybackTurns ? `${hint.paybackTurns} х.` : '—'}</b><small>окупаемость</small></span>
                 </div>
-                <small>${escapeHtml(hint?.reason || candidate.hint || '')}</small>
+                <small class="personnel-reason">${escapeHtml(hint?.reason || candidate.hint || '')}</small>
                 <button type="button" data-personnel-hire="${escapeHtml(candidate.id)}" ${canUseBusinessActions() && hint?.affordable !== false ? '' : 'disabled'}>${isRecommended ? 'Нанять рекомендованного' : 'Нанять'}</button>
               </article>`;
             }).join('') || `<div class="trade-empty">Кандидатов пока нет.</div>`}
@@ -5054,7 +5056,7 @@ function renderLeaderboardList(container) {
     node.innerHTML = `
       <div class="player-line leaderboard-player">
         ${avatarMarkup(player)}
-        <div>
+        <div class="personnel-section personnel-candidates">
           <strong>#${index + 1} ${escapeHtml(player.name)}</strong>
           <small>${escapeHtml([localizedParticipantName(player.userName), productMarketLine(player)].filter(Boolean).join(' • '))}</small>
         </div>

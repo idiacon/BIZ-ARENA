@@ -1665,6 +1665,222 @@ body[data-performance-mode="lite"] .role-entry-option:hover {
   white-space: nowrap;
 }
 
+.personnel-terminal {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+}
+
+.personnel-coach {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 0.58fr);
+  align-items: stretch;
+  gap: 12px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent-2);
+  border-radius: 8px;
+  background: var(--panel-soft);
+  padding: 12px;
+}
+
+.personnel-coach > div:first-child {
+  display: grid;
+  align-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.personnel-coach strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.personnel-coach small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.personnel-coach-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.personnel-coach-stats > span {
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  padding: 9px;
+}
+
+.personnel-coach-stats b {
+  font-family: var(--font-data);
+  font-size: 1rem;
+}
+
+.personnel-coach-stats small {
+  overflow-wrap: anywhere;
+  font-size: 0.7rem;
+}
+
+.personnel-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.personnel-summary .market-item {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+  min-height: 98px;
+  padding: 12px;
+}
+
+.personnel-summary .value {
+  font-family: var(--font-data);
+  font-size: 1.08rem;
+}
+
+.personnel-summary small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.personnel-board,
+.personnel-section,
+.personnel-list {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.person-card {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.person-card.recommended {
+  border-color: rgba(49, 217, 210, 0.58);
+  background: rgba(49, 217, 210, 0.06);
+}
+
+.personnel-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.personnel-card-head > div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.personnel-card-head strong {
+  display: block;
+  overflow-wrap: anywhere;
+  font-size: 0.98rem;
+}
+
+.personnel-score {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--accent-soft);
+  padding: 6px 8px;
+}
+
+.personnel-score b {
+  font-family: var(--font-data);
+  font-size: 0.95rem;
+}
+
+.personnel-score small {
+  color: var(--muted);
+  font-size: 0.7rem;
+}
+
+.personnel-card-meta {
+  display: block;
+  overflow-wrap: anywhere;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.personnel-candidate-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.personnel-candidate-metrics > span {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel-soft);
+  padding: 8px;
+}
+
+.personnel-candidate-metrics b {
+  overflow-wrap: anywhere;
+  font-family: var(--font-data);
+  font-size: 0.8rem;
+}
+
+.personnel-candidate-metrics small {
+  color: var(--muted);
+  font-size: 0.68rem;
+}
+
+.personnel-reason {
+  display: block;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.person-card [data-personnel-hire] {
+  justify-self: start;
+  max-width: 100%;
+}
+
+@media (min-width: 1800px) {
+  .personnel-board {
+    grid-template-columns: minmax(300px, 0.7fr) minmax(0, 1.3fr);
+  }
+
+  .personnel-candidates .personnel-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1180px) {
+  .personnel-coach {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 @media (max-width: 700px) {
   .leaderboard-row {
     align-items: stretch;
@@ -1683,6 +1899,10 @@ body[data-performance-mode="lite"] .role-entry-option:hover {
     padding-top: 8px;
     padding-left: 0;
     text-align: left;
+  }
+
+  .personnel-summary {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
