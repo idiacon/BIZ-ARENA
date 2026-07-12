@@ -77,6 +77,159 @@ function nextGuidedFactoryStep() {
   };
 }
 
+function marketRailSparkline(history) {
+  const source = (history || []).slice(-10);
+  const fallback = '0,42 16,34 32,39 48,28 64,30 80,20 96,25 112,12 128,18 144,10 160,14';
+  if (source.length < 2) return fallback;
+  const values = source.map(item => Number(item.avgPrice || item.demand || item.totalSales || 0));
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = Math.max(1, max - min);
+  return values.map((value, index) => {
+    const x = Math.round((index / Math.max(values.length - 1, 1)) * 160);
+    const y = Math.round(46 - ((value - min) / range) * 36);
+    return `${x},${y}`;
+  }).join(' ');
+}
+
+function renderGameMarketRail() {
+  if (!elements.gameMarketRail) return;
+  if (state.player?.isTeacherHost) {
+    elements.gameMarketRail.innerHTML = '';
+    return;
+  }
+  if (!state.room) {
+    elements.gameMarketRail.innerHTML = `
+      <section class="side-rail-card">
+        <h3>Рынок</h3>
+        <p class="muted">Данные появятся после входа в комнату.</p>
+      </section>`;
+    return;
+  }
+
+  const room = state.room;
+  const player = state.player || {};
+  const scenario = room.factoryScenario || {};
+  const latest = (room.market || []).at(-1) || null;
+  const demand = latest?.demand ?? scenario.baseDemandMax ?? 0;
+  const avgPrice = latest?.avgPrice ?? player.factory?.saleOffer?.price ?? scenario.priceRange?.max ?? player.price ?? 0;
+  const totalSales = latest?.totalSales ?? 0;
+  const offer = player.factory?.saleOffer || null;
+  const stock = player.factory?.finishedGoods ?? player.productStock ?? 0;
+  const factoryMode = isFactoryRoom();
+  const factoryStats = room.factoryStats || {};
+  const orderBook = scenario.marketBook || [];
+  const contracts = factoryMode ? [] : (room.contractBoard || []).slice(0, 2);
+  const step = factoryMode ? nextGuidedFactoryStep() : null;
+  const teacherView = isTeacherViewer();
+  const canHostControl = Boolean(player.isHost && !gameIsFinished());
+  const pauseEnabled = canHostControl && room.status === 'running';
+  const resumeEnabled = canHostControl && room.status === 'paused';
+  const nextEnabled = canHostControl && room.status === 'running';
+  const finishEnabled = canHostControl && ['running', 'paused', 'lobby'].includes(room.status);
+  const teacherCopy = teacherView
+    ? `<button type="button" class="ghost" data-rail-game-tab="teacher">Открыть пульт</button>
+       <button type="button" class="ghost" data-rail-game-tab="intel">Подсказка класса</button>`
+    : `<div class="rail-next-step">
+        <span>Что делать сейчас</span>
+        <strong>${escapeHtml(step?.title || 'Следите за маршрутом команды')}</strong>
+        <small>${escapeHtml(step?.why || 'Следующее действие показано в верхней панели.')}</small>
+      </div>
+      <button type="button" class="ghost" data-rail-game-tab="${escapeHtml(step?.tab || 'operations')}">${escapeHtml(step?.label || 'Перейти к действию')}</button>`;
+  const contractMarkup = contracts.length
+    ? contracts.map(contract => {
+      const progress = Number(contract.progress || 0);
+      const target = Number(contract.targetSales || contract.quantity || 1);
+      const pct = Math.max(0, Math.min(100, Math.round((progress / Math.max(target, 1)) * 100)));
+      const dueSoon = Number(contract.expiresDay || 0) <= Number(room.day || 1) + 2;
+      const statusClass = contract.completed ? 'open' : dueSoon ? 'waiting' : 'open';
+      const statusLabel = contract.completed ? 'Выполнен' : dueSoon ? 'Риск срыва' : 'В процессе';
+      return `
+        <article class="contract-mini-card">
+          <strong>${escapeHtml(contract.title || contract.name || 'Контракт')}</strong>
+          <span>${progress}/${target} шт. / ${money(contract.reward || contract.price || 0)}</span>
+          <small class="room-state ${statusClass}">${statusLabel}</small>
+          <span class="live-meter" style="--live-meter: ${pct}%"></span>
+        </article>`;
+    }).join('')
+    : '<p class="muted">Активных контрактов пока нет.</p>';
+  const contractSectionMarkup = `
+    <section class="side-rail-card">
+      <div class="rail-card-head">
+        <h3>Контракты (${(room.contractBoard || []).length})</h3>
+        <span class="mini-badge ${contracts.length ? 'ok' : 'warn'}">${contracts.length ? 'есть' : 'нет'}</span>
+      </div>
+      ${contractMarkup}
+      <button type="button" class="ghost" data-rail-game-tab="market">Все контракты →</button>
+    </section>`;
+  const factoryHasData = Boolean(factoryStats.hasData && factoryStats.latest);
+  const topSeller = factoryStats.topSeller || null;
+  const topSellerText = topSeller
+    ? `${topSeller.playerName}: ${topSeller.sold} шт. по ${money(topSeller.price)}`
+    : 'Появится после первого расчёта рынка';
+  const factoryMarketSignalMarkup = `
+    <section class="side-rail-card" data-factory-market-signal="factory-order-book-v1">
+      <div class="rail-card-head">
+        <h3>Книга заявок</h3>
+        <span class="mini-badge ${orderBook.length ? 'ok' : 'warn'}">${orderBook.length ? `${orderBook.length} заявок` : 'нет заявок'}</span>
+      </div>
+      <div class="factory-market-signal-grid">
+        <span><small>Исполнено спроса</small><strong>${factoryHasData ? `${factoryStats.totalSales}/${factoryStats.latest.demand}` : 'Ждёт расчёта'}</strong></span>
+        <span><small>Незакрытый спрос</small><strong>${factoryHasData ? `${factoryStats.unmatchedDemand} шт.` : '—'}</strong></span>
+        <span><small>Исполнение</small><strong>${factoryHasData ? `${factoryStats.sellThroughPct}%` : '—'}</strong></span>
+      </div>
+      <div class="factory-market-leader">
+        <span>Лидер хода</span>
+        <strong>${escapeHtml(topSellerText)}</strong>
+      </div>
+      <button type="button" class="ghost" data-rail-game-tab="market">Открыть рынок →</button>
+    </section>`;
+
+  elements.gameMarketRail.innerHTML = `
+    <section class="side-rail-card rail-live-market-card">
+      <div class="rail-card-head">
+        <h3>Рынок</h3>
+        <span class="mini-badge ok">LIVE</span>
+      </div>
+      <div class="market-rail-stats">
+        <article><span>Общий спрос</span><strong>${compactMarketNumber(demand)} шт.</strong></article>
+        <article><span>Цена рынка</span><strong>${money(avgPrice)}</strong></article>
+        <article><span>Продано</span><strong>${compactMarketNumber(totalSales)} шт.</strong></article>
+        <article><span>Ваш запас</span><strong>${compactMarketNumber(stock)} шт.</strong></article>
+      </div>
+      <svg class="rail-chart" viewBox="0 0 160 52" aria-hidden="true">
+        <polyline points="${marketRailSparkline(room.market || [])}" />
+      </svg>
+      <div class="rail-offer-row">
+        <span>Ваша заявка</span>
+        <strong>${offer ? `${offer.quantity || 0} @ ${money(offer.price || 0)}` : 'Нет заявки'}</strong>
+      </div>
+      <button type="button" class="ghost" data-rail-game-tab="market">Подробнее →</button>
+    </section>
+    ${factoryMode ? factoryMarketSignalMarkup : contractSectionMarkup}
+    <section class="side-rail-card">
+      <h3>${teacherView ? 'Преподаватель' : 'Помощь'}</h3>
+      ${teacherCopy}
+    </section>
+    <section class="side-rail-card">
+      <h3>Управление матчем</h3>
+      <div class="rail-control-grid">
+        <button type="button" class="ghost" data-rail-action="pause-game" ${pauseEnabled ? '' : 'disabled'}>Пауза</button>
+        <button type="button" class="ghost" data-rail-action="resume-game" ${resumeEnabled ? '' : 'disabled'}>Продолжить</button>
+        <button type="button" class="ghost" data-rail-action="next-turn" ${nextEnabled ? '' : 'disabled'}>Следующий ход</button>
+        <button type="button" class="ghost danger-button" data-rail-action="finish-game" ${finishEnabled ? '' : 'disabled'}>Завершить</button>
+      </div>
+      <small>${player.isHost ? 'Кнопки активны только для хоста комнаты.' : 'Управление доступно преподавателю.'}</small>
+    </section>`;
+
+  elements.gameMarketRail.querySelectorAll('[data-rail-game-tab]').forEach(button => {
+    button.addEventListener('click', () => setGameTab(button.dataset.railGameTab));
+  });
+  elements.gameMarketRail.querySelectorAll('[data-rail-action]').forEach(button => {
+    button.addEventListener('click', () => sendAction(button.dataset.railAction));
+  });
+}
+
 function renderGuidedAction() {
   const config = currentDifficultyConfig();
   if (config.uiMode !== 'guided' || !isFactoryRoom()) return '';

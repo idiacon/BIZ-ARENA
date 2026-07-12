@@ -5701,6 +5701,14 @@ function refreshContracts(room, force = false) {
   while (room.contractBoard.length < 3) room.contractBoard.push(makeContract(room));
 }
 
+function refreshContractsForRoom(room, force = false) {
+  if (isFactoryScenario(room.settings.scenarioKey)) {
+    room.contractBoard = [];
+    return;
+  }
+  refreshContracts(room, force);
+}
+
 function refreshWorldState(room) {
   if (room.activeEvent && room.day > room.activeEvent.expiresDay) room.activeEvent = null;
   if (!room.activeEvent && room.tick >= 3 && room.tick % 3 === 0) {
@@ -5712,6 +5720,7 @@ function refreshWorldState(room) {
 }
 
 function refreshFactoryMarketEvent(room) {
+  refreshContractsForRoom(room);
   if (room.activeEvent && room.day > room.activeEvent.expiresDay) room.activeEvent = null;
   if (!room.activeEvent && room.tick >= 3 && room.tick % 3 === 0) {
     room.activeEvent = generateFactoryEvent(room);
@@ -5779,7 +5788,7 @@ const handleRoomAction = createRoomActionHandler({
   ensureLobby,
   ensureHost,
   canStartMatch,
-  refreshContracts,
+  refreshContracts: refreshContractsForRoom,
   ensureSeasonGoal,
   addRoomLog,
   resetRoom,

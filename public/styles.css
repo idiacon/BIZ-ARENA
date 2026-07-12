@@ -4981,6 +4981,55 @@ body[data-game-tab="teacher"] .teacher-issue-list article strong {
   white-space: nowrap;
 }
 
+.factory-market-signal-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+}
+
+.factory-market-signal-grid > span {
+  display: grid;
+  align-content: center;
+  gap: 3px;
+  min-width: 0;
+  border-left: 1px solid var(--line);
+  padding: 3px 10px;
+}
+
+.factory-market-signal-grid > span:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.factory-market-signal-grid > span:last-child {
+  padding-right: 0;
+}
+
+.factory-market-signal-grid small,
+.factory-market-leader span {
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.factory-market-signal-grid strong {
+  overflow-wrap: anywhere;
+  font-family: var(--font-data);
+  font-size: 0.86rem;
+}
+
+.factory-market-leader {
+  display: grid;
+  gap: 4px;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+
+.factory-market-leader strong {
+  overflow-wrap: anywhere;
+  line-height: 1.35;
+}
+
 .rail-next-step {
   display: grid;
   gap: 4px;

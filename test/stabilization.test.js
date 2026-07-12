@@ -1311,6 +1311,8 @@ test('factory scenario: motorcycles gives every player the same plant and a shar
   const guestSummary = summary.players.find(player => player.id === guest.id);
 
   assert.equal(summary.factoryScenario.key, 'motorcycles');
+  assert.deepEqual(room.contractBoard, []);
+  assert.deepEqual(summary.contractBoard, []);
   assert.equal(hostSummary.factory.productLabel, 'Мотоциклы');
   assert.equal(guestSummary.factory.productLabel, 'Мотоциклы');
   assert.deepEqual(
@@ -2668,6 +2670,7 @@ test('UI contract: market side rail is rendered from live game state', () => {
   const appJs = readPublicAppSources();
   const styles = readPublicStyles();
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-defense-screenshots.js'), 'utf8');
 
   assert.match(appJs, /gameMarketRail:\s*document\.querySelector\('\.game-market-rail'\)/);
   assert.match(appJs, /function renderGameMarketRail\(\)/);
@@ -2676,6 +2679,11 @@ test('UI contract: market side rail is rendered from live game state', () => {
   const renderGameMarketRail = sourceFunctionBlock(appJs, 'renderGameMarketRail');
   assert.match(renderGameMarketRail, /room\.market/);
   assert.match(renderGameMarketRail, /room\.contractBoard/);
+  assert.match(renderGameMarketRail, /const factoryMode = isFactoryRoom\(\)/);
+  assert.match(renderGameMarketRail, /data-factory-market-signal="factory-order-book-v1"/);
+  assert.match(renderGameMarketRail, /factoryMode \? factoryMarketSignalMarkup : contractSectionMarkup/);
+  assert.match(renderGameMarketRail, /Незакрытый спрос/);
+  assert.match(renderGameMarketRail, /Лидер хода/);
   assert.match(renderGameMarketRail, /data-rail-action/);
   assert.match(renderGameMarketRail, /data-rail-game-tab/);
   assert.match(renderGameMarketRail, /sendAction\(button\.dataset\.railAction\)/);
@@ -2683,9 +2691,12 @@ test('UI contract: market side rail is rendered from live game state', () => {
 
   assert.match(styles, /\.rail-live-market-card/);
   assert.match(styles, /\.market-rail-stats/);
+  assert.match(styles, /\.factory-market-signal-grid/);
+  assert.match(styles, /\.factory-market-leader/);
   assert.match(styles, /\.rail-control-grid/);
-  assert.match(indexHtml, /<aside class="game-market-rail" aria-label="Рынок и контракты"><\/aside>/);
+  assert.match(indexHtml, /<aside class="game-market-rail" aria-label="Рынок и действия"><\/aside>/);
   assert.doesNotMatch(indexHtml, /class="game-side-rail"/);
+  assert.match(captureScript, /factory market rail contract/);
 });
 
 test('UI contract: teacher market and events use classroom state instead of player controls', () => {

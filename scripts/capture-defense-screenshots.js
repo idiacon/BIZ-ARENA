@@ -363,6 +363,14 @@ async function main() {
 
     await evaluate('document.querySelector(\'[data-game-tab="market"]\').click()');
     await waitFor('!!document.querySelector(\'[data-game-panel="market"]:not(.hidden)\')', 'market tab');
+    const factoryMarketRailAudit = await evaluate(`(() => ({
+      hasSignal: Boolean(document.querySelector('[data-factory-market-signal="factory-order-book-v1"]')),
+      genericContracts: document.querySelectorAll('.game-market-rail .contract-mini-card').length,
+      text: String(document.querySelector('.game-market-rail')?.textContent || '').slice(0, 500),
+    }))()`);
+    if (!factoryMarketRailAudit.hasSignal || factoryMarketRailAudit.genericContracts > 0) {
+      throw new Error(`factory market rail contract: ${JSON.stringify(factoryMarketRailAudit)}`);
+    }
     await screenshot('05-market-terminal.png', 'window.scrollTo(0, 0)');
     await evaluate('document.querySelector(\'[data-game-tab="competitors"]\').click()');
     await waitFor('!!document.querySelector(\'[data-game-panel="competitors"]:not(.hidden)\')', 'personnel tab');
