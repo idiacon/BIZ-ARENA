@@ -662,6 +662,38 @@ function money(value) {
   return `${rub(value)} ${t('currency_symbol')}`;
 }
 
+function localizedLastAction(value) {
+  const action = String(value || '').trim();
+  if (!action || state.settings.language !== 'ru') return action;
+
+  const exact = {
+    'Company created.': 'Компания создана.',
+    'Held inventory and waited for the next turn.': 'Товар оставлен на складе до следующего хода.',
+    'Cleared sell order and held inventory.': 'Заявка снята, товар оставлен на складе.',
+    'Requested a classroom pause.': 'Запрошена пауза занятия.',
+    'Plant went bankrupt.': 'Предприятие обанкротилось.',
+  };
+  if (exact[action]) return exact[action];
+
+  let match = action.match(/^Bought (\d+) (.+)\.$/);
+  if (match) return `Куплено: ${match[1]} ${match[2]}.`;
+  match = action.match(/^Hired (.+) \((.+)\)\.$/);
+  if (match) return `Нанят сотрудник: ${match[1]} (${match[2]}).`;
+  match = action.match(/^Assembled (\d+) (.+)\.$/);
+  if (match) return `Собрано: ${match[1]} ${match[2]}.`;
+  match = action.match(/^Placed sell order: (\d+) @ ([\d.]+)\.$/);
+  if (match) return `Выставлена заявка: ${match[1]} ед. по ${rub(Number(match[2]))} ₽.`;
+  match = action.match(/^Sold (\d+) (.+) at ([\d.]+)\.$/);
+  if (match) return `Продано ${match[1]} ${match[2]} по ${rub(Number(match[3]))} ₽.`;
+  match = action.match(/^Offer at ([\d.]+) found no buyers\.$/);
+  if (match) return `Заявка по цене ${rub(Number(match[1]))} ₽ не получила спроса.`;
+  match = action.match(/^Offer at ([\d.]+) was left unmatched\.$/);
+  if (match) return `Заявка по цене ${rub(Number(match[1]))} ₽ осталась без исполнения.`;
+  match = action.match(/^Strategic round ready: (.+)$/);
+  if (match) return `Доступен стратегический раунд: ${match[1]}.`;
+  return action;
+}
+
 function localizedScenarioLabel(room = state.room) {
   const key = room?.settings?.scenarioKey;
   const translatedKey = key ? `scenario_${key}_label` : '';
@@ -1935,6 +1967,22 @@ function renderNavigationState() {
   });
 }
 
+function revealActiveGameTab(button) {
+  const navigation = button?.closest?.('.app-sidebar-nav');
+  if (!navigation) return;
+  requestAnimationFrame(() => {
+    if (navigation.scrollWidth <= navigation.clientWidth + 1) return;
+    const navigationRect = navigation.getBoundingClientRect();
+    const buttonRect = button.getBoundingClientRect();
+    const edgePadding = 6;
+    if (buttonRect.right > navigationRect.right) {
+      navigation.scrollLeft += buttonRect.right - navigationRect.right + edgePadding;
+    } else if (buttonRect.left < navigationRect.left) {
+      navigation.scrollLeft -= navigationRect.left - buttonRect.left + edgePadding;
+    }
+  });
+}
+
 function setGameTab(tabId) {
   const visibleTabs = visibleGameTabs();
   const nextTabId = visibleTabs.has(tabId) ? tabId : (visibleTabs.has('operations') ? 'operations' : [...visibleTabs][0] || 'overview');
@@ -1942,8 +1990,14 @@ function setGameTab(tabId) {
   document.body.dataset.gameTab = nextTabId;
   document.documentElement.dataset.gameTab = nextTabId;
   localStorage.setItem('bizArenaGameTab', nextTabId);
-  elements.gameTabs.forEach(button => button.classList.toggle('active', button.dataset.gameTab === nextTabId));
+  let activeNavigationButton = null;
+  elements.gameTabs.forEach(button => {
+    const active = button.dataset.gameTab === nextTabId;
+    button.classList.toggle('active', active);
+    if (active && button.closest?.('.app-sidebar-nav')) activeNavigationButton = button;
+  });
   elements.gamePanels.forEach(panel => panel.classList.toggle('hidden', panel.dataset.gamePanel !== nextTabId));
+  revealActiveGameTab(activeNavigationButton);
   renderTutorialOverlay();
 }
 
@@ -2379,7 +2433,7 @@ function renderCompany() {
       ['Мощность линии', `${factory.assemblyCapacity} ед.`, `${factory.productLabel} за текущий ход`, 'capacity'],
       ['Готовый склад', `${factory.finishedGoods} ${factory.productUnit}`, 'Можно выставить в книгу заявок', 'stock'],
       ['Компоненты', `${componentStock} ед.`, `${factory.components.map(component => `${component.label}: ${component.quantity}`).join(' • ')}`, 'parts'],
-      ['Последний ход', `${state.player.soldLastTick || 0} продано`, state.player.lastAction || 'Действий пока не было', 'last'],
+      ['Последний ход', `${state.player.soldLastTick || 0} продано`, localizedLastAction(state.player.lastAction) || 'Действий пока не было', 'last'],
     ];
     elements.companyOverview.innerHTML = cards.map(([label, value, hint, kind]) => `
       <article class="stat-card finance-card ${kind}">
@@ -2412,7 +2466,7 @@ function renderCompany() {
     [t('season_goal'), state.player.seasonGoal ? state.player.seasonGoal.label : '—', state.player.seasonGoal ? `${state.player.seasonGoal.progress}/${state.player.seasonGoal.target} • ${money(state.player.seasonGoal.reward)}` : '—'],
     [t('advisors'), (state.player.advisorAlerts || []).length ? state.player.advisorAlerts.map(key => t(`advisor_${key}`)).join(' • ') : '—', t('status_hint')],
     [t('active_contract'), state.player.activeContract ? state.player.activeContract.title : '—', state.player.activeContract ? `${t('contract_progress')}: ${state.player.activeContract.progress}/${state.player.activeContract.targetSales}` : t('contract_title')],
-    [t('company_status'), state.player.bankrupt ? t('bankrupt') : state.player.lastAction, `${t('status_hint')} • ${money(state.player.incomeLastTick)} / ${money(state.player.expensesLastTick)}`],
+    [t('company_status'), state.player.bankrupt ? t('bankrupt') : localizedLastAction(state.player.lastAction), `${t('status_hint')} • ${money(state.player.incomeLastTick)} / ${money(state.player.expensesLastTick)}`],
   ];
   cards.forEach(card => appendStatCard(elements.companyOverview, ...card));
 }
@@ -2552,18 +2606,31 @@ function bindTurnChecklist(root) {
 
 function renderTurnReviewCard(review) {
   if (!review) return '';
-  const highlights = (review.highlights || []).slice(0, 4);
+  const outcomes = (review.outcomes?.length ? review.outcomes : review.highlights || []).slice(0, 4);
+  const sections = [
+    { key: 'outcomes', label: 'Что произошло', items: outcomes },
+    { key: 'reasons', label: 'Почему', items: (review.reasons || []).slice(0, 3) },
+    { key: 'checks', label: 'Что проверить', items: (review.checks || []).slice(0, 3) },
+  ].filter(section => section.items.length);
   return `
-    <section class="turn-review-card">
-      <div>
+    <section class="turn-review-card" data-turn-review-contract="cause-effect-v1">
+      <div class="turn-review-head">
         <span class="factory-node-label">Разбор хода</span>
         <h3>${escapeHtml(review.title || 'Разбор')}</h3>
         <p>${escapeHtml(review.summary || '')}</p>
       </div>
-      <ul>
-        ${highlights.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
-      </ul>
-      <strong>${escapeHtml(review.nextBestAction || '')}</strong>
+      <div class="turn-review-sections">
+        ${sections.map(section => `
+          <div class="turn-review-section" data-turn-review-section="${section.key}">
+            <strong>${section.label}</strong>
+            <ul>${section.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}</ul>
+          </div>
+        `).join('')}
+      </div>
+      <div class="turn-review-next">
+        <span>Следующий фокус</span>
+        <strong>${escapeHtml(review.nextBestAction || '')}</strong>
+      </div>
     </section>`;
 }
 
@@ -3152,7 +3219,7 @@ function renderFactoryOperations() {
       renderMetric(t('factory_cash'), `${rub(state.player.money)} RUB`, t('factory_cash_hint')),
       renderMetric(t('factory_finished_stock'), `${factory.finishedGoods}`, `${factory.productUnit} ${t('factory_waiting_inventory')}`),
       renderMetric(t('factory_current_offer'), `${factory.saleOffer.quantity} @ ${rub(factory.saleOffer.price)} RUB`, t('factory_current_offer_hint')),
-      renderMetric(t('factory_last_action'), state.player.lastAction || t('factory_no_action_yet'), t('factory_latest_resolved')),
+      renderMetric(t('factory_last_action'), localizedLastAction(state.player.lastAction) || t('factory_no_action_yet'), t('factory_latest_resolved')),
     ].join('');
     detailBody = `
       <div class="factory-toolbar">
@@ -4549,7 +4616,7 @@ function teacherMarketRowStatus(row) {
   if (row.bankrupt) return { tone: 'danger', label: 'Банкротство', hint: 'Нужен разбор финансов' };
   if (row.readyForTurn) return { tone: 'ok', label: 'Ход готов', hint: 'Решения зафиксированы' };
   if (row.issue) return { tone: 'warn', label: row.issue, hint: row.nextAction || 'Нужна проверка команды' };
-  return { tone: 'neutral', label: 'В работе', hint: row.nextAction || row.lastAction || 'Команда принимает решения' };
+  return { tone: 'neutral', label: 'В работе', hint: row.nextAction || localizedLastAction(row.lastAction) || 'Команда принимает решения' };
 }
 
 function renderTeacherMarketOverview() {

@@ -1,15 +1,23 @@
 # Biz Arena Logo System
 
-The active app logo is `public/assets/biz-arena-logo.svg`, based on concept 01.
+The current runtime asset is `public/assets/biz-arena-logo.svg`. It remains a temporary compact mark until the approved shield direction is exported as production-ready vector assets.
 
-## 01 Biz Arena Core
+## Primary UI Direction
 
-Primary direction. A full redraw of the main sign: arena frame, production pillars, and a gold growth trajectory inside one compact emblem. Best fit for the current dark-blue game UI and readable at favicon/exe sizes.
+Use the horizontal `BA` shield plus `BIZ ARENA` wordmark as the main brand. It is the best fit for the desktop header, teacher start screen, installer, README, and presentation title because the symbol and name remain distinct at wide dashboard proportions.
 
-## 02 Market Pulse
+Required production variants:
 
-Secondary direction. A full redraw of the market sign: circular terminal, price line, control points, and candle-like markers. Use it for the marketing/stock-exchange side of the game.
+- transparent shield mark for sidebar, favicon, taskbar, and Windows icon;
+- transparent horizontal wordmark for start screens and documents;
+- monochrome light and dark variants;
+- source SVG plus optimized PNG exports at 64, 128, 256, 512, and 1024 px;
+- multi-size `build/icon.ico` generated from the compact shield, not the full wordmark.
 
-## Recommendation
+## Promotional Direction
 
-Use concept 01 for the product logo and Windows icon. Use concept 02 as the secondary market mark for the marketing screen, charts, and presentation slides about demand/sales.
+Use the city, gold chart, and large `БИЗАРЕНА` badge for covers, splash art, defense slides, and store-style promotional material. It should not be used inside the navigation or as a favicon because its detail and Cyrillic lettering collapse at small sizes.
+
+## Asset Rule
+
+Do not ship the supplied dark-background reference PNG files directly in the runtime. Their backgrounds would create visible rectangles in the OLED interface and add several megabytes. First prepare transparent, tightly cropped exports and verify the compact mark at 16, 32, 48, and 64 px.

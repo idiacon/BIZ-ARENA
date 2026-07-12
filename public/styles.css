@@ -3699,6 +3699,72 @@ body[data-app-mode="server"] .shell {
   padding: 16px;
 }
 
+.turn-review-card {
+  display: grid;
+  gap: 14px;
+}
+
+.turn-review-head h3 {
+  margin: 0.25rem 0;
+}
+
+.turn-review-head p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.turn-review-sections {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.turn-review-section {
+  min-width: 0;
+  padding: 12px;
+}
+
+.turn-review-section + .turn-review-section {
+  border-left: 1px solid var(--line);
+}
+
+.turn-review-section > strong,
+.turn-review-next > span {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--accent-2);
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.turn-review-section ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.turn-review-section li {
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.turn-review-next {
+  border-left: 3px solid var(--accent);
+  background: var(--panel-soft);
+  padding: 10px 12px;
+}
+
+.turn-review-next > span {
+  margin-bottom: 4px;
+}
+
+.turn-review-next > strong {
+  color: var(--text);
+}
+
 body[data-screen="lobby-screen"][data-player-role="teacher"] #toggle-ready {
   display: none !important;
 }

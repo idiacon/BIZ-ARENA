@@ -210,29 +210,78 @@ function createFactorySummaryHelpers({
     const sold = Number(player.factory.soldThisTurn || 0);
     const profit = Math.round(breakdown?.profit || 0);
     const highlights = [];
+    const reasons = [];
+    const checks = [];
 
     if (!latest) {
+      const planningChecks = [
+        'Наймите хотя бы одного сотрудника.',
+        'Купите полный набор комплектующих.',
+        'Выставьте товар в книгу заявок.',
+      ];
       return {
         state: 'planning',
         title: 'До первого хода',
         summary: 'Соберите линию: закупите детали, наймите людей, соберите товар и выставьте продажу.',
-        highlights: [
-          'Наймите хотя бы одного сотрудника.',
-          'Купите полный набор комплектующих.',
-          'Выставьте товар в книгу заявок.',
-        ],
+        highlights: planningChecks,
+        outcomes: [],
+        reasons: ['Рынок ещё не рассчитывался, поэтому причинный разбор появится после общего хода.'],
+        checks: planningChecks,
         nextBestAction: 'Начните с закупки и персонала.',
       };
     }
 
+    const ownOffer = (room.factoryScenario?.marketBook || []).find(item => item.playerId === player.id) || null;
+    const offered = Math.max(0, Number(ownOffer?.quantity || 0));
+    const remaining = Math.max(0, Number(ownOffer?.remaining || offered - sold));
+    const offerPrice = Math.max(0, Number(ownOffer?.price || 0));
+    const averagePrice = Math.max(0, Number(latest.avgPrice || 0));
+    const revenue = Math.round(Number(breakdown?.revenue || 0));
+    const expenses = Math.round(Number(breakdown?.expenses || 0));
+    const finishedGoods = Math.max(0, Math.round(Number(player.factory.finishedGoods || 0)));
+
     highlights.push(sold > 0
-      ? `Продано ${sold} ед., выручка ${formatRub(breakdown?.revenue || 0)}.`
+      ? `Продано ${sold} ед., выручка ${formatRub(revenue)}.`
       : 'Продаж не было: заявка не попала в спрос или товар не был выставлен.');
     highlights.push(profit >= 0
       ? `Денежный результат хода: +${formatRub(profit)}.`
       : `Денежный результат хода: ${formatRub(profit)}; расходы оказались выше выручки.`);
     if (topSeller) highlights.push(`Лучший продавец: ${topSeller.playerName}, ${topSeller.sold} ед. по ${formatRub(topSeller.price)}.`);
     if (latest.unmatchedDemand > 0) highlights.push(`На рынке осталось ${Math.round(latest.unmatchedDemand)} ед. неудовлетворённого спроса.`);
+
+    if (!ownOffer || offered <= 0) {
+      reasons.push('Компания не выставила доступный товар в книгу заявок, поэтому рынок не мог совершить покупку.');
+    } else if (remaining <= 0) {
+      reasons.push(`Заявка исполнена полностью: рынок купил все ${offered} ед. по цене ${formatRub(offerPrice)}.`);
+    } else {
+      reasons.push(`Рынок купил ${sold} из ${offered} ед.; оставшиеся ${remaining} ед. не попали в доступный спрос.`);
+    }
+
+    if (ownOffer && averagePrice > 0) {
+      const priceGap = Math.round(((offerPrice / averagePrice) - 1) * 100);
+      if (Math.abs(priceGap) <= 3) {
+        reasons.push(`Цена ${formatRub(offerPrice)} была близка к средней рыночной ${formatRub(averagePrice)}.`);
+      } else {
+        reasons.push(`Цена была на ${Math.abs(priceGap)}% ${priceGap > 0 ? 'выше' : 'ниже'} средней рыночной (${formatRub(averagePrice)}).`);
+      }
+    }
+
+    reasons.push(revenue >= expenses
+      ? `Выручка ${formatRub(revenue)} покрыла расходы хода ${formatRub(expenses)}.`
+      : `Расходы хода ${formatRub(expenses)} превысили выручку ${formatRub(revenue)}.`);
+
+    if (finishedGoods > 0) checks.push(`На складе осталось ${finishedGoods} ед. готового товара — решите, продавать остаток или менять выпуск.`);
+    if (profit < 0) checks.push('Проверьте цену, зарплаты и объём выпуска: текущая выручка не покрыла расходы хода.');
+    if (remaining > 0 || sold === 0) checks.push('Перед завершением следующего хода сравните цену и объём заявки со спросом рынка.');
+    if (latest.unmatchedDemand > 0) checks.push(`Рынок не закрыл ${Math.round(latest.unmatchedDemand)} ед. спроса — проверьте, можете ли увеличить выпуск без потери маржи.`);
+    if (!checks.length) checks.push('Сверьте запас комплектующих и расходы перед повторением производственного цикла.');
+
+    let nextBestAction = 'Пополните комплектующие и повторите сборку.';
+    if (!ownOffer || offered <= 0) nextBestAction = 'Соберите товар и выставьте заявку до следующего общего хода.';
+    else if (sold === 0 && averagePrice > 0 && offerPrice > averagePrice) nextBestAction = 'Сравните цену со средней рыночной и скорректируйте заявку.';
+    else if (profit < 0) nextBestAction = 'Проверьте, какая цена и объём продаж покроют расходы следующего хода.';
+    else if (latest.unmatchedDemand > 0) nextBestAction = 'Оцените, можно ли увеличить выпуск, сохранив положительную маржу.';
+    else if (finishedGoods > 0) nextBestAction = 'Решите, как продать остаток склада без лишнего перепроизводства.';
 
     return {
       state: 'resolved',
@@ -241,9 +290,10 @@ function createFactorySummaryHelpers({
         ? 'Продажа прошла. Теперь снова закройте склад и подготовьте следующий выпуск.'
         : 'Ход не дал продаж. Проверьте цену, объём заявки и готовый склад перед продолжением.',
       highlights,
-      nextBestAction: sold > 0
-        ? 'Пополните комплектующие и повторите сборку.'
-        : 'Снизьте цену или выставьте товар до следующего хода.',
+      outcomes: highlights,
+      reasons: reasons.slice(0, 3),
+      checks: checks.slice(0, 3),
+      nextBestAction,
     };
   }
 

@@ -164,12 +164,19 @@ test('factory summary turn review and leader comparison are generated from read 
   });
   const room = makeRoom({
     marketHistory: [{ day: 2, demand: 80, avgPrice: 98, totalSales: 50, unmatchedDemand: 30 }],
+    factoryScenario: {
+      baseDemandMax: 100,
+      marketBook: [{ playerId: player.id, price: 99, quantity: 3, sold: 3, remaining: 0 }],
+    },
     players: new Map([[player.id, player], [leader.id, leader]]),
   });
 
   const review = buildTurnReview(room, player);
   assert.equal(review.state, 'resolved');
   assert.match(review.highlights.join(' '), /Продано 3/);
+  assert.deepEqual(review.outcomes, review.highlights);
+  assert.ok(review.reasons.some(item => /заявк.*исполнена полностью/i.test(item)));
+  assert.ok(review.checks.some(item => /склад.*2 ед/i.test(item)));
 
   const comparison = buildComparisonToLeader(room, player);
   assert.equal(comparison.rank, 2);

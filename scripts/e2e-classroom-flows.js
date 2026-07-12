@@ -8,6 +8,13 @@ const { browserErrors, evaluate, installPlayerSession, launchBrowser, navigate, 
 
 const ROOT = path.resolve(__dirname, '..');
 const PORT = Number(process.env.BIZ_ARENA_E2E_PORT || 3420);
+const DESKTOP_VIEWPORTS = [
+  { width: 1000, height: 760 },
+  { width: 1440, height: 900 },
+  { width: 1920, height: 1080 },
+  { width: 2560, height: 1440 },
+  { width: 3440, height: 1440 },
+];
 
 function postJson(url, payload) {
   return new Promise((resolve, reject) => {
@@ -107,17 +114,16 @@ async function assertNoHorizontalOverflow(cdp, label) {
   assert.equal(result.ok, true, `${label} has horizontal overflow: ${JSON.stringify(result)}`);
 }
 
-async function assertResponsiveMatrix(cdp, label, widths = [1024, 768, 375]) {
-  for (const width of widths) {
+async function assertResponsiveMatrix(cdp, label, viewports = DESKTOP_VIEWPORTS) {
+  for (const viewport of viewports) {
     await cdp.send('Emulation.setDeviceMetricsOverride', {
-      width,
-      height: width <= 375 ? 812 : 900,
-      mobile: width <= 768,
-      deviceScaleFactor: width <= 768 ? 2 : 1,
+      ...viewport,
+      mobile: false,
+      deviceScaleFactor: 1,
     });
     await sleep(250);
-    await assertReadableVisibleText(cdp, `${label} ${width}px`);
-    await assertNoHorizontalOverflow(cdp, `${label} ${width}px`);
+    await assertReadableVisibleText(cdp, `${label} ${viewport.width}x${viewport.height}`);
+    await assertNoHorizontalOverflow(cdp, `${label} ${viewport.width}x${viewport.height}`);
   }
 }
 

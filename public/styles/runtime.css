@@ -1346,6 +1346,15 @@ html[data-performance-mode="lite"] .student-mini-stat {
 }
 
 @media (max-width: 520px) {
+  .turn-review-sections {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .turn-review-section + .turn-review-section {
+    border-top: 1px solid var(--line);
+    border-left: 0;
+  }
+
   body[data-screen="game-screen"] .app-sidebar {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;
@@ -1366,9 +1375,10 @@ html[data-performance-mode="lite"] .student-mini-stat {
   }
 
   body[data-screen="game-screen"] .app-sidebar-link {
-    flex: 0 0 112px;
-    width: 112px;
+    flex: 0 0 auto;
+    width: max-content;
     min-width: 112px;
+    max-width: none;
     min-height: 40px;
     grid-template-columns: 17px minmax(0, 1fr);
     gap: 6px;
@@ -1381,8 +1391,8 @@ html[data-performance-mode="lite"] .student-mini-stat {
   }
 
   body[data-screen="game-screen"] .app-sidebar-link > strong {
-    font-size: 0.68rem;
-    line-height: 1.05;
+    font-size: 0.72rem;
+    line-height: 1.2;
     white-space: nowrap;
     overflow-wrap: normal;
     hyphens: manual;

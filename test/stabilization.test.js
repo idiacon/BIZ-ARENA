@@ -2101,7 +2101,9 @@ test('UI smoke: create-room difficulty, visual presets, and single game navigati
   assert.match(styles, /@media \(max-width: 1180px\)[\s\S]*body\[data-screen="game-screen"\] \.game-student-link-chip[\s\S]*grid-column: 1 \/ -1/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-nav[\s\S]*flex-wrap: nowrap/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-nav[\s\S]*overflow-x: auto/);
-  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-link[\s\S]*flex: 0 0 112px/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-link[\s\S]*flex: 0 0 auto/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-link[\s\S]*width: max-content/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-link[\s\S]*min-width: 112px/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.game-topbar[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\]\[data-player-role="student"\] \.game-topbar[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\]\[data-player-role="student"\] \.game-next-action-chip[\s\S]*display: none/);
@@ -2593,6 +2595,37 @@ test('UI contract: market replay is visible and exportable', () => {
   assert.match(styles, /market-replay-metrics[\s\S]*repeat\(auto-fit, minmax\(126px, 1fr\)\)/);
 });
 
+test('UI contract: student turn review separates outcome, cause, and next checks', () => {
+  const appJs = readPublicAppSources();
+  const renderTurnReviewCard = sourceFunctionBlock(appJs, 'renderTurnReviewCard');
+
+  assert.match(renderTurnReviewCard, /review\.outcomes/);
+  assert.match(renderTurnReviewCard, /review\.reasons/);
+  assert.match(renderTurnReviewCard, /review\.checks/);
+  assert.match(renderTurnReviewCard, /Что произошло/);
+  assert.match(renderTurnReviewCard, /Почему/);
+  assert.match(renderTurnReviewCard, /Что проверить/);
+});
+
+test('QA contract: classroom E2E covers the supported desktop viewport range', () => {
+  const e2eScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'e2e-classroom-flows.js'), 'utf8');
+
+  assert.match(e2eScript, /width:\s*1000,\s*height:\s*760/);
+  assert.match(e2eScript, /width:\s*1440,\s*height:\s*900/);
+  assert.match(e2eScript, /width:\s*1920,\s*height:\s*1080/);
+  assert.match(e2eScript, /width:\s*2560,\s*height:\s*1440/);
+  assert.match(e2eScript, /width:\s*3440,\s*height:\s*1440/);
+});
+
+test('UI contract: factory last action messages are localized before rendering', () => {
+  const appJs = readPublicAppSources();
+  const localizedLastAction = sourceFunctionBlock(appJs, 'localizedLastAction');
+
+  assert.match(localizedLastAction, /Held inventory and waited for the next turn/);
+  assert.match(localizedLastAction, /Товар оставлен на складе до следующего хода/);
+  assert.match(appJs, /localizedLastAction\(state\.player\.lastAction/);
+});
+
 test('UI contract: teacher results are a classroom debrief without host personal cards', () => {
   const appJs = readPublicAppSources();
   const styles = readPublicStyles();
@@ -2745,10 +2778,13 @@ test('UI contract: full student operations use a live 2.5D factory stage without
 
 test('UI contract: mobile game navigation exposes the active role links as one compact horizontal rail', () => {
   const styles = readPublicStyles();
+  const appJs = readPublicAppSources();
 
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\]\[data-player-role="student"\] \[data-role-navigation="student"\][\s\S]*display: contents/);
   assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-nav[\s\S]*overflow-x: auto/);
-  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-link[\s\S]*flex: 0 0 112px/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-link[\s\S]*flex: 0 0 auto/);
+  assert.match(styles, /@media \(max-width: 520px\)[\s\S]*body\[data-screen="game-screen"\] \.app-sidebar-link[\s\S]*width: max-content/);
+  assert.match(appJs, /function revealActiveGameTab\(button\)/);
 });
 
 test('UI contract: students do not see an empty strategic decision card', () => {

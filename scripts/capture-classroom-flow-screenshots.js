@@ -11,15 +11,17 @@ const TEACHER_CDP_PORT = Number(process.env.BIZ_ARENA_TEACHER_CDP_PORT || 9340);
 const STUDENT_CDP_PORT = Number(process.env.BIZ_ARENA_STUDENT_CDP_PORT || 9341);
 const OUTPUT_DIR = process.env.BIZ_ARENA_SCREENSHOT_DIR
   ? path.resolve(process.env.BIZ_ARENA_SCREENSHOT_DIR)
-  : path.join(ROOT, 'tmp', 'screenshots-v17-teacher-admin-polish');
+  : path.join(ROOT, 'tmp', 'screenshots-v18-desktop-pilot');
 
 const DESKTOP = { width: 1440, height: 900, mobile: false, deviceScaleFactor: 1 };
-const MOBILE = { width: 375, height: 812, mobile: true, deviceScaleFactor: 2 };
+const MIN_DESKTOP = { width: 1000, height: 760, mobile: false, deviceScaleFactor: 1 };
+const ULTRAWIDE = { width: 3440, height: 1440, mobile: false, deviceScaleFactor: 1 };
 const QA_VIEWPORTS = [
+  MIN_DESKTOP,
   DESKTOP,
-  { width: 1024, height: 768, mobile: false, deviceScaleFactor: 1 },
-  { width: 768, height: 1024, mobile: true, deviceScaleFactor: 1 },
-  MOBILE,
+  { width: 1920, height: 1080, mobile: false, deviceScaleFactor: 1 },
+  { width: 2560, height: 1440, mobile: false, deviceScaleFactor: 1 },
+  ULTRAWIDE,
 ];
 
 function ensureDir(dir) {
@@ -223,6 +225,76 @@ async function collectViewportAudit(cdp, label) {
   return result;
 }
 
+async function collectTextVisibilityAudit(cdp, label, selectors) {
+  const result = await evaluate(cdp, `(() => {
+    const checks = ${JSON.stringify(selectors)};
+    const nodes = checks.map(entry => {
+      const check = typeof entry === 'string' ? { selector: entry, fit: false } : entry;
+      const selector = check.selector;
+      const node = document.querySelector(selector);
+      if (!node) return { selector, ok: false, reason: 'missing' };
+      const text = String(node.innerText || node.textContent || '').trim();
+      const rect = node.getBoundingClientRect();
+      const style = getComputedStyle(node);
+      const range = document.createRange();
+      range.selectNodeContents(node);
+      const textRect = range.getBoundingClientRect();
+      const fits = !check.fit || textRect.width <= rect.width + 1;
+      const container = check.containerSelector ? document.querySelector(check.containerSelector) : null;
+      const containerRect = container?.getBoundingClientRect() || null;
+      const insideContainer = !check.containerSelector || Boolean(
+        containerRect
+        && rect.left >= containerRect.left - 1
+        && rect.right <= containerRect.right + 1
+      );
+      const ok = Boolean(text)
+        && style.display !== 'none'
+        && style.visibility !== 'hidden'
+        && Number(style.opacity || 1) > 0.05
+        && rect.width >= 24
+        && rect.height >= 12
+        && textRect.width >= 8
+        && textRect.height >= 8
+        && fits
+        && insideContainer;
+      return {
+        selector,
+        ok,
+        reason: ok ? '' : !fits ? 'text-clipped' : !insideContainer ? 'outside-container' : 'text-not-painted',
+        fit: Boolean(check.fit),
+        containerSelector: check.containerSelector || '',
+        text: text.slice(0, 80),
+        display: style.display,
+        visibility: style.visibility,
+        opacity: style.opacity,
+        color: style.color,
+        rect: {
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        },
+        textRect: {
+          width: Math.round(textRect.width),
+          height: Math.round(textRect.height),
+        },
+        containerRect: containerRect ? {
+          left: Math.round(containerRect.left),
+          right: Math.round(containerRect.right),
+          clientWidth: container.clientWidth,
+          scrollWidth: container.scrollWidth,
+          scrollLeft: Math.round(container.scrollLeft),
+        } : null,
+      };
+    });
+    return { label: ${JSON.stringify(label)}, ok: nodes.every(node => node.ok), nodes };
+  })()`);
+  if (!result.ok) {
+    throw new Error(`${label} failed text visibility audit: ${JSON.stringify(result)}`);
+  }
+  return result;
+}
+
 async function capture(cdp, fileName, prep = '') {
   if (prep) await evaluate(cdp, prep);
   await sleep(450);
@@ -234,6 +306,18 @@ async function capture(cdp, fileName, prep = '') {
   const filePath = path.join(OUTPUT_DIR, fileName);
   fs.writeFileSync(filePath, Buffer.from(result.data, 'base64'));
   console.log(`saved ${filePath}`);
+}
+
+function scrollBelowSticky(selector) {
+  return `(() => {
+    const target = document.querySelector(${JSON.stringify(selector)});
+    if (!target) return false;
+    const sticky = document.querySelector('.game-control-panel');
+    const targetTop = window.scrollY + target.getBoundingClientRect().top;
+    const offset = (sticky?.getBoundingClientRect().height || 0) + 16;
+    window.scrollTo(0, Math.max(0, targetTop - offset));
+    return true;
+  })()`;
 }
 
 async function setSessionScript(cdp, session) {
@@ -334,10 +418,21 @@ async function main() {
       userName: 'Иван 11А',
       avatar: 'IB',
     });
+    const secondStudent = await postJson(`http://127.0.0.1:${PORT}/api/rooms/join`, {
+      roomCode,
+      companyName: 'Гамма',
+      userName: 'Мария 11Б',
+      avatar: 'MG',
+    });
 
     await postJson(`http://127.0.0.1:${PORT}/api/action`, {
       playerId: student.playerId,
       sessionToken: student.sessionToken,
+      action: 'toggle-ready',
+    });
+    await postJson(`http://127.0.0.1:${PORT}/api/action`, {
+      playerId: secondStudent.playerId,
+      sessionToken: secondStudent.sessionToken,
       action: 'toggle-ready',
     });
 
@@ -377,6 +472,12 @@ async function main() {
     await openScreen(studentBrowser.cdp, 'lobby-screen');
     await waitFor(studentBrowser.cdp, '!!document.querySelector("#lobby-screen.active")', 'student lobby');
     layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, 'student lobby desktop'));
+    const studentLobbyTextAudit = await collectTextVisibilityAudit(studentBrowser.cdp, 'student lobby text', [
+      '#lobby-screen .panel-header .factory-node-label',
+      '#lobby-screen .panel-header h2',
+      '#lobby-screen .panel-header .muted',
+      '.student-lobby-main h3',
+    ]);
     await capture(studentBrowser.cdp, '02-student-lobby-ready-desktop.png', 'window.scrollTo(0, 0)');
 
     await postJson(`http://127.0.0.1:${PORT}/api/server/action`, {
@@ -399,24 +500,75 @@ async function main() {
       layoutAudits.push(await collectViewportAudit(teacherBrowser.cdp, `teacher cockpit ${viewport.width}px`));
     }
 
-    await teacherBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MOBILE);
-    await sleep(700);
-    layoutAudits.push(await collectViewportAudit(teacherBrowser.cdp, 'teacher cockpit mobile'));
-    await capture(teacherBrowser.cdp, '04-teacher-cockpit-mobile.png', 'window.scrollTo(0, 0)');
+    await teacherBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MIN_DESKTOP);
+    await sleep(350);
+    await capture(teacherBrowser.cdp, '04-teacher-cockpit-1000x760.png', 'window.scrollTo(0, 0)');
+    await teacherBrowser.cdp.send('Emulation.setDeviceMetricsOverride', ULTRAWIDE);
+    await sleep(350);
+    await capture(teacherBrowser.cdp, '05-teacher-cockpit-3440x1440.png', 'window.scrollTo(0, 0)');
 
     await navigateApp(studentBrowser.cdp, `/client?roomCode=${encodeURIComponent(roomCode)}`);
     await openScreen(studentBrowser.cdp, 'game-screen');
     await waitFor(studentBrowser.cdp, '!!document.querySelector("#game-screen.active")', 'student game');
-    await evaluate(studentBrowser.cdp, `document.querySelector('[data-game-tab="operations"]')?.click()`);
+    await evaluate(studentBrowser.cdp, `document.querySelector('.app-sidebar-nav [data-role-tab="student"][data-game-tab="operations"]')?.click()`);
     for (const viewport of QA_VIEWPORTS) {
       await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', viewport);
       await sleep(250);
       layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, `student game lite ${viewport.width}px`));
     }
-    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MOBILE);
-    await sleep(700);
-    layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, 'student game lite mobile'));
-    await capture(studentBrowser.cdp, '05-student-game-lite-mobile.png', 'window.scrollTo(0, 0)');
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MIN_DESKTOP);
+    await evaluate(studentBrowser.cdp, `document.querySelector('.app-sidebar-nav [data-role-tab="student"][data-game-tab="operations"]')?.click()`);
+    await sleep(350);
+    const studentDesktopTopbarTextAudit = await collectTextVisibilityAudit(studentBrowser.cdp, 'student desktop topbar text', [
+      '.game-room-chip .game-chip-label',
+      '.game-room-chip strong',
+      '.game-room-chip small',
+      '.game-server-chip .game-chip-label',
+      '.game-server-chip strong',
+      '.game-server-chip small',
+      '.game-time-chip strong',
+      '.game-profile-chip strong',
+    ]);
+    const studentDesktopNavigationTextAudit = await collectTextVisibilityAudit(studentBrowser.cdp, 'student desktop navigation text', [
+      {
+        selector: '.app-sidebar-link.active',
+        fit: true,
+        containerSelector: '.app-sidebar-nav',
+      },
+    ]);
+    await capture(studentBrowser.cdp, '06-student-game-1000x760.png', 'window.scrollTo(0, 0)');
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', ULTRAWIDE);
+    await sleep(350);
+    await capture(studentBrowser.cdp, '07-student-game-3440x1440.png', 'window.scrollTo(0, 0)');
+
+    await postJson(`http://127.0.0.1:${PORT}/api/server/action`, {
+      roomCode,
+      action: 'next-turn',
+    });
+    await sleep(900);
+    await navigateApp(studentBrowser.cdp, `/client?roomCode=${encodeURIComponent(roomCode)}`);
+    await openScreen(studentBrowser.cdp, 'game-screen');
+    await waitFor(
+      studentBrowser.cdp,
+      `document.querySelector('.turn-review-card')?.dataset.turnReviewContract === 'cause-effect-v1' && document.querySelectorAll('[data-turn-review-section]').length >= 3`,
+      'student cause-effect turn review',
+    );
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', DESKTOP);
+    await evaluate(studentBrowser.cdp, `document.querySelector('.app-sidebar-nav [data-role-tab="student"][data-game-tab="operations"]')?.click()`);
+    await sleep(350);
+    layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, 'student turn review desktop'));
+    await capture(studentBrowser.cdp, '08-student-turn-review-1440x900.png', scrollBelowSticky('.turn-review-card'));
+    for (const viewport of QA_VIEWPORTS) {
+      await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', viewport);
+      await sleep(250);
+      layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, `student turn review ${viewport.width}px`));
+    }
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MIN_DESKTOP);
+    await sleep(350);
+    await capture(studentBrowser.cdp, '09-student-turn-review-1000x760.png', scrollBelowSticky('.turn-review-card'));
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', ULTRAWIDE);
+    await sleep(350);
+    await capture(studentBrowser.cdp, '10-student-turn-review-3440x1440.png', scrollBelowSticky('.turn-review-card'));
 
     const audit = {
       capturedAt: new Date().toISOString(),
@@ -426,12 +578,24 @@ async function main() {
         '01-teacher-lobby-desktop.png',
         '02-student-lobby-ready-desktop.png',
         '03-teacher-cockpit-desktop.png',
-        '04-teacher-cockpit-mobile.png',
-        '05-student-game-lite-mobile.png',
+        '04-teacher-cockpit-1000x760.png',
+        '05-teacher-cockpit-3440x1440.png',
+        '06-student-game-1000x760.png',
+        '07-student-game-3440x1440.png',
+        '08-student-turn-review-1440x900.png',
+        '09-student-turn-review-1000x760.png',
+        '10-student-turn-review-3440x1440.png',
       ],
       checks: {
         teacherGameVisible: await evaluate(teacherBrowser.cdp, 'Boolean(document.querySelector("#game-screen.active"))'),
         studentLiteMode: await evaluate(studentBrowser.cdp, 'document.body.dataset.performanceMode || document.documentElement.dataset.performanceMode || ""'),
+        studentLobbyTextAudit,
+        studentDesktopTopbarTextAudit,
+        studentDesktopNavigationTextAudit,
+        studentTurnReviewContract: await evaluate(studentBrowser.cdp, `({
+          contract: document.querySelector('.turn-review-card')?.dataset.turnReviewContract || '',
+          sections: [...document.querySelectorAll('[data-turn-review-section]')].map(node => node.dataset.turnReviewSection),
+        })`),
         studentOperationsLayout: await evaluate(studentBrowser.cdp, `(() => {
           const pick = selector => {
             const node = document.querySelector(selector);

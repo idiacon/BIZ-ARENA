@@ -4,7 +4,7 @@
 
 [![Biz Arena CI](https://github.com/idiacon/BIZ-ARENA/actions/workflows/ci.yml/badge.svg)](https://github.com/idiacon/BIZ-ARENA/actions/workflows/ci.yml)
 
-Biz Arena is a multiplayer, turn-based business simulator for university classrooms. A teacher creates and controls a room, while students manage companies inside one shared market: buying resources, hiring staff, assembling products, selling inventory, reacting to events, and comparing results.
+Biz Arena is a competitive, turn-based business simulator for university classrooms. A teacher creates and controls a session, while students independently manage companies inside one shared market and then explain together why different strategies produced different results.
 
 The project is developed for educational use at the Almetyevsk branch of KNRTU-KAI.
 
@@ -17,6 +17,8 @@ The project is developed for educational use at the Almetyevsk branch of KNRTU-K
 - Durable online target: a KAI server or a standard VPS
 - Student accounts: not required
 - Client delivery: browser, portable Electron app, or Windows installer
+- Primary UX target: Windows desktop from `1000x760` through `3440x1440`
+- Tablet and phone optimization: after the desktop pilot
 
 Biz Arena remains browser-first internally. The Electron Server and Client applications package the same tested web runtime into a desktop experience; they are not separate game implementations.
 
@@ -190,6 +192,7 @@ Realtime messages invalidate client state; clients then request the appropriate 
 
 - [Architecture map](docs/architecture-map.md)
 - [UI role contract](docs/ui-role-contract-v1.md)
+- [v1.0 pilot validation](docs/v1.0-pilot-validation.md)
 - [v1.0 rehearsal log](docs/v1.0-rehearsal-log.md)
 - [Teacher classroom handoff](docs/teacher-classroom-handoff.md)
 - [VPS cloud classroom runbook](docs/vps-cloud-classroom-runbook.md)
