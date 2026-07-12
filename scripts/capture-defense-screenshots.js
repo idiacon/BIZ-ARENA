@@ -10,6 +10,9 @@ const EDGE_PATH = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge
 const PORT = 3210;
 const CDP_PORT = 9333;
 const VIEWPORT = { width: 1600, height: 1000 };
+const MIN_DESKTOP = { width: 1000, height: 760 };
+const ULTRAWIDE = { width: 3440, height: 1440 };
+const ENTRY_ONLY = process.env.BIZ_ARENA_CAPTURE_ENTRY_ONLY === '1';
 
 const screenshotsDir = path.join(ROOT, 'defense-assets', 'screenshots');
 const resultsDir = path.join(ROOT, 'defense-assets', 'results');
@@ -216,17 +219,75 @@ async function main() {
         node.click();
         return true;
       })()`);
-      if (!ok) throw new Error(`Could not click ${label || selector}`);
+      if (!ok) {
+        const diagnostics = await evaluate(`(() => ({
+          screen: document.querySelector('.screen.active')?.id || '',
+          gameTab: document.body.dataset.gameTab || '',
+          factoryActions: [...document.querySelectorAll('[data-factory-action]')].map(node => ({
+            action: node.dataset.factoryAction || '',
+            value: node.dataset.assembleValue || '',
+            disabled: Boolean(node.disabled),
+            text: String(node.textContent || '').trim().slice(0, 80),
+          })),
+          visiblePanel: document.querySelector('[data-game-panel]:not(.hidden)')?.dataset.gamePanel || '',
+        }))()`);
+        throw new Error(`Could not click ${label || selector}: ${JSON.stringify(diagnostics)}`);
+      }
       await sleep(750);
+    }
+
+    async function setViewport(viewport) {
+      await send('Emulation.setDeviceMetricsOverride', {
+        width: viewport.width,
+        height: viewport.height,
+        deviceScaleFactor: 1,
+        mobile: false,
+      });
+      await sleep(250);
+    }
+
+    async function assertViewport(label) {
+      const result = await evaluate(`(() => {
+        const width = window.innerWidth;
+        const overflow = Math.max(
+          document.documentElement.scrollWidth - width,
+          document.body.scrollWidth - width,
+        );
+        return { width, overflow, ok: overflow <= 4 };
+      })()`);
+      if (!result.ok) throw new Error(`${label} overflows viewport: ${JSON.stringify(result)}`);
+      console.log(`viewport ${label} ${JSON.stringify(result)}`);
     }
 
     await send('Page.navigate', { url: `http://127.0.0.1:${PORT}` });
     await waitFor('document.readyState === "complete" && !!document.querySelector("#main-menu-screen.active")', 'main menu');
     await screenshot('01-main-menu.png', 'window.scrollTo(0, 0)');
+    await setViewport(MIN_DESKTOP);
+    await assertViewport('role entry 1000x760');
+    await screenshot('01-main-menu-1000x760.png', 'window.scrollTo(0, 0)');
+    await setViewport(ULTRAWIDE);
+    await assertViewport('role entry 3440x1440');
+    await screenshot('01-main-menu-3440x1440.png', 'window.scrollTo(0, 0)');
+    await setViewport(VIEWPORT);
 
-    await evaluate('document.querySelector(\'[data-open-screen="play-menu-screen"]\').click()');
-    await waitFor('!!document.querySelector("#play-menu-screen.active")', 'play menu');
-    await screenshot('02-play-menu.png', 'window.scrollTo(0, 0)');
+    await screenshot('02-role-entry.png', `(() => {
+      const studentEntry = document.querySelector('[data-entry-role="student"]');
+      studentEntry?.focus();
+      window.scrollTo(0, 0);
+    })()`);
+    await clickSelector('[data-entry-role="teacher"]', 'teacher role');
+    await waitFor('!!document.querySelector("#server-home-screen.active")', 'teacher start');
+    await screenshot('02-teacher-start.png', 'window.scrollTo(0, 0)');
+    await clickSelector('[data-teacher-entry-action="create"]', 'create room entry');
+    await waitFor('!!document.querySelector("#create-room-screen.active")', 'create room');
+    await screenshot('02-create-room.png', 'window.scrollTo(0, 0)');
+    await evaluate('showScreen("main-menu-screen", { addToHistory: false })');
+    await clickSelector('[data-entry-role="student"]', 'student role');
+    await waitFor('!!document.querySelector("#join-room-screen.active")', 'student join');
+    await screenshot('02-student-join.png', 'window.scrollTo(0, 0)');
+    await evaluate('showScreen("main-menu-screen", { addToHistory: false })');
+
+    if (ENTRY_ONLY) return;
 
     const lobbyResult = await evaluate(`(async () => {
       window.__lastAlert = '';
@@ -316,14 +377,19 @@ async function main() {
     await waitFor('!!document.querySelector(\'[data-game-panel="market"]:not(.hidden)\')', 'market tab restored');
     await screenshot('05-contracts.png', 'document.querySelector("#contract-board")?.scrollIntoView({ block: "start" })');
 
-    const playerId = demoResult.playerId;
     let finalState = null;
     for (let turn = 0; turn < 12; turn += 1) {
-      finalState = await getJson(`http://127.0.0.1:${PORT}/api/state?playerId=${encodeURIComponent(playerId)}`);
+      finalState = await evaluate(`(async () => {
+        await refreshState();
+        return { room: state.room, player: state.player };
+      })()`);
       if (finalState.room.status === 'finished') break;
-      await postJson(`http://127.0.0.1:${PORT}/api/action`, { playerId, action: 'next-turn' });
+      await evaluate(`sendAction('next-turn', undefined, { throwOnError: true })`);
     }
-    finalState = await getJson(`http://127.0.0.1:${PORT}/api/state?playerId=${encodeURIComponent(playerId)}`);
+    finalState = await evaluate(`(async () => {
+      await refreshState();
+      return { room: state.room, player: state.player };
+    })()`);
     await evaluate('(async () => { await refreshState(); showScreen("results-screen", { addToHistory: false }); })()');
 
     await waitFor('!!document.querySelector("#results-screen.active")', 'results screen');

@@ -19,10 +19,10 @@ defense-assets/results/biz-arena-results-demo.json
 | 1 | Title | `01-main-menu.png` | `09-about.png` |
 | 2 | Problem | no screenshot required | `09-about.png` |
 | 3 | Goal and tasks | no screenshot required | `01-main-menu.png` |
-| 4 | Championship basis | `02-play-menu.png` | `championship-requirements-map.md` excerpt |
+| 4 | Championship basis | `02-role-entry.png` | `championship-requirements-map.md` excerpt |
 | 5 | Architecture | use the architecture diagram from `report-draft.md` | no screenshot required |
 | 6 | Game mechanics | `04-production.png` | `05-contracts.png` |
-| 7 | Demo flow | `03-demo-started.png` | `02-play-menu.png` |
+| 7 | Demo flow | `03-demo-started.png` | `02-role-entry.png` |
 | 8 | Results and export | `07-results.png` | `08-export-json.png` |
 | 9 | Testing and reliability | terminal screenshot after `npm test` | `defense-qa.md` testing answer |
 | 10 | Result | `07-results.png` or `01-main-menu.png` | `10-settings-language.png` |

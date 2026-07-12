@@ -142,6 +142,11 @@ code {
 .compact { gap: 0.5rem; }
 .span-2 { grid-column: 1 / -1; }
 
+body[data-screen="main-menu-screen"] .shell {
+  width: 100%;
+  max-width: none;
+}
+
 .role-entry-shell {
   position: relative;
   isolation: isolate;
@@ -289,7 +294,7 @@ code {
 .role-entry-heading h1 {
   margin: 8px 0 10px;
   color: var(--text-primary);
-  font-size: clamp(2rem, 5vw, 3.65rem);
+  font-size: 3.5rem;
   line-height: 1.02;
 }
 
@@ -460,6 +465,12 @@ body[data-performance-mode="lite"] .role-entry-option:hover {
 
   .role-entry-footer span + span::before {
     margin-right: 12px;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 1100px) {
+  .role-entry-heading h1 {
+    font-size: 3rem;
   }
 }
 
@@ -5011,6 +5022,7 @@ body[data-game-tab="teacher"] .teacher-issue-list article strong {
 #results-overview.results-grid > .classroom-report-pack,
 #results-overview.results-grid > .class-debrief-card,
 #results-overview.results-grid > .results-market-replay-card,
+#results-overview.results-grid > .player-debrief-card,
 #results-overview.results-grid > .personal-path-card,
 #results-overview.results-grid > .score-breakdown-card {
   grid-column: 1 / -1;
@@ -5018,6 +5030,114 @@ body[data-game-tab="teacher"] .teacher-issue-list article strong {
 
 #results-overview.results-grid > .results-hero-card {
   min-height: 0;
+}
+
+.player-debrief-card {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+}
+
+.player-debrief-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.player-debrief-head > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.player-debrief-head strong {
+  font-size: 1.08rem;
+}
+
+.player-debrief-summary {
+  max-width: 92ch;
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.debrief-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+
+.debrief-metrics > span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  border: 1px solid var(--line-subtle);
+  border-radius: 7px;
+  background: var(--surface-panel-soft);
+  padding: 10px;
+}
+
+.debrief-metrics b {
+  overflow-wrap: anywhere;
+  font-family: var(--font-data);
+  font-size: 0.96rem;
+}
+
+.debrief-metrics small {
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.results-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+}
+
+.results-list li {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+  border-left: 2px solid var(--accent-2);
+  background: var(--surface-panel-soft);
+  padding: 10px 12px;
+}
+
+.results-list li span,
+.player-debrief-focus span {
+  color: var(--accent-2);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.results-list li strong,
+.player-debrief-focus strong {
+  overflow-wrap: anywhere;
+  line-height: 1.45;
+}
+
+.player-debrief-focus {
+  display: grid;
+  gap: 5px;
+  border-left: 3px solid var(--control-primary);
+  background: var(--accent-soft);
+  padding: 10px 12px;
+}
+
+@media (max-width: 760px) {
+  .player-debrief-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .results-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .classroom-report-pack {

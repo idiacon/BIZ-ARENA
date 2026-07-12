@@ -19,7 +19,7 @@ npm run screenshots:defense
 | File name | Screen | What must be visible | Used in |
 |---|---|---|---|
 | `01-main-menu.png` | Main menu | `Biz Arena`, `v0.3.0 Demo Release`, language/profile buttons | Presentation slide 1 or 10, report UI section |
-| `02-play-menu.png` | Play menu | `Демо-матч для показа`, demo hint, runtime info | Slide 7, user guide |
+| `02-role-entry.png` | Role entry | Выбор `Преподаватель` / `Ученик`, состояние сервера, версия | Slide 7, user guide |
 | `03-demo-started.png` | Game screen | Room `KAI Demo Championship`, company `AFKAIstudent1`, running status | Slide 7, demo scenario |
 | `04-production.png` | Operations/production tab | Components, workers, assembly, sale order | Slide 6, game economy |
 | `05-contracts.png` | Contracts panel | Contract title, reward, progress, deadline | Slide 6, report mechanics |
@@ -49,7 +49,7 @@ npm run screenshots:defense
 
 If time is short, prepare only these five screenshots:
 
-1. `02-play-menu.png`
+1. `02-role-entry.png`
 2. `03-demo-started.png`
 3. `04-production.png`
 4. `06-leaderboard.png`

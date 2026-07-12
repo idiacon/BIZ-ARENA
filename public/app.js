@@ -332,7 +332,7 @@ const CLIENT_LITE_REFRESH_INTERVAL_MS = 12000;
 const HIDDEN_REFRESH_INTERVAL_MS = 20000;
 const TUTORIAL_COMPLETED_KEY = 'bizArenaTutorialCompleted';
 const ROOM_MANAGED_SCREENS = ['lobby-screen', 'game-screen', 'results-screen'];
-const ROOM_AUTO_ENTRY_SCREENS = ['create-room-screen', 'join-room-screen', 'play-menu-screen', 'main-menu-screen'];
+const ROOM_AUTO_ENTRY_SCREENS = ['create-room-screen', 'join-room-screen', 'main-menu-screen'];
 const PERFORMANCE_MODES = ['auto', 'full', 'standard', 'lite'];
 const REFRESH_CADENCES = ['auto', 'fast', 'normal', 'slow'];
 const ANIMATION_MODES = ['auto', 'on', 'off'];
@@ -1259,8 +1259,11 @@ function currentDifficultyConfig() {
   };
 }
 function isAdvancedUiVisible() { return currentDifficultyConfig().uiMode !== 'guided'; }
+function isTeacherViewer() {
+  return Boolean(state.player?.isTeacherHost && !isClientMode());
+}
 function roleGameTabsForCurrentViewer() {
-  return state.player?.isHost && !isClientMode()
+  return isTeacherViewer()
     ? GAME_TAB_ROLE_CONTRACT.teacher
     : GAME_TAB_ROLE_CONTRACT.student;
 }
@@ -1271,7 +1274,7 @@ function visibleGameTabs() {
   }
   const config = currentDifficultyConfig();
   const tabs = new Set([...(config.visibleTabs || CLIENT_DIFFICULTY_CONFIGS.normal.visibleTabs), ...(isAdvancedUiVisible() ? (config.advancedTabs || []) : [])]);
-  if (state.player?.isHost && !isClientMode()) tabs.add('teacher');
+  if (isTeacherViewer()) tabs.add('teacher');
   return tabs;
 }
 
@@ -1443,7 +1446,7 @@ function renderGameTopbar() {
     : 'Ожидание комнаты';
   const studentUrl = gameStudentClientUrl();
   const profileName = player?.userName || state.teacherAccount?.name || state.profile.userName || 'Biz Arena';
-  const isTeacher = Boolean(player?.isHost && !isClientMode());
+  const isTeacher = isTeacherViewer();
   const guide = player?.turnGuide || null;
   const checklist = player?.turnChecklist || [];
   const readySteps = guide?.progress?.ready ?? checklist.filter(item => item.status === 'ready').length;
@@ -1509,7 +1512,7 @@ function updateTurnTimer() {
 function renderGameNextAction() {
   renderGameTopbar();
   if (!elements.gameNextActionChip) return;
-  const isTeacherView = Boolean(state.player?.isHost && !isClientMode());
+  const isTeacherView = isTeacherViewer();
   const readiness = state.room?.classReadiness || { rows: [] };
   const helpQueue = readiness.helpQueue || [];
   const teacherTarget = isTeacherView && state.room ? {
@@ -1773,7 +1776,7 @@ function applyAppMode() {
 }
 
 function currentPlayerRole() {
-  if (state.player?.isHost && !isClientMode()) return 'teacher';
+  if (isTeacherViewer()) return 'teacher';
   if (state.player || isClientMode()) return 'student';
   if (isServerMode()) return 'teacher';
   return 'guest';
@@ -2002,18 +2005,19 @@ function setGameTab(tabId) {
 }
 
 function defaultGameTabForViewer() {
-  return state.player?.isHost && !isClientMode() ? 'teacher' : 'operations';
+  return isTeacherViewer() ? 'teacher' : 'operations';
 }
 
 function showScreen(screenId, { addToHistory = true } = {}) {
   const wasGameScreen = state.currentScreen === 'game-screen';
+  if (screenId === 'play-menu-screen') screenId = 'main-menu-screen';
   if (isClientMode() && ['main-menu-screen', 'play-menu-screen', 'create-room-screen', 'profile-screen', 'settings-screen', 'about-screen', 'server-home-screen'].includes(screenId)) {
     screenId = 'join-room-screen';
   }
   if (isServerMode() && ['main-menu-screen', 'play-menu-screen', 'join-room-screen', 'profile-screen'].includes(screenId)) {
     screenId = 'server-home-screen';
   }
-  const disconnectedHome = isClientMode() ? 'join-room-screen' : isServerMode() ? 'server-home-screen' : 'play-menu-screen';
+  const disconnectedHome = isClientMode() ? 'join-room-screen' : isServerMode() ? 'server-home-screen' : 'main-menu-screen';
   if (screenId === 'lobby-screen' && !isConnected()) screenId = disconnectedHome;
   if (screenId === 'game-screen' && !gameIsActive()) screenId = isConnected() ? 'lobby-screen' : disconnectedHome;
   if (screenId === 'results-screen' && !gameIsFinished()) screenId = isConnected() ? (gameIsActive() ? 'game-screen' : 'lobby-screen') : disconnectedHome;
@@ -2264,7 +2268,8 @@ function renderRoomOverview() {
     elements.roomOverview.innerHTML = `<div>${t('room_placeholder')}</div>`;
     return;
   }
-  const isHost = state.player.isHost && !isClientMode();
+  const canHostControl = state.player.isHost && !isClientMode();
+  const isTeacherView = isTeacherViewer();
   const statusKey = state.room.status === 'lobby' ? 'room_status_lobby' : state.room.status === 'running' ? 'room_status_running' : state.room.status === 'finished' ? 'room_status_finished' : 'room_status_paused';
   const readySummary = `${t('ready_count')}: ${state.room.readyCount}/${state.room.humanCount}`;
   const hostPlayer = state.room.players.find(player => player.isHost) || null;
@@ -2274,14 +2279,14 @@ function renderRoomOverview() {
   const scenarioKey = state.room.settings?.scenarioKey || state.room.scenarioKey || '';
   const difficultyLabel = state.room.difficultyLabel || currentDifficultyConfig().label;
   const lobbyStatusTone = state.room.allReady && state.room.humanCount > 0 ? 'ok' : 'warn';
-  const speedControls = isHost && state.room.status !== 'finished' && state.room.tickMode !== 'manual'
+  const speedControls = canHostControl && state.room.status !== 'finished' && state.room.tickMode !== 'manual'
     ? `<div class="button-pair host-controls speed-controls">
          <button data-speed-action="slow" class="${state.room.tickSpeedPreset === 'slow' ? 'ghost' : ''}">${t('speed_slow')}</button>
          <button data-speed-action="normal" class="${state.room.tickSpeedPreset === 'normal' ? 'ghost' : ''}">${t('speed_normal')}</button>
          <button data-speed-action="fast" class="${state.room.tickSpeedPreset === 'fast' ? 'ghost' : ''}">${t('speed_fast')}</button>
        </div>`
     : '';
-  const hostControls = isHost ? (
+  const hostControls = canHostControl ? (
     state.room.status === 'lobby'
       ? `<div class="button-pair host-controls lobby-secondary-controls" aria-label="Дополнительные действия с комнатой">
           <button data-host-action="add-bot">${t('add_bot')}</button>
@@ -2310,10 +2315,10 @@ function renderRoomOverview() {
   ) : '';
   const lessonPlan = state.room.lessonPlan || null;
   const lessonParameters = (lessonPlan?.parameters || []).slice(0, 3);
-  const studentLobbyMarkup = state.room.status === 'lobby' && !isHost
+  const studentLobbyMarkup = state.room.status === 'lobby' && !isTeacherView
     ? renderStudentLobbyCard(hostPlayer, turnMinutes, difficultyLabel)
     : '';
-  const teacherLobbyCommandMarkup = state.room.status === 'lobby' && isHost
+  const teacherLobbyCommandMarkup = state.room.status === 'lobby' && isTeacherView
     ? renderTeacherLobbyCommandCard(studentLink, studentQrSrc, turnMinutes, difficultyLabel)
     : '';
   const lessonMarkup = lessonPlan ? `
@@ -2342,7 +2347,7 @@ function renderRoomOverview() {
       <div class="market-item"><strong>${t('scenario_label')}</strong><div class="value">${escapeHtml(state.room.scenarioLabel)}</div><small>${escapeHtml(scenarioKey)} • ${t('market_profile')}: ${escapeHtml(state.room.settings.demandProfile)} / ${escapeHtml(difficultyLabel)}</small></div>
       <div class="market-item"><strong>${t('ticks_label')}</strong><div class="value">${state.room.tick}</div><small>${t('day_limit_title')}: ${state.room.settings.dayLimit} - ${t('room_mode')}: ${state.room.tickMode === 'manual' ? t('room_mode_turn_based') : t(`speed_${state.room.tickSpeedPreset}`)}</small></div>
     </div>`;
-  const roomSupportMarkup = isHost && state.room.status === 'lobby'
+  const roomSupportMarkup = isTeacherView && state.room.status === 'lobby'
     ? `<details class="teacher-lobby-secondary" data-lobby-secondary-details>
         <summary>Дополнительные параметры и действия</summary>
         <div class="teacher-lobby-secondary-content">
@@ -2352,7 +2357,7 @@ function renderRoomOverview() {
           ${hostControls}
         </div>
       </details>`
-    : state.room.status === 'lobby' && !isHost
+    : state.room.status === 'lobby' && !isTeacherView
       ? ''
       : `${roomMetaMarkup}${lessonMarkup}${speedControls}${hostControls}`;
 
@@ -2490,7 +2495,7 @@ function renderDecisionRoundCard() {
   const history = state.player?.decisionHistory || [];
   const latest = history[0] || null;
   const canResolve = canUseBusinessActions();
-  const canForceRound = canUseBusinessActions() && state.player?.isHost && (!round || round.status !== 'pending');
+  const canForceRound = canUseBusinessActions() && isTeacherViewer() && (!round || round.status !== 'pending');
 
   if (!round && !latest && !canForceRound) return '';
 
@@ -5326,14 +5331,20 @@ function finishReasonLabel(reason) {
 function renderPlayerDebriefCard(playerDebrief) {
   if (!playerDebrief) return '';
   return `
-    <article class="market-item results-wide player-debrief-card ${escapeHtml(playerDebrief.outcome || '')}">
-      <strong>${escapeHtml(playerDebrief.title || 'Личный разбор')}</strong>
-      <p>${escapeHtml(playerDebrief.summary || '')}</p>
+    <article class="market-item results-wide player-debrief-card ${escapeHtml(playerDebrief.outcome || '')}" data-student-debrief-contract="student-debrief-v2">
+      <div class="player-debrief-head">
+        <div>
+          <span class="factory-node-label">Итоги команды</span>
+          <strong>${escapeHtml(playerDebrief.title || 'Личный разбор')}</strong>
+        </div>
+        <span class="mini-badge">Разбор решения</span>
+      </div>
+      <p class="player-debrief-summary">${escapeHtml(playerDebrief.summary || '')}</p>
       <div class="debrief-metrics">
         ${(playerDebrief.metrics || []).slice(0, 5).map(item => `
           <span class="${escapeHtml(item.tone || '')}">
             <b>${escapeHtml(String(item.displayValue ?? item.value ?? ''))}</b>
-            ${escapeHtml(item.label || '')}
+            <small>${escapeHtml(item.label || '')}</small>
           </span>
         `).join('')}
       </div>
@@ -5342,7 +5353,10 @@ function renderPlayerDebriefCard(playerDebrief) {
         <li><span>Что ограничило результат</span><strong>${escapeHtml(playerDebrief.mainWeakness || '')}</strong></li>
         ${(playerDebrief.actionItems || []).slice(0, 3).map(item => `<li><span>${escapeHtml(item.label || '')}</span><strong>${escapeHtml(item.text || '')}</strong></li>`).join('')}
       </ul>
-      <p class="muted">${escapeHtml(playerDebrief.nextMatchFocus || '')}</p>
+      <div class="player-debrief-focus">
+        <span>Фокус следующего матча</span>
+        <strong>${escapeHtml(playerDebrief.nextMatchFocus || '')}</strong>
+      </div>
     </article>
   `;
 }
@@ -5623,7 +5637,7 @@ function renderResultsOverview() {
   const review = summary.turnReview;
   const playerDebrief = summary.playerDebrief;
   const debrief = summary.classDebrief;
-  const teacherViewer = Boolean(state.player?.isHost && !isClientMode());
+  const teacherViewer = isTeacherViewer();
   const classroomReportPack = teacherViewer ? buildClassroomReportPack(summary) : null;
 
   elements.resultsStatus.textContent = t('results_finished');
@@ -5771,7 +5785,7 @@ function exportResultsReport() {
   const summary = buildResultsSummary();
   const winner = summary.winner;
   const viewer = summary.viewer;
-  const teacherViewer = Boolean(state.player?.isHost && !isClientMode());
+  const teacherViewer = isTeacherViewer();
   const classroomReportPack = teacherViewer ? buildClassroomReportPack(summary) : null;
   const payload = {
     project: 'Biz Arena',
@@ -6262,7 +6276,7 @@ elements.createForm.addEventListener('submit', async event => {
     showToast(error.message, 'error');
   }
 });
-elements.demoStartButton.addEventListener('click', async () => {
+elements.demoStartButton?.addEventListener('click', async () => {
   try {
     await createDemoSession();
   } catch (error) {
@@ -6276,7 +6290,7 @@ elements.studentDemoStartButton?.addEventListener('click', async () => {
     showToast(error.message, 'error');
   }
 });
-elements.tutorialStartButton.addEventListener('click', async () => {
+elements.tutorialStartButton?.addEventListener('click', async () => {
   try {
     await createTutorialSession();
   } catch (error) {

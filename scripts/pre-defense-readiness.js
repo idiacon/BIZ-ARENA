@@ -71,7 +71,7 @@ pushCheck(checks, `dist/defense-bundle/Biz-Arena-v${version}/bundle-manifest.jso
 
 const screenshotFiles = [
   'defense-assets/screenshots/01-main-menu.png',
-  'defense-assets/screenshots/02-play-menu.png',
+  'defense-assets/screenshots/02-role-entry.png',
   'defense-assets/screenshots/03-demo-started.png',
   'defense-assets/screenshots/04-production.png',
   'defense-assets/screenshots/05-contracts.png',

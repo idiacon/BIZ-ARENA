@@ -2283,9 +2283,17 @@ test('UI contract: server/admin and client/student modes stay separated', () => 
   assert.match(appJs, /student: Object\.freeze\(\['overview', 'purchase', 'operations', 'market', 'competitors', 'events'\]\)/);
   assert.match(appJs, /teacher: Object\.freeze\(\['teacher', 'overview', 'competitors', 'market', 'events', 'statistics'\]\)/);
   const roleGameTabsForCurrentViewer = sourceFunctionBlock(appJs, 'roleGameTabsForCurrentViewer');
-  assert.match(roleGameTabsForCurrentViewer, /state\.player\?\.isHost && !isClientMode\(\)/);
+  assert.match(roleGameTabsForCurrentViewer, /isTeacherViewer\(\)/);
   assert.match(roleGameTabsForCurrentViewer, /GAME_TAB_ROLE_CONTRACT\.teacher/);
   assert.match(roleGameTabsForCurrentViewer, /GAME_TAB_ROLE_CONTRACT\.student/);
+  const isTeacherViewer = sourceFunctionBlock(appJs, 'isTeacherViewer');
+  const currentPlayerRole = sourceFunctionBlock(appJs, 'currentPlayerRole');
+  const defaultGameTabForViewer = sourceFunctionBlock(appJs, 'defaultGameTabForViewer');
+  const renderGameTopbar = sourceFunctionBlock(appJs, 'renderGameTopbar');
+  assert.match(isTeacherViewer, /state\.player\?\.isTeacherHost && !isClientMode\(\)/);
+  assert.match(currentPlayerRole, /isTeacherViewer\(\)/);
+  assert.match(defaultGameTabForViewer, /isTeacherViewer\(\) \? 'teacher' : 'operations'/);
+  assert.match(renderGameTopbar, /const isTeacher = isTeacherViewer\(\)/);
 
   const applyAppMode = sourceFunctionBlock(appJs, 'applyAppMode');
   assert.match(applyAppMode, /isClientMode\(\)[\s\S]*showScreen\('join-room-screen'/);
@@ -2302,9 +2310,9 @@ test('UI contract: server/admin and client/student modes stay separated', () => 
   assert.doesNotMatch(maybeAutoJoinFromClientLaunch, /\/api\/server\/action|\/api\/teacher\/action|data-crisis-card-event/);
 
   const renderRoomOverview = sourceFunctionBlock(appJs, 'renderRoomOverview');
-  assert.match(renderRoomOverview, /const isHost = state\.player\.isHost && !isClientMode\(\)/);
-  assert.match(renderRoomOverview, /state\.room\.status === 'lobby' && !isHost[\s\S]*renderStudentLobbyCard/);
-  assert.match(renderRoomOverview, /state\.room\.status === 'lobby' && isHost[\s\S]*renderTeacherLobbyCommandCard/);
+  assert.match(renderRoomOverview, /const isTeacherView = isTeacherViewer\(\)/);
+  assert.match(renderRoomOverview, /state\.room\.status === 'lobby' && !isTeacherView[\s\S]*renderStudentLobbyCard/);
+  assert.match(renderRoomOverview, /state\.room\.status === 'lobby' && isTeacherView[\s\S]*renderTeacherLobbyCommandCard/);
   assert.match(renderRoomOverview, /state\.room\.status !== 'lobby' \? `<section class="lobby-classroom-hero"/);
   assert.doesNotMatch(renderRoomOverview, /client-readonly-note|data-host-action="start-game"/);
   assert.match(appJs, /elements\.saveRoomButton\.disabled = !player\.isHost \|\| isClientMode\(\)/);
@@ -2575,12 +2583,16 @@ test('UI contract: market replay is visible and exportable', () => {
   assert.match(appJs, /classroomReportPack/);
   assert.match(appJs, /data-teacher-debrief-contract="class-debrief-v1"/);
   assert.match(appJs, /student-results-v1/);
-  assert.match(appJs, /state\.player\?\.isHost && !isClientMode\(\)/);
+  assert.match(appJs, /data-student-debrief-contract="student-debrief-v2"/);
+  assert.match(appJs, /isTeacherViewer\(\)/);
   assert.match(appJs, /teacherReportPack/);
   assert.match(appJs, /data-results-export-inline/);
   assert.match(appJs, /Пакет отчета преподавателя/);
 
   assert.match(styles, /\.market-replay-panel/);
+  assert.match(styles, /#results-overview\.results-grid > \.player-debrief-card[\s\S]*grid-column: 1 \/ -1/);
+  assert.match(styles, /\.results-list\s*{[\s\S]*list-style: none[\s\S]*display: grid/);
+  assert.match(styles, /\.results-list li\s*{[\s\S]*display: grid/);
   assert.match(styles, /\.results-market-replay-card/);
   assert.match(styles, /\.classroom-report-pack/);
   assert.match(styles, /\.classroom-report-evidence/);
@@ -2717,7 +2729,7 @@ test('UI contract: teacher guidance and mobile controls follow the teacher role'
   const renderGameNextAction = sourceFunctionBlock(appJs, 'renderGameNextAction');
   const activateGameNextAction = sourceFunctionBlock(appJs, 'activateGameNextAction');
 
-  assert.match(renderGameNextAction, /const isTeacherView = Boolean\(state\.player\?\.isHost && !isClientMode\(\)\)/);
+  assert.match(renderGameNextAction, /const isTeacherView = isTeacherViewer\(\)/);
   assert.match(renderGameNextAction, /teacherNextAction\(state\.room, readiness, helpQueue\)/);
   assert.match(renderGameNextAction, /tab: 'teacher'/);
   assert.match(activateGameNextAction, /elements\.gameNextActionChip\?\.dataset/);
@@ -2744,7 +2756,7 @@ test('UI contract: student lobby separates readiness from the complete first-tur
   assert.match(renderStudentLobbyCard, /data-lobby-ready-state=/);
   assert.match(joinRoom, /const joinUserName = elements\.joinUserName\?\.value\.trim\(\) \|\| ''/);
   assert.match(appJs, /async function submitLobbyReadiness/);
-  assert.match(appJs, /state\.room\.status === 'lobby' && !isHost\s*\? ''/);
+  assert.match(appJs, /state\.room\.status === 'lobby' && !isTeacherView\s*\? ''/);
   assert.match(indexHtml, /id="join-form"[^>]*novalidate/);
   assert.match(indexHtml, /id="join-form-status"[^>]*aria-live="polite"/);
   assert.match(styles, /body\[data-screen="lobby-screen"\]\[data-player-role="student"\] \.lobby-roster-panel/);
@@ -2813,18 +2825,33 @@ test('UI contract: strategic decisions use a localized responsive decision surfa
 
 test('UI contract: entry screens show only real navigation and room actions', () => {
   const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const appJs = readPublicAppSources();
+  const styles = readPublicStyles();
+  const showScreen = sourceFunctionBlock(appJs, 'showScreen');
 
   assert.doesNotMatch(indexHtml, /Предпросмотр активного матча/);
   assert.doesNotMatch(indexHtml, /Команда Альфа \(вы\)/);
   assert.doesNotMatch(indexHtml, /Мои комнаты|История матчей/);
-  assert.match(indexHtml, /id="play-menu-screen"/);
+  assert.match(indexHtml, /id="play-menu-screen" class="screen hidden" data-legacy-screen="play-menu" hidden inert aria-hidden="true"/);
+  assert.equal((indexHtml.match(/data-open-screen="play-menu-screen"/g) || []).length, 0);
   assert.match(indexHtml, /data-open-screen="create-room-screen"/);
   assert.match(indexHtml, /data-open-screen="join-room-screen"/);
-  assert.match(indexHtml, /id="student-demo-start-button"/);
   assert.match(indexHtml, /class="role-entry-shell"/);
   assert.match(indexHtml, /data-entry-role="teacher"[\s\S]*data-open-screen="server-home-screen"/);
   assert.match(indexHtml, /data-entry-role="student"[\s\S]*data-open-screen="join-room-screen"/);
+  assert.match(indexHtml, /data-open-screen="main-menu-screen">Новый матч<\/button>/);
   assert.match(indexHtml, /class="hero hero-single legacy-main-menu" hidden/);
+  assert.match(showScreen, /if \(screenId === 'play-menu-screen'\) screenId = 'main-menu-screen';/);
+  assert.match(styles, /body\[data-screen="main-menu-screen"\] \.shell\s*{[\s\S]*width: 100%[\s\S]*max-width: none/);
+  assert.match(styles, /\.role-entry-heading h1\s*{[\s\S]*font-size: 3\.5rem/);
+});
+
+test('defense capture follows the authenticated client contract', () => {
+  const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-defense-screenshots.js'), 'utf8');
+
+  assert.match(captureScript, /sendAction\('next-turn', undefined, \{ throwOnError: true \}\)/);
+  assert.match(captureScript, /refreshState\(\)[\s\S]*room: state\.room[\s\S]*player: state\.player/);
+  assert.doesNotMatch(captureScript, /\/api\/state\?playerId=/);
 });
 
 test('classroom package includes LAN diagnostics helpers and readable README text', () => {

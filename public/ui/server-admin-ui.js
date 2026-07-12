@@ -135,7 +135,7 @@ async function runNetworkHealthCheck(healthUrl) {
 function renderServerHome() {
   if (!elements.serverHomeScreen) return;
   const meta = state.runtimeMeta || {};
-  const canResumeRoom = Boolean(state.room && state.player?.isHost && !isClientMode());
+  const canResumeRoom = Boolean(state.room && isTeacherViewer());
   if (elements.teacherResumeRoom) {
     const targetScreen = gameIsFinished() ? 'results-screen' : gameIsActive() ? 'game-screen' : 'lobby-screen';
     elements.teacherResumeRoom.hidden = !canResumeRoom;
