@@ -10,6 +10,44 @@ const ROLE_NAVIGATION_CONTRACT = Object.freeze({
   student: Object.freeze(['overview', 'purchase', 'production', 'market', 'team', 'report']),
 });
 
+const DECISION_ROUND_TITLE_KEYS = Object.freeze({
+  supplier_window: 'decision_round_supplier_title',
+  workforce_policy: 'decision_round_workforce_title',
+  maintenance_window: 'decision_round_maintenance_title',
+  dealer_campaign: 'decision_round_dealer_title',
+  battery_supply: 'decision_round_battery_supply_title',
+  firmware_release: 'decision_round_firmware_title',
+  airspace_compliance: 'decision_round_compliance_title',
+  payload_strategy: 'decision_round_payload_title',
+});
+
+const DECISION_OPTION_LABEL_KEYS = Object.freeze({
+  balanced_lot: 'decision_option_balanced_lot',
+  cash_bulk_buy: 'decision_option_cash_bulk_buy',
+  skip_offer: 'decision_option_skip_offer',
+  training_grant: 'decision_option_training_grant',
+  overtime_push: 'decision_option_overtime_push',
+  morale_bonus: 'decision_option_morale_bonus',
+  preventive_maintenance: 'decision_option_preventive_maintenance',
+  postpone_maintenance: 'decision_option_postpone_maintenance',
+  upgrade_line: 'decision_option_upgrade_line',
+  targeted_campaign: 'decision_option_targeted_campaign',
+  premium_showcase: 'decision_option_premium_showcase',
+  hold_budget: 'decision_option_hold_budget',
+  safety_stock: 'decision_option_safety_stock',
+  spot_market_cells: 'decision_option_spot_market_cells',
+  delay_purchase: 'decision_option_delay_purchase',
+  stability_patch: 'decision_option_stability_patch',
+  rush_features: 'decision_option_rush_features',
+  pilot_program: 'decision_option_pilot_program',
+  compliance_audit: 'decision_option_compliance_audit',
+  delay_audit: 'decision_option_delay_audit',
+  premium_certification: 'decision_option_premium_certification',
+  balanced_payload: 'decision_option_balanced_payload',
+  heavy_payload: 'decision_option_heavy_payload',
+  lightweight_focus: 'decision_option_lightweight_focus',
+});
+
 const VISUAL_QUALITY_CONTRACT = Object.freeze({
   full: Object.freeze({
     label: 'Full',
@@ -82,4 +120,6 @@ window.BizArenaUiContracts = Object.freeze({
   navigation: ROLE_NAVIGATION_CONTRACT,
   visualQuality: VISUAL_QUALITY_CONTRACT,
   crisisCards: CRISIS_CARDS,
+  decisionRoundTitleKeys: DECISION_ROUND_TITLE_KEYS,
+  decisionOptionLabelKeys: DECISION_OPTION_LABEL_KEYS,
 });

@@ -393,7 +393,25 @@ async function main() {
     await evaluate('(async () => { await refreshState(); showScreen("results-screen", { addToHistory: false }); })()');
 
     await waitFor('!!document.querySelector("#results-screen.active")', 'results screen');
+    const presentationAudit = await evaluate(`(() => {
+      const leaderboardText = String(document.querySelector('#leaderboard-results')?.textContent || '');
+      const eventLogText = String(document.querySelector('#event-log-results')?.textContent || '');
+      const visibleText = leaderboardText + '\\n' + eventLogText;
+      const forbidden = /AI Manager|cleared the sell order|strategic round|\\b[a-z]+_[a-z_]+\\b/i;
+      const match = visibleText.match(forbidden);
+      return { ok: !match, match: match?.[0] || '', sample: visibleText.slice(0, 700) };
+    })()`);
+    if (!presentationAudit.ok) {
+      throw new Error(`raw event log labels: ${JSON.stringify(presentationAudit)}`);
+    }
     await screenshot('06-leaderboard.png', 'document.querySelector("#leaderboard-results")?.scrollIntoView({ block: "start" })');
+    await setViewport(MIN_DESKTOP);
+    await assertViewport('results 1000x760');
+    await screenshot('06-leaderboard-1000x760.png', 'document.querySelector("#leaderboard-results")?.scrollIntoView({ block: "start" })');
+    await setViewport(ULTRAWIDE);
+    await assertViewport('results 3440x1440');
+    await screenshot('06-leaderboard-3440x1440.png', 'document.querySelector("#leaderboard-results")?.scrollIntoView({ block: "start" })');
+    await setViewport(VIEWPORT);
     await screenshot('07-results.png', 'window.scrollTo(0, 0)');
 
     const room = finalState.room;

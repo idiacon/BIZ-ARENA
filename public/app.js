@@ -690,7 +690,11 @@ function localizedLastAction(value) {
   match = action.match(/^Offer at ([\d.]+) was left unmatched\.$/);
   if (match) return `Заявка по цене ${rub(Number(match[1]))} ₽ осталась без исполнения.`;
   match = action.match(/^Strategic round ready: (.+)$/);
-  if (match) return `Доступен стратегический раунд: ${match[1]}.`;
+  if (match) return `Доступна стратегическая дилемма: «${localizedDecisionRoundLabel(match[1])}».`;
+  match = action.match(/^Strategic round auto-safe: (.+)$/);
+  if (match) return `Безопасный выбор применён автоматически: «${localizedDecisionOptionLabel(match[1])}».`;
+  match = action.match(/^Strategic round resolved: (.+)$/);
+  if (match) return `Стратегическое решение принято: «${localizedDecisionOptionLabel(match[1])}».`;
   return action;
 }
 
@@ -2480,6 +2484,26 @@ function decisionText(key, fallback = '') {
   if (!key) return fallback;
   const translated = t(key);
   return translated === key ? (fallback || key) : translated;
+}
+
+function readableInternalKey(value) {
+  return String(value || '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+function localizedDecisionRoundLabel(roundKey) {
+  const key = String(roundKey || '').trim();
+  return decisionText(DECISION_ROUND_TITLE_KEYS[key], readableInternalKey(key));
+}
+
+function localizedDecisionOptionLabel(optionKey) {
+  const key = String(optionKey || '').trim();
+  return decisionText(DECISION_OPTION_LABEL_KEYS[key], readableInternalKey(key));
+}
+
+function localizedParticipantName(value) {
+  const name = String(value || '').trim();
+  if (state.settings.language === 'ru' && name === 'AI Manager') return 'ИИ-менеджер';
+  return name;
 }
 
 function supportsStrategicDecisionRounds() {
@@ -4895,7 +4919,7 @@ function renderMarket() {
 
 function avatarMarkup(player) {
   if (player.avatar) return `<img class="roster-avatar" src="${player.avatar}" alt="avatar" />`;
-  return `<div class="roster-avatar-fallback">${escapeHtml((player.userName || player.name).slice(0, 2).toUpperCase())}</div>`;
+  return `<div class="roster-avatar-fallback">${escapeHtml((localizedParticipantName(player.userName) || player.name).slice(0, 2).toUpperCase())}</div>`;
 }
 
 function renderPlayerList() {
@@ -4910,7 +4934,7 @@ function renderPlayerList() {
     const readiness = player.bankrupt ? t('bankrupt') : player.ready ? t('ready_yes') : t('ready_no');
     const node = document.createElement('article');
     node.className = 'leader';
-    node.innerHTML = `<div class="player-line">${avatarMarkup(player)}<div><strong>${escapeHtml(player.userName)}</strong><small>${escapeHtml(player.name)}</small><div class="badge-inline-row"><span class="mini-badge">${role}</span><span class="mini-badge ${player.ready ? 'ok' : 'warn'}">${readiness}</span></div></div></div><strong>${money(player.money)}</strong>`;
+    node.innerHTML = `<div class="player-line">${avatarMarkup(player)}<div><strong>${escapeHtml(localizedParticipantName(player.userName))}</strong><small>${escapeHtml(player.name)}</small><div class="badge-inline-row"><span class="mini-badge">${role}</span><span class="mini-badge ${player.ready ? 'ok' : 'warn'}">${readiness}</span></div></div></div><strong>${money(player.money)}</strong>`;
     elements.playerList.appendChild(node);
   });
 }
@@ -5011,7 +5035,7 @@ function renderCompetitors() {
   players.forEach(player => {
     const node = document.createElement('article');
     node.className = 'leader';
-    node.innerHTML = `<div class="player-line">${avatarMarkup(player)}<div><strong>${escapeHtml(player.name)}</strong><small>${escapeHtml([player.userName, productMarketLine(player)].filter(Boolean).join(' • '))}</small><div class="badge-inline-row"><span class="mini-badge">${escapeHtml(player.specializationLabel)}</span><span class="mini-badge">${player.totalSalesSeason || 0} продано</span></div></div></div><strong>${money(player.price)}</strong>`;
+    node.innerHTML = `<div class="player-line">${avatarMarkup(player)}<div><strong>${escapeHtml(player.name)}</strong><small>${escapeHtml([localizedParticipantName(player.userName), productMarketLine(player)].filter(Boolean).join(' • '))}</small><div class="badge-inline-row"><span class="mini-badge">${escapeHtml(player.specializationLabel)}</span><span class="mini-badge">${player.totalSalesSeason || 0} продано</span></div></div></div><strong>${money(player.price)}</strong>`;
     elements.competitorList.appendChild(node);
   });
 }
@@ -5026,8 +5050,25 @@ function renderLeaderboardList(container) {
   players.forEach((player, index) => {
     const score = Number(player?.simulationScore?.total || 0);
     const node = document.createElement('article');
-    node.className = 'leader';
-    node.innerHTML = `<div class="player-line">${avatarMarkup(player)}<div><strong>#${index + 1} ${escapeHtml(player.name)}</strong><small>${escapeHtml([player.userName, productMarketLine(player), `${t('score_label') || 'Score'} ${score}`].filter(Boolean).join(' • '))}</small></div></div><div><strong>${score}</strong><small>${money(player.netWorth)}</small></div>`;
+    node.className = 'leader leaderboard-row';
+    node.innerHTML = `
+      <div class="player-line leaderboard-player">
+        ${avatarMarkup(player)}
+        <div>
+          <strong>#${index + 1} ${escapeHtml(player.name)}</strong>
+          <small>${escapeHtml([localizedParticipantName(player.userName), productMarketLine(player)].filter(Boolean).join(' • '))}</small>
+        </div>
+      </div>
+      <div class="leaderboard-metrics">
+        <span class="leaderboard-metric">
+          <small>${escapeHtml(t('score_label') || 'Очки')}</small>
+          <strong>${escapeHtml(score)}</strong>
+        </span>
+        <span class="leaderboard-metric">
+          <small>${escapeHtml(t('networth') || 'Капитал')}</small>
+          <strong>${escapeHtml(money(player.netWorth))}</strong>
+        </span>
+      </div>`;
     container.appendChild(node);
   });
 }
@@ -5052,11 +5093,17 @@ function formatRoomLogEntry(entry) {
     [/^(.+?) reconnected to the room\.$/i, match => `${match[1]} восстановил подключение.`],
     [/^(.+?) left the room\.$/i, match => `${match[1]} вышел из комнаты.`],
     [/^(.+?) is now the host\.$/i, match => `${match[1]} теперь управляет комнатой.`],
-    [/^(.+?) received strategic round (.+)\.$/i, match => `${match[1]} получил стратегическое задание «${match[2]}».`],
+    [/^(.+?) auto-resolved strategic round (.+?) with (.+)\.$/i, match => `${match[1]}: безопасный выбор в дилемме «${localizedDecisionRoundLabel(match[2])}» — «${localizedDecisionOptionLabel(match[3])}».`],
+    [/^(.+?) resolved strategic round (.+?) with (.+)\.$/i, match => `${match[1]} принял решение в дилемме «${localizedDecisionRoundLabel(match[2])}» — «${localizedDecisionOptionLabel(match[3])}».`],
+    [/^(.+?) forced a strategic round for demo: (.+)\.$/i, match => `${match[1]} запустил учебную дилемму «${localizedDecisionRoundLabel(match[2])}».`],
+    [/^(.+?) forced strategic round (.+?) for (.+)\.$/i, match => `${match[1]} запустил для ${match[3]} дилемму «${localizedDecisionRoundLabel(match[2])}».`],
+    [/^(.+?) received strategic round (.+)\.$/i, match => `${match[1]} получил дилемму «${localizedDecisionRoundLabel(match[2])}».`],
     [/^(.+?) started research (.+)\.$/i, match => `${match[1]} начал исследование «${match[2]}».`],
     [/^(.+?) bought (\d+) (.+?) for (.+)\.$/i, match => `${match[1]} закупил ${match[2]} ${match[3]} за ${match[4]}.`],
     [/^(.+?) hired (.+?) as (.+)\.$/i, match => `${match[1]} нанял ${match[2]} на роль «${match[3]}».`],
-    [/^(.+?) assembled (\d+) (.+)\.$/i, match => `${match[1]} собрал ${match[2]} ${match[3]}.`],
+    [/^(.+?) assembled (\d+) (.+)\.$/i, match => `${match[1]} собрал ${match[2]} ${String(match[3]).replace(/\.+$/, '')}.`],
+    [/^(.+?) listed (\d+) (.+?) at (.+)\.$/i, match => `${match[1]} выставил заявку: ${match[2]} ${match[3]} по цене ${match[4]}.`],
+    [/^(.+?) cleared the sell order and held inventory\.$/i, match => `${match[1]} снял заявку и оставил товар на складе.`],
     [/^(.+?) improved product quality\.$/i, match => `${match[1]} повысил качество продукта.`],
     [/^(.+?) introduced automation\.$/i, match => `${match[1]} внедрил автоматизацию.`],
     [/^(.+?) boosted marketing\.$/i, match => `${match[1]} усилил маркетинг.`],
@@ -5067,7 +5114,11 @@ function formatRoomLogEntry(entry) {
     [/^(.+?) completed contract (.+?) and earned (.+)\.$/i, match => `${match[1]} выполнил контракт «${match[2]}» и получил ${match[3]}.`],
     [/^(.+?) lost contract (.+)\.$/i, match => `${match[1]} не выполнил контракт «${match[2]}».`],
     [/^(.+?) completed research (.+)\.$/i, match => `${match[1]} завершил исследование «${match[2]}».`],
+    [/^(.+?) completed the season goal (.+)\.$/i, match => `${match[1]} выполнил сезонную цель «${match[2]}».`],
     [/^(.+?) went bankrupt and left the order book\.$/i, match => `${match[1]} обанкротился и выбыл из книги заявок.`],
+    [/^(.+?) left the match due to bankruptcy\.$/i, match => `${match[1]} выбыл из матча из-за банкротства.`],
+    [/^Match reset\. Update your strategy and start again\.$/i, () => 'Матч сброшен. Обновите стратегию и запустите его снова.'],
+    [/^(.+?) изменил скорость матча на (slow|normal|fast)\.$/i, match => `${match[1]} изменил скорость матча: ${t(`speed_${match[2]}`)}.`],
     [/^Pause request from (.+?) expired\. The match resumed automatically\.$/i, match => `Запрос паузы от ${match[1]} истек. Матч продолжен автоматически.`],
     [/^(.+?) requested a pause\. The teacher has 30 seconds to accept it\.$/i, match => `${match[1]} запросил паузу. У преподавателя есть 30 секунд на решение.`],
     [/^(.+?) accepted the pause request from (.+)\.$/i, match => `${match[1]} принял запрос паузы от ${match[2]}.`],
@@ -5082,21 +5133,23 @@ function formatRoomLogEntry(entry) {
   const probe = `${raw} ${message}`.toLowerCase();
   const category = /event|событ|кризис/.test(probe)
     ? 'crisis'
-    : /pause|пауз/.test(probe)
-      ? 'pause'
-      : /помощ|help/.test(probe)
-      ? 'support'
-      : /bought|закуп|hired|нанял|assembled|собрал|contract|контракт|research|исследован|продал|выруч/.test(probe)
-        ? 'economy'
-        : 'room';
+    : /strategic|стратег|дилемм|решени/.test(probe)
+      ? 'strategy'
+      : /pause|пауз/.test(probe)
+        ? 'pause'
+        : /помощ|help/.test(probe)
+          ? 'support'
+          : /bought|закуп|hired|нанял|assembled|собрал|listed|sell order|заявк|contract|контракт|research|исследован|продал|выруч/.test(probe)
+            ? 'economy'
+            : 'room';
   const tone = /банкрот|bankrupt|lost contract|не выполнил|ошиб|истек/.test(probe)
     ? 'danger'
-    : /готов|запуст|создал|joined|вошел|completed|выполнил|выиграл/.test(probe)
+    : /готов|запуст|создал|joined|вошел|completed|resolved|выполнил|выиграл|решение прин/.test(probe)
       ? 'positive'
       : /pause|пауз|request|запрос|event|событ|кризис/.test(probe)
         ? 'warning'
         : '';
-  const categoryLabel = { crisis: 'Кризис', pause: 'Пауза', support: 'Помощь', economy: 'Экономика', room: 'Комната' }[category];
+  const categoryLabel = { crisis: 'Кризис', strategy: 'Решение', pause: 'Пауза', support: 'Помощь', economy: 'Экономика', room: 'Комната' }[category];
   return { day, message: message || 'Событие без описания', category, categoryLabel, tone };
 }
 
@@ -5119,7 +5172,7 @@ function renderLog() {
     const node = document.createElement('article');
     node.className = `log-item report-event-row ${formatted.tone}`;
     node.dataset.eventCategory = formatted.category;
-    node.innerHTML = `<span class="event-log-index">${entries.length - index}</span><div class="event-log-copy"><strong>${escapeHtml(formatted.message)}</strong><small><span class="event-log-kind">${escapeHtml(formatted.categoryLabel)}</span>${t('day')} ${formatted.day} • ${t('ticks_label')} ${state.room?.tick || 0}</small></div>`;
+    node.innerHTML = `<span class="event-log-index">${entries.length - index}</span><div class="event-log-copy"><strong>${escapeHtml(formatted.message)}</strong><small><span class="event-log-kind">${escapeHtml(formatted.categoryLabel)}</span>${t('day')} ${formatted.day} • ${t('factory_turn')} ${state.room?.tick || 0}</small></div>`;
     elements.eventLog.appendChild(node);
     elements.eventLogGame.appendChild(node.cloneNode(true));
     elements.eventLogResults.appendChild(node.cloneNode(true));

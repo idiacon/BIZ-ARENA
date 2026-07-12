@@ -2854,6 +2854,43 @@ test('defense capture follows the authenticated client contract', () => {
   assert.doesNotMatch(captureScript, /\/api\/state\?playerId=/);
 });
 
+test('UI contract: leaderboard and event log hide raw internal labels', () => {
+  const appJs = readPublicAppSources();
+  const styles = readPublicStyles();
+  const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-defense-screenshots.js'), 'utf8');
+  const renderLeaderboardList = sourceFunctionBlock(appJs, 'renderLeaderboardList');
+  const formatRoomLogEntry = sourceFunctionBlock(appJs, 'formatRoomLogEntry');
+
+  assert.match(appJs, /const DECISION_ROUND_TITLE_KEYS = Object\.freeze\(\{/);
+  assert.match(appJs, /workforce_policy: 'decision_round_workforce_title'/);
+  assert.match(appJs, /dealer_campaign: 'decision_round_dealer_title'/);
+  assert.match(appJs, /const DECISION_OPTION_LABEL_KEYS = Object\.freeze\(\{/);
+  assert.match(appJs, /training_grant: 'decision_option_training_grant'/);
+  assert.match(appJs, /function localizedDecisionRoundLabel\(/);
+  assert.match(appJs, /function localizedDecisionOptionLabel\(/);
+  assert.match(appJs, /function localizedParticipantName\(/);
+
+  assert.match(renderLeaderboardList, /className = 'leader leaderboard-row'/);
+  assert.match(renderLeaderboardList, /localizedParticipantName\(player\.userName\)/);
+  assert.match(renderLeaderboardList, /class="leaderboard-metrics"/);
+  assert.doesNotMatch(renderLeaderboardList, /`\$\{t\('score_label'\)/);
+  assert.match(styles, /\.leaderboard-metrics\s*\{/);
+  assert.match(styles, /\.leaderboard-metric\s*\{/);
+  assert.match(styles, /body\[data-screen="results-screen"\] \.shell\s*{[\s\S]*width: min\(1920px, 100%\)/);
+
+  assert.match(formatRoomLogEntry, /auto-resolved strategic round/);
+  assert.match(formatRoomLogEntry, /resolved strategic round/);
+  assert.match(formatRoomLogEntry, /cleared the sell order and held inventory/);
+  assert.match(formatRoomLogEntry, /listed\|sell order\|заявк/);
+  assert.match(formatRoomLogEntry, /String\(match\[3\]\)\.replace\(\/\\\.\+\$\//);
+  assert.match(formatRoomLogEntry, /localizedDecisionRoundLabel/);
+  assert.match(formatRoomLogEntry, /localizedDecisionOptionLabel/);
+  assert.match(formatRoomLogEntry, /strategy: 'Решение'/);
+
+  assert.match(captureScript, /raw event log labels/);
+  assert.match(captureScript, /AI Manager\|cleared the sell order\|strategic round/);
+});
+
 test('classroom package includes LAN diagnostics helpers and readable README text', () => {
   const packageScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-classroom-package.js'), 'utf8');
   const firewallHelper = fs.readFileSync(path.join(__dirname, '..', 'tools', 'Allow-BizArena-Firewall.ps1'), 'utf8');

@@ -421,6 +421,12 @@ body[data-player-role="teacher"][data-game-tab="events"] #event-log-game {
   color: var(--warn);
 }
 
+.report-event-row[data-event-category="strategy"] .event-log-kind {
+  border-color: rgba(109, 117, 255, 0.48);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
 .report-event-row[data-event-category="support"] .event-log-kind {
   border-color: rgba(49, 217, 210, 0.42);
   color: var(--accent-2);
