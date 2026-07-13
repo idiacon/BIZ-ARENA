@@ -5,6 +5,42 @@ html[data-performance-mode="full"] {
   --scene-motion: 1;
 }
 
+@media (min-width: 901px) and (max-width: 1180px) {
+  body[data-screen="game-screen"] {
+    --layout-nav-standard: var(--layout-nav-compact);
+  }
+
+  body[data-screen="game-screen"] .app-sidebar-brand {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  body[data-screen="game-screen"] .app-sidebar-brand > div:last-child,
+  body[data-screen="game-screen"] .app-sidebar-version {
+    display: none;
+  }
+
+  body[data-screen="game-screen"] .app-sidebar-link {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+    gap: 4px;
+    min-height: 52px;
+    text-align: center;
+  }
+
+  body[data-screen="game-screen"] .app-sidebar-link > strong {
+    font-size: 0.66rem;
+  }
+
+  body[data-screen="game-screen"] .game-topbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  body[data-screen="game-screen"] .game-student-link-chip {
+    grid-column: 1 / -1;
+  }
+}
+
 html[data-performance-mode="standard"] {
   --scene-detail: 0.72;
   --scene-motion: 0.45;

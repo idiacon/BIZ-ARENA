@@ -1,54 +1,3 @@
-:root {
-  --surface-canvas: #050b13;
-  --surface-panel: #0b1423;
-  --surface-panel-soft: #111d2f;
-  --surface-panel-raised: #0d1829;
-  --surface-field: #08111f;
-  --text-primary: #f6f8fc;
-  --text-secondary: #9aa8bd;
-  --line-subtle: #223048;
-  --line-strong: #31415c;
-  --control-primary: #6d75ff;
-  --control-primary-hover: #7c84ff;
-  --font-interface: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-data: "Fira Code", "Cascadia Code", Consolas, monospace;
-  --motion-fast: 160ms;
-  --motion-standard: 220ms;
-  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 24px;
-  --scene-detail: 1;
-  --scene-motion: 1;
-  --body-bg: var(--surface-canvas);
-  --panel: var(--surface-panel);
-  --panel-soft: var(--surface-panel-soft);
-  --line: var(--line-subtle);
-  --text: var(--text-primary);
-  --muted: var(--text-secondary);
-  --accent: #6d75ff;
-  --accent-2: #31d9d2;
-  --accent-3: #f0a12f;
-  --danger: #ff5c80;
-  --button-text: #ffffff;
-  --field-bg: var(--surface-field);
-  --success: #37e083;
-  --success-soft: rgba(55, 224, 131, 0.14);
-  --warn: #ffbe3d;
-  --warn-soft: rgba(255, 190, 61, 0.14);
-  --danger-soft: rgba(255, 92, 128, 0.14);
-  --accent-soft: rgba(109, 117, 255, 0.14);
-  --accent-soft-strong: rgba(109, 117, 255, 0.22);
-  --surface-raised: var(--surface-panel-raised);
-  --surface-glass: rgba(255, 255, 255, 0.04);
-  --panel-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
-  --visual-card-radius: 8px;
-  --visual-node-radius: 8px;
-  --visual-card-shadow: none;
-}
-
 * { box-sizing: border-box; }
 html { font-size: 16px; }
 body {
@@ -4299,7 +4248,7 @@ body[data-screen="lobby-screen"][data-player-role="teacher"] #toggle-ready {
 body[data-screen="game-screen"] .shell {
   width: 100%;
   max-width: none;
-  padding: 8px 12px 12px 180px;
+  padding: 8px 8px 8px calc(var(--layout-nav-standard) + 16px);
 }
 
 body[data-screen="game-screen"] .app-sidebar {
@@ -4307,22 +4256,24 @@ body[data-screen="game-screen"] .app-sidebar {
   inset: 8px auto 8px 8px;
   z-index: 20;
   display: grid !important;
-  width: 160px;
+  width: var(--layout-nav-standard);
   grid-template-rows: auto auto 1fr auto;
-  gap: 12px;
+  gap: 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background:
     linear-gradient(180deg, rgba(109, 117, 255, 0.08), transparent 42%),
     rgba(7, 13, 24, 0.96);
-  padding: 10px;
+  padding: 8px;
   box-shadow: var(--panel-shadow);
 }
 
 body[data-screen="game-screen"] .app-sidebar-brand {
   display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: center;
   justify-items: start;
-  gap: 8px;
+  gap: 7px;
   width: 100%;
   border-color: transparent;
   background: transparent;
@@ -4332,8 +4283,8 @@ body[data-screen="game-screen"] .app-sidebar-brand {
 }
 
 body[data-screen="game-screen"] .app-sidebar-brand .brand-mark {
-  width: 42px;
-  height: 42px;
+  width: 34px;
+  height: 34px;
   overflow: hidden;
 }
 
@@ -4345,8 +4296,9 @@ body[data-screen="game-screen"] .app-sidebar-brand .brand-mark img {
 }
 
 body[data-screen="game-screen"] .app-sidebar-brand strong {
-  font-size: 1.34rem;
-  line-height: 0.95;
+  display: block;
+  font-size: 0.98rem;
+  line-height: 1;
   text-transform: uppercase;
 }
 
@@ -4361,9 +4313,13 @@ body[data-screen="game-screen"] .app-sidebar-status {
   display: none;
 }
 
+body[data-screen="game-screen"] .app-sidebar-brand small {
+  display: none;
+}
+
 body[data-screen="game-screen"] .app-sidebar-nav {
   display: grid;
-  gap: 7px;
+  gap: 5px;
   align-content: start;
 }
 
@@ -4374,7 +4330,7 @@ body[data-screen="game-screen"] .game-role-nav {
 body[data-screen="game-screen"][data-player-role="teacher"] [data-role-navigation="teacher"],
 body[data-screen="game-screen"][data-player-role="student"] [data-role-navigation="student"] {
   display: grid;
-  gap: 7px;
+  gap: 5px;
   align-content: start;
 }
 
@@ -4391,15 +4347,15 @@ body[data-screen="game-screen"] .app-sidebar-link {
   overflow: hidden;
   width: 100%;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 19px minmax(0, 1fr);
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   border-color: transparent;
   background: transparent;
   box-shadow: none;
   color: var(--muted);
-  min-height: 36px;
-  padding: 8px 9px;
+  min-height: 38px;
+  padding: 7px 6px;
   text-align: left;
 }
 
@@ -4410,8 +4366,8 @@ body[data-screen="game-screen"] .app-sidebar-link > strong {
 }
 
 body[data-screen="game-screen"] .app-sidebar-link > .game-ui-icon {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   justify-self: center;
   filter: drop-shadow(0 0 8px rgba(109, 117, 255, 0.18));
 }
@@ -4420,7 +4376,7 @@ body[data-screen="game-screen"] .app-sidebar-link > strong {
   overflow-wrap: normal;
   word-break: normal;
   white-space: normal;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
   line-height: 1.1;
 }
 
@@ -4461,7 +4417,9 @@ body[data-screen="game-screen"] .app-sidebar-link small {
 }
 
 body[data-screen="game-screen"] .game-cockpit-shell {
-  gap: 10px;
+  width: min(100%, 2560px);
+  margin-inline: auto;
+  gap: var(--layout-gap);
 }
 
 body[data-screen="game-screen"] .game-hud-panel {
@@ -4472,19 +4430,20 @@ body[data-screen="game-screen"] .game-control-panel {
   position: sticky;
   top: 8px;
   z-index: 12;
-  padding: 10px;
+  padding: 6px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.035), transparent),
     var(--panel);
+  border-radius: var(--radius-panel);
 }
 
 body[data-screen="game-screen"] .game-topbar {
-  grid-template-columns: minmax(150px, 0.58fr) minmax(210px, 0.8fr) minmax(260px, 1.15fr) minmax(120px, 0.42fr) minmax(160px, 0.58fr);
-  gap: 8px;
+  grid-template-columns: minmax(138px, 0.62fr) minmax(190px, 0.86fr) minmax(270px, 1.28fr) minmax(112px, 0.46fr) minmax(142px, 0.62fr);
+  gap: 6px;
 }
 
 body[data-screen="game-screen"][data-player-role="student"] .game-topbar {
-  grid-template-columns: minmax(150px, 0.8fr) minmax(220px, 1fr) minmax(120px, 0.42fr) minmax(160px, 0.58fr);
+  grid-template-columns: minmax(150px, 0.8fr) minmax(240px, 1fr) minmax(118px, 0.48fr) minmax(152px, 0.62fr);
 }
 
 body[data-screen="game-screen"][data-player-role="student"] .game-student-link-chip {
@@ -4504,14 +4463,32 @@ body[data-screen="game-screen"] .game-student-link-chip,
 body[data-screen="game-screen"] .game-profile-chip,
 body[data-screen="game-screen"] .game-next-action-chip,
 body[data-screen="game-screen"] .game-mode-chip {
-  min-height: 66px;
-  padding: 10px 12px;
+  min-height: 62px;
+  padding: 8px 10px;
+}
+
+body[data-screen="game-screen"] .game-topbar-chip {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), transparent),
+    rgba(7, 14, 25, 0.94);
+}
+
+body[data-screen="game-screen"] .game-topbar-chip::after {
+  opacity: 0.45;
 }
 
 body[data-screen="game-screen"] .game-chip-label {
   position: relative;
   z-index: 1;
-  text-transform: none;
+  font-family: var(--font-heading);
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+body[data-screen="game-screen"] .game-room-chip strong,
+body[data-screen="game-screen"] .game-time-chip strong {
+  font-size: 1rem;
 }
 
 body[data-screen="game-screen"] .game-room-chip strong,

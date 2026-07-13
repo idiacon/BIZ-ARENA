@@ -5,13 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Biz Arena</title>
     <link rel="icon" type="image/svg+xml" href="/assets/biz-arena-logo.svg" />
+    <link rel="stylesheet" href="/styles/design-system.css" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles/teacher.css" />
+    <link rel="stylesheet" href="/styles/student.css" />
     <link rel="stylesheet" href="/styles/runtime.css" />
   </head>
-  <body data-screen="main-menu-screen">
+  <body data-screen="main-menu-screen" data-ui-contract="dual-role-visual-v2">
     <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
     <div class="shell">
-      <nav class="app-sidebar" aria-label="Основная навигация">
+      <nav class="app-sidebar" data-ui-slot="role-navigation" aria-label="Основная навигация">
         <div class="app-sidebar-status">
           <span class="connection-dot" aria-hidden="true"></span>
           <span>Не подключено</span>
@@ -1139,7 +1142,7 @@
             <div id="game-hud" class="hud-grid"></div>
           </section>
 
-          <section class="panel screen-panel span-2 game-control-panel">
+          <section class="panel screen-panel span-2 game-control-panel" data-ui-slot="classroom-hud">
             <div class="game-topbar">
               <div class="game-room-chip game-topbar-chip">
                 <span class="game-chip-label"><svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-cabinet"></use></svg><span>Комната</span></span>

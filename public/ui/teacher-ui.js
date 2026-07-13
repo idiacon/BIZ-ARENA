@@ -1171,9 +1171,11 @@ function renderTeacherPanel() {
     </article>`;
 
   elements.teacherPanel.innerHTML = `
-    <div class="teacher-workspace-grid" data-uiux-slice="teacher-cockpit-2">
+    <div class="teacher-workspace-grid teacher-operations-center"
+      data-uiux-slice="teacher-cockpit-2"
+      data-role-workspace="teacher">
       ${cockpitMarkup}
-      <div class="teacher-workspace-main">
+      <div class="teacher-workspace-main" data-ui-slot="primary-workspace">
         ${gameDashboardMarkup}
         <details class="teacher-secondary-drawer">
           <summary>
@@ -1189,7 +1191,7 @@ function renderTeacherPanel() {
           </div>
         </details>
       </div>
-      <aside class="teacher-workspace-side" aria-label="Инструменты преподавателя">
+      <aside class="teacher-workspace-side" data-ui-slot="role-action-rail" aria-label="Инструменты преподавателя">
         ${teacherControlMarkup}
         ${teacherNowMarkup}
         <details class="teacher-crisis-drawer" open>

@@ -2874,8 +2874,37 @@ function exportMarketReplayReport() {
   URL.revokeObjectURL(url);
 }
 
+function studentFactoryOperationsRenderSignature() {
+  const room = state.room;
+  const normalizedDepartment = ['command', 'warehouse', 'workforce', 'assembly', 'sales'].includes(state.factoryDepartment)
+    ? state.factoryDepartment
+    : 'command';
+  return {
+    factoryRoom: isFactoryRoom(),
+    room: {
+      code: room?.code || '',
+      status: room?.status || '',
+      day: room?.day || 0,
+      tick: room?.tick || 0,
+      tickMode: room?.tickMode || '',
+      settings: room?.settings || null,
+      factoryScenario: room?.factoryScenario || null,
+      factoryStats: room?.factoryStats || null,
+      market: room?.market || null,
+      activeEvent: room?.activeEvent || null,
+      helpRequest: room?.helpRequest || null,
+    },
+    player: state.player,
+    factoryDepartment: normalizedDepartment,
+    tutorial: state.tutorial,
+    language: state.settings.language,
+    performanceMode: resolvedPerformanceMode(),
+  };
+}
+
 function renderFactoryOperations() {
   if (!elements.factoryOperations || !elements.legacyOperationsGrid) return;
+  if (!hasRenderSignatureChanged('studentFactoryOperations', studentFactoryOperationsRenderSignature())) return;
   if (!isFactoryRoom()) {
     elements.factoryOperations.classList.add('hidden');
     elements.factoryOperations.innerHTML = '';
@@ -2985,13 +3014,14 @@ function renderFactoryOperations() {
     </article>
   `;
 
-  let detailTitle = '';
-  let detailDescription = '';
-  let detailBadge = '';
-  let detailMetrics = '';
-  let detailBody = '';
+  const buildFactoryDepartmentDetail = department => {
+    let detailTitle = '';
+    let detailDescription = '';
+    let detailBadge = '';
+    let detailMetrics = '';
+    let detailBody = '';
 
-  if (selectedDepartment === 'warehouse') {
+  if (department === 'warehouse') {
     detailTitle = t('dept_warehouse');
     detailDescription = t('factory_warehouse_desc');
     detailBadge = `${totalComponents} ${t('factory_total_parts')}`;
@@ -3013,7 +3043,7 @@ function renderFactoryOperations() {
           </article>
         `).join('')}
       </div>`;
-  } else if (selectedDepartment === 'workforce') {
+  } else if (department === 'workforce') {
     detailTitle = t('dept_people_office');
     detailDescription = t('factory_people_desc');
     detailBadge = `${workers.length} ${t('factory_active_workers')}`;
@@ -3043,7 +3073,7 @@ function renderFactoryOperations() {
           })()}
         `).join('') || `<div class="market-item">${t('factory_no_candidates')}</div>`}
       </div>`;
-  } else if (selectedDepartment === 'assembly') {
+  } else if (department === 'assembly') {
     detailTitle = t('dept_assembly_hall');
     detailDescription = t('factory_assembly_desc');
     detailBadge = `${factory.assemblyCapacity} ${t('factory_units_ready')}`;
@@ -3093,7 +3123,7 @@ function renderFactoryOperations() {
           </article>
         `).join('')}
       </div>`;
-  } else if (selectedDepartment === 'sales') {
+  } else if (department === 'sales') {
     const saleDraft = getFactorySaleDraft(factory);
     detailTitle = t('dept_sales_office');
     detailDescription = t('factory_sales_desc');
@@ -3158,6 +3188,23 @@ function renderFactoryOperations() {
         </article>
       </div>`;
   }
+
+    return { detailTitle, detailDescription, detailBadge, detailMetrics, detailBody };
+  };
+
+  const factoryDepartmentDetailMarkup = ({ detailTitle, detailDescription, detailBadge, detailMetrics, detailBody }) => `
+    <section class="factory-detail" data-factory-department-detail="${escapeHtml(state.factoryDepartment)}">
+      <div class="factory-detail-head">
+        <div>
+          <h3>${detailTitle}</h3>
+          <p class="muted">${detailDescription}</p>
+        </div>
+        <div class="factory-detail-badge">${detailBadge}</div>
+      </div>
+      <div class="factory-metrics">${detailMetrics}</div>
+      ${detailBody}
+    </section>`;
+  const selectedDepartmentDetail = buildFactoryDepartmentDetail(selectedDepartment);
 
   elements.factoryOperations.classList.remove('hidden');
   elements.legacyOperationsGrid.classList.add('hidden');
@@ -3248,30 +3295,40 @@ function renderFactoryOperations() {
       </section>
       ${renderTurnChecklist(state.player.turnChecklist || [])}
       ${renderTurnReviewCard(state.player.turnReview)}
-      <section class="factory-detail">
-        <div class="factory-detail-head">
-          <div>
-            <h3>${detailTitle}</h3>
-            <p class="muted">${detailDescription}</p>
-          </div>
-          <div class="factory-detail-badge">${detailBadge}</div>
-        </div>
-        <div class="factory-metrics">${detailMetrics}</div>
-        ${detailBody}
-      </section>
+      ${factoryDepartmentDetailMarkup(selectedDepartmentDetail)}
     </div>`;
+
+  const patchFactoryDepartment = department => {
+    const nextDepartment = ['command', 'warehouse', 'workforce', 'assembly', 'sales'].includes(department)
+      ? department
+      : 'command';
+    setFactoryDepartment(nextDepartment);
+    hasRenderSignatureChanged('studentFactoryOperations', studentFactoryOperationsRenderSignature());
+    elements.factoryOperations.querySelectorAll('[data-factory-node]').forEach(node => {
+      node.classList.toggle('active', node.dataset.factoryNode === nextDepartment);
+      node.setAttribute('aria-pressed', node.dataset.factoryNode === nextDepartment ? 'true' : 'false');
+    });
+    elements.factoryOperations.querySelectorAll('[data-scene-station]').forEach(node => {
+      const selected = node.dataset.sceneStation === nextDepartment
+        || (node.dataset.sceneStation === 'purchase' && nextDepartment === 'warehouse')
+        || (node.dataset.sceneStation === 'market' && nextDepartment === 'sales');
+      node.toggleAttribute('data-selected-station', selected);
+    });
+    const currentDetail = elements.factoryOperations.querySelector('[data-factory-department-detail]');
+    if (!currentDetail) return;
+    currentDetail.outerHTML = factoryDepartmentDetailMarkup(buildFactoryDepartmentDetail(nextDepartment));
+    bindFactoryDepartmentDetail(elements.factoryOperations.querySelector('[data-factory-department-detail]'));
+  };
 
   elements.factoryOperations.querySelectorAll('[data-factory-node]').forEach(button => {
     button.addEventListener('click', () => {
-      setFactoryDepartment(button.dataset.factoryNode);
-      renderFactoryOperations();
+      patchFactoryDepartment(button.dataset.factoryNode);
     });
   });
   bindTurnChecklist(elements.factoryOperations);
   elements.factoryOperations.querySelectorAll('[data-guided-factory-node]').forEach(button => {
     button.addEventListener('click', () => {
-      setFactoryDepartment(button.dataset.guidedFactoryNode);
-      renderFactoryOperations();
+      patchFactoryDepartment(button.dataset.guidedFactoryNode);
     });
   });
   elements.factoryOperations.querySelectorAll('[data-guided-game-tab]').forEach(button => {
@@ -3291,9 +3348,10 @@ function renderFactoryOperations() {
       const department = button.dataset.studentRouteDepartment;
       const component = button.dataset.studentRouteComponent;
       if (component) setFactoryPurchaseComponent(component);
-      if (department) setFactoryDepartment(department);
-      setGameTab(button.dataset.studentRouteTab || 'operations');
-      renderRoomState();
+      const nextTab = button.dataset.studentRouteTab || 'operations';
+      if (department && nextTab === 'operations') patchFactoryDepartment(department);
+      setGameTab(nextTab);
+      if (component) renderFactoryPurchases();
     });
   });
   elements.factoryOperations.querySelector('[data-request-teacher-help]')?.addEventListener('click', () => {
@@ -3308,52 +3366,56 @@ function renderFactoryOperations() {
     startTutorial();
   });
 
-  elements.factoryOperations.querySelectorAll('[data-factory-action="hire-worker"]').forEach(button => {
-    button.addEventListener('click', () => sendAction('hire-worker', button.dataset.candidateId));
-  });
-  elements.factoryOperations.querySelectorAll('[data-factory-action="buy-component"]').forEach(button => {
-    button.addEventListener('click', () => sendAction('buy-component', {
-      componentKey: button.dataset.componentKey,
-      quantity: Number(button.dataset.componentQuantity),
-    }));
-  });
-  elements.factoryOperations.querySelectorAll('[data-purchase-shortcut]').forEach(button => {
-    button.addEventListener('click', () => {
-      setFactoryPurchaseComponent(button.dataset.purchaseShortcut);
-      setGameTab('purchase');
-      renderFactoryPurchases();
+  function bindFactoryDepartmentDetail(root) {
+    if (!root) return;
+    root.querySelectorAll('[data-factory-action="hire-worker"]').forEach(button => {
+      button.addEventListener('click', () => sendAction('hire-worker', button.dataset.candidateId));
     });
-  });
-  elements.factoryOperations.querySelectorAll('[data-factory-action="assemble-product"]').forEach(button => {
-    const value = button.dataset.assembleValue === 'max' ? 'max' : Number(button.dataset.assembleValue);
-    button.addEventListener('click', () => sendAction('assemble-product', value));
-  });
-  const salePriceInput = elements.factoryOperations.querySelector('#factory-sale-price');
-  const saleQuantityInput = elements.factoryOperations.querySelector('#factory-sale-quantity');
-  if (salePriceInput && saleQuantityInput) {
-    const saveDraft = () => {
-      state.factorySaleDraft = {
-        roomCode: state.room?.code || '',
-        playerId: state.player?.id || '',
-        price: String(salePriceInput.value ?? ''),
-        quantity: String(saleQuantityInput.value ?? ''),
+    root.querySelectorAll('[data-factory-action="buy-component"]').forEach(button => {
+      button.addEventListener('click', () => sendAction('buy-component', {
+        componentKey: button.dataset.componentKey,
+        quantity: Number(button.dataset.componentQuantity),
+      }));
+    });
+    root.querySelectorAll('[data-purchase-shortcut]').forEach(button => {
+      button.addEventListener('click', () => {
+        setFactoryPurchaseComponent(button.dataset.purchaseShortcut);
+        setGameTab('purchase');
+        renderFactoryPurchases();
+      });
+    });
+    root.querySelectorAll('[data-factory-action="assemble-product"]').forEach(button => {
+      const value = button.dataset.assembleValue === 'max' ? 'max' : Number(button.dataset.assembleValue);
+      button.addEventListener('click', () => sendAction('assemble-product', value));
+    });
+    const salePriceInput = root.querySelector('#factory-sale-price');
+    const saleQuantityInput = root.querySelector('#factory-sale-quantity');
+    if (salePriceInput && saleQuantityInput) {
+      const saveDraft = () => {
+        state.factorySaleDraft = {
+          roomCode: state.room?.code || '',
+          playerId: state.player?.id || '',
+          price: String(salePriceInput.value ?? ''),
+          quantity: String(saleQuantityInput.value ?? ''),
+        };
       };
-    };
-    salePriceInput.addEventListener('input', saveDraft);
-    saleQuantityInput.addEventListener('input', saveDraft);
+      salePriceInput.addEventListener('input', saveDraft);
+      saleQuantityInput.addEventListener('input', saveDraft);
+    }
+    root.querySelector('[data-factory-action="set-sale-offer"]')?.addEventListener('click', () => {
+      sendAction('set-sale-offer', {
+        price: Number(root.querySelector('#factory-sale-price')?.value || factory.saleOffer.price),
+        quantity: Number(root.querySelector('#factory-sale-quantity')?.value || 0),
+      });
+    });
+    root.querySelector('[data-factory-action="clear-sale-offer"]')?.addEventListener('click', () => {
+      sendAction('set-sale-offer', {
+        price: Number(root.querySelector('#factory-sale-price')?.value || factory.saleOffer.price),
+        quantity: 0,
+      });
+    });
   }
-  elements.factoryOperations.querySelector('[data-factory-action="set-sale-offer"]')?.addEventListener('click', () => {
-    sendAction('set-sale-offer', {
-      price: Number(document.querySelector('#factory-sale-price')?.value || factory.saleOffer.price),
-      quantity: Number(document.querySelector('#factory-sale-quantity')?.value || 0),
-    });
-  });
-  elements.factoryOperations.querySelector('[data-factory-action="clear-sale-offer"]')?.addEventListener('click', () => {
-    sendAction('set-sale-offer', {
-      price: Number(document.querySelector('#factory-sale-price')?.value || factory.saleOffer.price),
-      quantity: 0,
-    });
-  });
+  bindFactoryDepartmentDetail(elements.factoryOperations.querySelector('[data-factory-department-detail]'));
   elements.factoryOperations.querySelectorAll('[data-decision-option]').forEach(button => {
     button.addEventListener('click', () => {
       sendAction('resolve-decision-round', {

@@ -10,6 +10,57 @@ const ROLE_NAVIGATION_CONTRACT = Object.freeze({
   student: Object.freeze(['overview', 'purchase', 'production', 'market', 'team', 'report']),
 });
 
+const DUAL_ROLE_VISUAL_CONTRACT = Object.freeze({
+  contract: 'dual-role-visual-v2',
+  shared: Object.freeze({
+    slots: Object.freeze([
+      'role-navigation',
+      'classroom-hud',
+      'primary-workspace',
+      'role-action-rail',
+    ]),
+    desktopViewports: Object.freeze([
+      '1000x760',
+      '1440x900',
+      '1920x1080',
+      '2560x1440',
+      '3440x1440',
+    ]),
+  }),
+  teacher: Object.freeze({
+    experience: 'operations-center',
+    primaryActionSlot: 'role-action-rail',
+    surfaces: Object.freeze([
+      'class-readiness',
+      'class-bottlenecks',
+      'market-signals',
+      'class-finance',
+      'teacher-controls',
+    ]),
+    forbiddenSurfaces: Object.freeze([
+      'student-private-actions',
+      'student-private-strategy',
+    ]),
+  }),
+  student: Object.freeze({
+    experience: 'premium-tycoon-2.5d',
+    primaryActionSlot: 'role-action-rail',
+    surfaces: Object.freeze([
+      'factory-scene',
+      'company-kpis',
+      'turn-route',
+      'next-action',
+      'public-market',
+    ]),
+    forbiddenSurfaces: Object.freeze([
+      'teacher-controls',
+      'class-dashboard',
+      'teacher-event-catalog',
+      'admin-storage-state',
+    ]),
+  }),
+});
+
 const DECISION_ROUND_TITLE_KEYS = Object.freeze({
   supplier_window: 'decision_round_supplier_title',
   workforce_policy: 'decision_round_workforce_title',
@@ -118,6 +169,7 @@ window.BizArenaUiContracts = Object.freeze({
   gameTabs: GAME_TAB_ROLE_CONTRACT,
   screenPhases: SCREEN_PHASE_CONTRACT,
   navigation: ROLE_NAVIGATION_CONTRACT,
+  dualRoleVisual: DUAL_ROLE_VISUAL_CONTRACT,
   visualQuality: VISUAL_QUALITY_CONTRACT,
   crisisCards: CRISIS_CARDS,
   decisionRoundTitleKeys: DECISION_ROUND_TITLE_KEYS,

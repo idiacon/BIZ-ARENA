@@ -61,6 +61,19 @@ async function connectCdp(wsUrl) {
   };
 }
 
+async function connectRemoteBrowser({ cdpPort, width = 1440, height = 900, label = 'remote browser' }) {
+  await waitForHttp(`http://127.0.0.1:${cdpPort}/json/version`);
+  const targets = await readJson(`http://127.0.0.1:${cdpPort}/json`);
+  const target = targets.find(item => item.type === 'page') || targets[0];
+  if (!target?.webSocketDebuggerUrl) throw new Error(`No CDP page target for ${label}`);
+  const cdp = await connectCdp(target.webSocketDebuggerUrl);
+  await cdp.send('Page.enable');
+  await cdp.send('Runtime.enable');
+  await cdp.send('Log.enable');
+  await cdp.send('Emulation.setDeviceMetricsOverride', { width, height, mobile: false, deviceScaleFactor: 1 });
+  return cdp;
+}
+
 async function launchBrowser({ cdpPort, profileDir, width = 1440, height = 900 }) {
   const edgePath = EDGE_CANDIDATES.find(fs.existsSync);
   if (!edgePath) throw new Error('Microsoft Edge is required for classroom E2E');
@@ -125,4 +138,15 @@ function browserErrors(cdp) {
     || (event.method === 'Log.entryAdded' && ['error', 'warning'].includes(event.params?.entry?.level)));
 }
 
-module.exports = { browserErrors, evaluate, installPlayerSession, launchBrowser, navigate, readJson, sleep, waitFor, waitForHttp };
+module.exports = {
+  browserErrors,
+  connectRemoteBrowser,
+  evaluate,
+  installPlayerSession,
+  launchBrowser,
+  navigate,
+  readJson,
+  sleep,
+  waitFor,
+  waitForHttp,
+};

@@ -25,7 +25,13 @@ function sourceFunctionBlock(source, functionName) {
 }
 
 function readPublicStyles() {
-  return ['styles.css', path.join('styles', 'runtime.css')]
+  return [
+    path.join('styles', 'design-system.css'),
+    'styles.css',
+    path.join('styles', 'teacher.css'),
+    path.join('styles', 'student.css'),
+    path.join('styles', 'runtime.css'),
+  ]
     .map(relativePath => fs.readFileSync(path.join(__dirname, '..', 'public', relativePath), 'utf8'))
     .join('\n');
 }
@@ -2069,8 +2075,8 @@ test('UI smoke: create-room difficulty, visual presets, and single game navigati
   assert.match(indexHtml, /data-status="offline"/);
   assert.match(appJs, /statusTone/);
   assert.match(appJs, /closest\('\.game-server-chip'\)\?\.setAttribute\('data-status', statusTone\)/);
-  assert.match(styles, /body\[data-screen="game-screen"\] \.shell[\s\S]*padding: 8px 12px 12px 180px/);
-  assert.match(styles, /body\[data-screen="game-screen"\] \.app-sidebar[\s\S]*width: 160px/);
+  assert.match(styles, /body\[data-screen="game-screen"\] \.shell[\s\S]*padding: 8px 8px 8px calc\(var\(--layout-nav-standard\) \+ 16px\)/);
+  assert.match(styles, /body\[data-screen="game-screen"\] \.app-sidebar[\s\S]*width: var\(--layout-nav-standard\)/);
   assert.match(styles, /\.game-ui-icon[\s\S]*width: 20px/);
   assert.match(styles, /\.logo-symbol\s*{[\s\S]*width: 68px/);
   assert.match(styles, /\.hero-blueprint\s*{[\s\S]*object-fit: cover/);
@@ -2372,6 +2378,261 @@ test('UI contract: role phases, navigation, history and help controls are explic
   assert.match(appJs, /request-teacher-help/);
   assert.match(appJs, /acknowledge-help-request/);
   assert.match(appJs, /resolve-help-request/);
+});
+
+test('UI contract: dual-role visual shell keeps shared slots while separating teacher and student authority', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const roleContractsSource = fs.readFileSync(path.join(publicRoot, 'ui', 'role-contracts.js'), 'utf8');
+  const sandbox = { window: {} };
+
+  vm.runInNewContext(roleContractsSource, sandbox);
+  const visual = sandbox.window.BizArenaUiContracts.dualRoleVisual;
+
+  assert.equal(visual.contract, 'dual-role-visual-v2');
+  assert.deepEqual(Array.from(visual.shared.slots), [
+    'role-navigation',
+    'classroom-hud',
+    'primary-workspace',
+    'role-action-rail',
+  ]);
+  assert.deepEqual(Array.from(visual.shared.desktopViewports), [
+    '1000x760',
+    '1440x900',
+    '1920x1080',
+    '2560x1440',
+    '3440x1440',
+  ]);
+  assert.equal(visual.teacher.experience, 'operations-center');
+  assert.equal(visual.student.experience, 'premium-tycoon-2.5d');
+  assert.equal(visual.teacher.primaryActionSlot, visual.student.primaryActionSlot);
+  assert.equal(visual.teacher.primaryActionSlot, 'role-action-rail');
+  assert.ok(visual.teacher.surfaces.includes('class-readiness'));
+  assert.ok(visual.teacher.surfaces.includes('teacher-controls'));
+  assert.ok(visual.student.surfaces.includes('factory-scene'));
+  assert.ok(visual.student.surfaces.includes('next-action'));
+  assert.ok(visual.student.forbiddenSurfaces.includes('teacher-controls'));
+  assert.ok(visual.student.forbiddenSurfaces.includes('class-dashboard'));
+});
+
+test('UI contract: dual-role desktop shell loads shared tokens before role and runtime layers', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const indexHtml = fs.readFileSync(path.join(publicRoot, 'index.html'), 'utf8');
+  const designSystem = fs.readFileSync(path.join(publicRoot, 'styles', 'design-system.css'), 'utf8');
+  const teacherStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'teacher.css'), 'utf8');
+  const studentStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'student.css'), 'utf8');
+
+  assert.match(indexHtml, /styles\/design-system\.css[\s\S]*styles\.css[\s\S]*styles\/teacher\.css[\s\S]*styles\/student\.css[\s\S]*styles\/runtime\.css/);
+  assert.match(indexHtml, /<body[^>]*data-ui-contract="dual-role-visual-v2"/);
+  assert.match(designSystem, /--layout-nav-compact:/);
+  assert.match(designSystem, /--layout-action-rail:/);
+  assert.match(designSystem, /--font-heading:/);
+  assert.match(designSystem, /--status-info:/);
+  assert.match(teacherStyles, /data-player-role="teacher"/);
+  assert.match(studentStyles, /data-player-role="student"/);
+});
+
+test('UI contract: desktop typography is packaged locally for Cyrillic browser and Electron use', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const fontRoot = path.join(publicRoot, 'assets', 'fonts');
+  const designSystem = fs.readFileSync(path.join(publicRoot, 'styles', 'design-system.css'), 'utf8');
+  const requiredFiles = [
+    'ibm-plex-sans-regular.woff2',
+    'ibm-plex-sans-semibold.woff2',
+    'ibm-plex-sans-bold.woff2',
+    'ibm-plex-sans-condensed-regular.woff2',
+    'ibm-plex-sans-condensed-semibold.woff2',
+    'fira-code-regular.woff2',
+    'fira-code-semibold.woff2',
+    'OFL-IBM-Plex.txt',
+    'OFL-Fira-Code.txt',
+  ];
+
+  requiredFiles.forEach(fileName => assert.equal(fs.existsSync(path.join(fontRoot, fileName)), true, fileName));
+  assert.match(designSystem, /@font-face[\s\S]*font-family: "IBM Plex Sans"/);
+  assert.match(designSystem, /@font-face[\s\S]*font-family: "IBM Plex Sans Condensed"/);
+  assert.match(designSystem, /@font-face[\s\S]*font-family: "Fira Code"/);
+  assert.doesNotMatch(designSystem, /fonts\.googleapis\.com|https?:\/\//);
+});
+
+test('UI contract: game navigation and classroom HUD occupy stable desktop shell slots', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const indexHtml = fs.readFileSync(path.join(publicRoot, 'index.html'), 'utf8');
+  const styles = readPublicStyles();
+
+  assert.match(indexHtml, /<nav class="app-sidebar"[^>]*data-ui-slot="role-navigation"/);
+  assert.match(indexHtml, /class="panel screen-panel span-2 game-control-panel"[^>]*data-ui-slot="classroom-hud"/);
+  assert.match(styles, /body\[data-screen="game-screen"\] \.shell[\s\S]*padding: 8px 8px 8px calc\(var\(--layout-nav-standard\) \+ 16px\)/);
+  assert.match(styles, /body\[data-screen="game-screen"\] \.app-sidebar[\s\S]*width: var\(--layout-nav-standard\)/);
+  assert.match(styles, /@media \(min-width: 901px\) and \(max-width: 1180px\)[\s\S]*--layout-nav-standard: var\(--layout-nav-compact\)/);
+  assert.match(styles, /data-player-role="student"\] \.game-student-link-chip[\s\S]*display: none/);
+});
+
+test('UI contract: teacher operations center separates class workspace from authoritative action rail', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const teacherUi = fs.readFileSync(path.join(publicRoot, 'ui', 'teacher-ui.js'), 'utf8');
+  const teacherStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'teacher.css'), 'utf8');
+  const renderTeacherPanel = sourceFunctionBlock(teacherUi, 'renderTeacherPanel');
+
+  assert.match(renderTeacherPanel, /teacher-operations-center/);
+  assert.match(renderTeacherPanel, /class="teacher-workspace-main" data-ui-slot="primary-workspace"/);
+  assert.match(renderTeacherPanel, /class="teacher-workspace-side" data-ui-slot="role-action-rail"/);
+  assert.match(renderTeacherPanel, /teacherControlMarkup/);
+  assert.match(renderTeacherPanel, /data-teacher-action/);
+  assert.doesNotMatch(renderTeacherPanel, /data-admin-action/);
+  assert.match(teacherStyles, /\.teacher-operations-center[\s\S]*grid-template-columns:[^;]*minmax\(250px,[^;]*minmax\(0, 1fr\)[^;]*minmax\(280px/);
+  assert.match(teacherStyles, /\.teacher-workspace-side[\s\S]*position: sticky/);
+});
+
+test('UI contract: student tycoon workspace keeps live factory hotspots and never emits teacher-only turn actions', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const studentUi = fs.readFileSync(path.join(publicRoot, 'ui', 'student-ui.js'), 'utf8');
+  const studentStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'student.css'), 'utf8');
+  const renderStudentCommandPanel = sourceFunctionBlock(studentUi, 'renderStudentCommandPanel');
+  const renderStudentCommandSupport = sourceFunctionBlock(studentUi, 'renderStudentCommandSupport');
+  const renderStudentFactoryScene = sourceFunctionBlock(studentUi, 'renderStudentFactoryScene');
+  const renderStudentRoutePanel = sourceFunctionBlock(studentUi, 'renderStudentRoutePanel');
+
+  assert.match(renderStudentCommandPanel, /student-tycoon-console[^>]*data-ui-slot="primary-workspace"/);
+  assert.match(renderStudentCommandSupport, /data-ui-slot="role-action-rail"/);
+  assert.match(renderStudentFactoryScene, /data-student-factory-scene="live"[^>]*data-scene-presentation="2\.5d"/);
+  ['purchase', 'workforce', 'assembly', 'market'].forEach(station => {
+    assert.match(renderStudentFactoryScene, new RegExp(`key: '${station}'`));
+  });
+  assert.match(renderStudentRoutePanel, /target\.action === 'next-turn'[\s\S]*targetTab = 'events'/);
+  assert.doesNotMatch(renderStudentRoutePanel, /data-student-route-action="\$\{escapeHtml\(target\.action\)/);
+  assert.match(studentStyles, /\.student-tycoon-console[\s\S]*\.student-command-stage[\s\S]*grid-template-columns:[^;]*minmax\(0, 1fr\)[^;]*minmax\(280px/);
+  assert.match(studentStyles, /data-performance-mode="full"[\s\S]*\.student-factory-scene[\s\S]*min-height:/);
+});
+
+test('UI performance contract: Full and Standard load bounded factory scene assets while Lite stays image-free', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const fullAsset = path.join(publicRoot, 'assets', 'factory-blueprint-full.jpg');
+  const standardAsset = path.join(publicRoot, 'assets', 'factory-blueprint-standard.jpg');
+  const styles = readPublicStyles();
+
+  assert.ok(fs.existsSync(fullAsset), 'Full factory scene asset must be packaged');
+  assert.ok(fs.existsSync(standardAsset), 'Standard factory scene asset must be packaged');
+  assert.ok(fs.statSync(fullAsset).size <= 1.5 * 1024 * 1024, 'Full factory scene asset exceeds 1.5 MB');
+  assert.ok(fs.statSync(standardAsset).size <= 700 * 1024, 'Standard factory scene asset exceeds 700 KB');
+  assert.match(styles, /data-performance-mode="full"[\s\S]*factory-blueprint-full\.jpg/);
+  assert.match(styles, /data-performance-mode="standard"[\s\S]*factory-blueprint-standard\.jpg/);
+  assert.match(styles, /data-performance-mode="lite"[\s\S]*\.student-factory-scene[\s\S]*background: var\(--surface-raised\)/);
+});
+
+test('UI QA contract: dual-role screenshot runner covers all student performance profiles and browser errors', () => {
+  const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-classroom-flow-screenshots.js'), 'utf8');
+
+  assert.match(captureScript, /const STUDENT_QUALITY_PROFILES = \['full', 'standard', 'lite'\]/);
+  assert.match(captureScript, /async function setPerformanceMode\(cdp, mode\)/);
+  assert.match(captureScript, /student game \$\{mode\} \$\{viewport\.width\}px/);
+  assert.match(captureScript, /student-game-full-1440x900\.png/);
+  assert.match(captureScript, /student-game-standard-1440x900\.png/);
+  assert.match(captureScript, /student-game-lite-1000x760\.png/);
+  assert.match(captureScript, /browserErrors/);
+  assert.match(captureScript, /browserErrors\.length === 0/);
+});
+
+test('UI performance contract: student factory and market rail use independent render signatures', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const appJs = fs.readFileSync(path.join(publicRoot, 'app.js'), 'utf8');
+  const studentUi = fs.readFileSync(path.join(publicRoot, 'ui', 'student-ui.js'), 'utf8');
+  const factorySignature = sourceFunctionBlock(appJs, 'studentFactoryOperationsRenderSignature');
+  const renderFactoryOperations = sourceFunctionBlock(appJs, 'renderFactoryOperations');
+  const marketSignature = sourceFunctionBlock(studentUi, 'studentMarketRailRenderSignature');
+  const renderGameMarketRail = sourceFunctionBlock(studentUi, 'renderGameMarketRail');
+
+  assert.match(factorySignature, /factoryDepartment/);
+  assert.match(factorySignature, /player: state\.player/);
+  assert.doesNotMatch(factorySignature, /roomVersion|lastRoomVersion/);
+  assert.match(renderFactoryOperations, /hasRenderSignatureChanged\('studentFactoryOperations'/);
+
+  assert.match(marketSignature, /market: room\?\.market/);
+  assert.match(marketSignature, /factoryStats: room\?\.factoryStats/);
+  assert.doesNotMatch(marketSignature, /roomVersion|lastRoomVersion/);
+  assert.match(renderGameMarketRail, /hasRenderSignatureChanged\('studentMarketRail'/);
+});
+
+test('UI QA contract: screenshot runner proves unchanged refresh and timer preserve role-owned DOM roots', () => {
+  const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-classroom-flow-screenshots.js'), 'utf8');
+
+  assert.match(captureScript, /async function verifyStableRoleDom\(cdp, selector, label\)/);
+  assert.match(captureScript, /window\.__bizArenaStableRoleRoot/);
+  assert.match(captureScript, /await refreshState\(\)/);
+  assert.match(captureScript, /sameAfterUnchangedRefresh/);
+  assert.match(captureScript, /sameAfterTimerTick/);
+  assert.match(captureScript, /stableRoleDom/);
+});
+
+test('UI QA contract: screenshot runner covers live help, paused, finished, and partial factory navigation states', () => {
+  const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-classroom-flow-screenshots.js'), 'utf8');
+
+  assert.match(captureScript, /async function verifyPartialFactoryNavigation\(cdp\)/);
+  assert.match(captureScript, /sameRootAfterWorkforce/);
+  assert.match(captureScript, /sameRootAfterAssembly/);
+  assert.match(captureScript, /request-teacher-help/);
+  assert.match(captureScript, /teacher-help-request-1440x900\.png/);
+  assert.match(captureScript, /student-help-request-1440x900\.png/);
+  assert.match(captureScript, /action: 'pause-game'/);
+  assert.match(captureScript, /teacher-paused-1440x900\.png/);
+  assert.match(captureScript, /student-paused-1440x900\.png/);
+  assert.match(captureScript, /action: 'finish-room'/);
+  assert.match(captureScript, /teacher-results-1440x900\.png/);
+  assert.match(captureScript, /student-results-1440x900\.png/);
+  assert.match(captureScript, /stateMatrix/);
+});
+
+test('UI accessibility contract: screenshot runner checks focus order, reduced motion, and live scene geometry', () => {
+  const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-classroom-flow-screenshots.js'), 'utf8');
+
+  assert.match(captureScript, /async function collectFocusOrderAudit\(cdp, label\)/);
+  assert.match(captureScript, /role-navigation[\s\S]*classroom-hud[\s\S]*primary-workspace[\s\S]*role-action-rail/);
+  assert.match(captureScript, /async function verifyReducedMotion\(cdp\)/);
+  assert.match(captureScript, /bizArenaAnimationMode/);
+  assert.match(captureScript, /dataset\.animationMode/);
+  assert.match(captureScript, /async function collectStudentSceneAudit\(cdp\)/);
+  assert.match(captureScript, /hotspotOverlaps/);
+  assert.match(captureScript, /minimumHotspotSize/);
+  assert.match(captureScript, /sceneAssetDecoded/);
+  assert.match(captureScript, /async function collectTeacherWorkspaceAudit\(cdp\)/);
+  assert.match(captureScript, /dataAreaRatio/);
+  assert.match(captureScript, /accessibility/);
+});
+
+test('Electron QA contract: packaged smoke captures and audits teacher and student role surfaces through CDP', () => {
+  const root = path.join(__dirname, '..');
+  const cdpBrowser = fs.readFileSync(path.join(root, 'scripts', 'lib', 'cdp-browser.js'), 'utf8');
+  const packagedSmoke = fs.readFileSync(path.join(root, 'scripts', 'smoke-packaged-electron.js'), 'utf8');
+
+  assert.match(cdpBrowser, /async function connectRemoteBrowser\(/);
+  assert.match(cdpBrowser, /connectRemoteBrowser,/);
+  assert.match(packagedSmoke, /--remote-debugging-port=/);
+  assert.match(packagedSmoke, /packaged-smoke-screenshots/);
+  assert.match(packagedSmoke, /teacher-operations-center\.png/);
+  assert.match(packagedSmoke, /student-premium-tycoon\.png/);
+  assert.match(packagedSmoke, /async function auditElectronRoleSurface\(/);
+  assert.match(packagedSmoke, /teacher-operations-center/);
+  assert.match(packagedSmoke, /student-tycoon-console/);
+  assert.match(packagedSmoke, /browserErrors/);
+  assert.match(packagedSmoke, /visualQa/);
+});
+
+test('UI performance gate: reproducible 30-player Chromium traces enforce the interaction p95 budget', () => {
+  const root = path.join(__dirname, '..');
+  const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const traceScript = fs.readFileSync(path.join(root, 'scripts', 'trace-ui-performance.js'), 'utf8');
+
+  assert.equal(packageJson.scripts['trace:ui-performance'], 'node scripts/trace-ui-performance.js');
+  assert.match(packageJson.scripts.check, /node --check scripts\/trace-ui-performance\.js/);
+  assert.match(traceScript, /const STUDENT_COUNT = 30/);
+  assert.match(traceScript, /const RUN_COUNT = 3/);
+  assert.match(traceScript, /const INTERACTIONS_PER_RUN = 20/);
+  assert.match(traceScript, /const CPU_SLOWDOWN_RATE = 4/);
+  assert.match(traceScript, /const INTERACTION_P95_BUDGET_MS = 200/);
+  assert.match(traceScript, /Emulation\.setCPUThrottlingRate/);
+  assert.match(traceScript, /Tracing\.start/);
+  assert.match(traceScript, /Tracing\.end/);
+  assert.match(traceScript, /\.runtime[^\n]*ui-performance/);
+  assert.match(traceScript, /interactionP95Ms/);
 });
 
 test('UI quality contract: Full, Standard and Lite share one role-based product structure', () => {
@@ -2684,16 +2945,15 @@ test('UI contract: market side rail is rendered from live game state', () => {
   assert.match(renderGameMarketRail, /factoryMode \? factoryMarketSignalMarkup : contractSectionMarkup/);
   assert.match(renderGameMarketRail, /Незакрытый спрос/);
   assert.match(renderGameMarketRail, /Лидер хода/);
-  assert.match(renderGameMarketRail, /data-rail-action/);
+  assert.doesNotMatch(renderGameMarketRail, /data-rail-action/);
   assert.match(renderGameMarketRail, /data-rail-game-tab/);
-  assert.match(renderGameMarketRail, /sendAction\(button\.dataset\.railAction\)/);
+  assert.doesNotMatch(renderGameMarketRail, /sendAction\(button\.dataset\.railAction\)/);
   assert.match(renderGameMarketRail, /setGameTab\(button\.dataset\.railGameTab\)/);
 
   assert.match(styles, /\.rail-live-market-card/);
   assert.match(styles, /\.market-rail-stats/);
   assert.match(styles, /\.factory-market-signal-grid/);
   assert.match(styles, /\.factory-market-leader/);
-  assert.match(styles, /\.rail-control-grid/);
   assert.match(indexHtml, /<aside class="game-market-rail" aria-label="Рынок и действия"><\/aside>/);
   assert.doesNotMatch(indexHtml, /class="game-side-rail"/);
   assert.match(captureScript, /factory market rail contract/);

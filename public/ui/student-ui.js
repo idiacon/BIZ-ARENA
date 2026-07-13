@@ -92,8 +92,34 @@ function marketRailSparkline(history) {
   }).join(' ');
 }
 
+function studentMarketRailRenderSignature() {
+  const room = state.room;
+  const player = state.player;
+  return {
+    teacherHost: Boolean(player?.isTeacherHost),
+    room: {
+      code: room?.code || '',
+      status: room?.status || '',
+      day: room?.day || 0,
+      tick: room?.tick || 0,
+      factoryScenario: room?.factoryScenario || null,
+      contractBoard: room?.contractBoard || null,
+    },
+    market: room?.market || null,
+    factoryStats: room?.factoryStats || null,
+    player: {
+      price: player?.price || 0,
+      factory: player?.factory || null,
+      turnGuide: player?.turnGuide || null,
+    },
+    viewer: isTeacherViewer() ? 'teacher' : 'student',
+    language: state.settings.language,
+  };
+}
+
 function renderGameMarketRail() {
   if (!elements.gameMarketRail) return;
+  if (!hasRenderSignatureChanged('studentMarketRail', studentMarketRailRenderSignature())) return;
   if (state.player?.isTeacherHost) {
     elements.gameMarketRail.innerHTML = '';
     return;
@@ -122,11 +148,7 @@ function renderGameMarketRail() {
   const contracts = factoryMode ? [] : (room.contractBoard || []).slice(0, 2);
   const step = factoryMode ? nextGuidedFactoryStep() : null;
   const teacherView = isTeacherViewer();
-  const canHostControl = Boolean(player.isHost && !gameIsFinished());
-  const pauseEnabled = canHostControl && room.status === 'running';
-  const resumeEnabled = canHostControl && room.status === 'paused';
-  const nextEnabled = canHostControl && room.status === 'running';
-  const finishEnabled = canHostControl && ['running', 'paused', 'lobby'].includes(room.status);
+  const stepTab = step?.action === 'next-turn' ? 'events' : (step?.tab || 'operations');
   const teacherCopy = teacherView
     ? `<button type="button" class="ghost" data-rail-game-tab="teacher">Открыть пульт</button>
        <button type="button" class="ghost" data-rail-game-tab="intel">Подсказка класса</button>`
@@ -135,7 +157,7 @@ function renderGameMarketRail() {
         <strong>${escapeHtml(step?.title || 'Следите за маршрутом команды')}</strong>
         <small>${escapeHtml(step?.why || 'Следующее действие показано в верхней панели.')}</small>
       </div>
-      <button type="button" class="ghost" data-rail-game-tab="${escapeHtml(step?.tab || 'operations')}">${escapeHtml(step?.label || 'Перейти к действию')}</button>`;
+      <button type="button" class="ghost" data-rail-game-tab="${escapeHtml(stepTab)}">${escapeHtml(step?.action === 'next-turn' ? 'Открыть отчёт хода' : (step?.label || 'Перейти к действию'))}</button>`;
   const contractMarkup = contracts.length
     ? contracts.map(contract => {
       const progress = Number(contract.progress || 0);
@@ -210,23 +232,10 @@ function renderGameMarketRail() {
     <section class="side-rail-card">
       <h3>${teacherView ? 'Преподаватель' : 'Помощь'}</h3>
       ${teacherCopy}
-    </section>
-    <section class="side-rail-card">
-      <h3>Управление матчем</h3>
-      <div class="rail-control-grid">
-        <button type="button" class="ghost" data-rail-action="pause-game" ${pauseEnabled ? '' : 'disabled'}>Пауза</button>
-        <button type="button" class="ghost" data-rail-action="resume-game" ${resumeEnabled ? '' : 'disabled'}>Продолжить</button>
-        <button type="button" class="ghost" data-rail-action="next-turn" ${nextEnabled ? '' : 'disabled'}>Следующий ход</button>
-        <button type="button" class="ghost danger-button" data-rail-action="finish-game" ${finishEnabled ? '' : 'disabled'}>Завершить</button>
-      </div>
-      <small>${player.isHost ? 'Кнопки активны только для хоста комнаты.' : 'Управление доступно преподавателю.'}</small>
     </section>`;
 
   elements.gameMarketRail.querySelectorAll('[data-rail-game-tab]').forEach(button => {
     button.addEventListener('click', () => setGameTab(button.dataset.railGameTab));
-  });
-  elements.gameMarketRail.querySelectorAll('[data-rail-action]').forEach(button => {
-    button.addEventListener('click', () => sendAction(button.dataset.railAction));
   });
 }
 
@@ -235,11 +244,12 @@ function renderGuidedAction() {
   if (config.uiMode !== 'guided' || !isFactoryRoom()) return '';
   const step = nextGuidedFactoryStep();
   if (!step) return '';
-  const control = step.action
+  const guidedTab = step.action === 'next-turn' ? 'events' : step.tab;
+  const control = step.action && step.action !== 'next-turn'
     ? `<button type="button" data-guided-action="${step.action}">${step.label}</button>`
-    : step.tab
-      ? `<button type="button" data-guided-game-tab="${step.tab}">${step.label}</button>`
-    : `<button type="button" data-guided-factory-node="${step.department}">${step.label}</button>`;
+    : guidedTab
+      ? `<button type="button" data-guided-game-tab="${guidedTab}">${step.action === 'next-turn' ? 'Открыть отчёт хода' : step.label}</button>`
+      : `<button type="button" data-guided-factory-node="${step.department}">${step.label}</button>`;
   return `
     <section class="guided-action-panel">
       <div>
@@ -394,7 +404,7 @@ function renderStudentFactoryScene(routeItems = []) {
   ];
 
   return `
-    <section class="student-factory-scene" data-student-factory-scene="live" aria-label="Живая схема предприятия">
+    <section class="student-factory-scene" data-student-factory-scene="live" data-scene-presentation="2.5d" aria-label="Живая схема предприятия">
       <div class="student-factory-scene-head">
         <div>
           <span class="factory-node-label">Предприятие в этом ходу</span>
@@ -535,7 +545,7 @@ function renderStudentCommandSupport(routeItems = []) {
       </div>
     </details>`;
   return `
-    <div class="student-command-support">
+    <div class="student-command-support" data-ui-slot="role-action-rail">
       ${renderStudentTaskStack(routeItems)}
       ${renderStudentMarketPulse()}
       ${marketHintsMarkup ? `<section class="student-market-quick-hints">${marketHintsMarkup}</section>` : ''}
@@ -573,7 +583,7 @@ function renderStudentCommandPanel({
     { label: 'Проверить', value: String(safeProblems), hint: safeProblems ? 'есть блокер первого хода' : 'критичных блокеров нет', tone: safeProblems ? 'warn' : 'ok' },
   ];
   return `
-    <section class="student-route-panel student-route-panel-v2 turn-guide-panel" data-uiux-slice="student-first-turn-2" data-student-flow-contract="first-turn-v2" data-student-primary-step="${escapeHtml(primaryStepKey)}" data-student-route-ready="${safeReady >= safeTotal ? 'true' : 'false'}" data-student-problems="${safeProblems}" aria-label="Маршрут хода">
+    <section class="student-route-panel student-route-panel-v2 student-tycoon-console turn-guide-panel" data-ui-slot="primary-workspace" data-uiux-slice="student-first-turn-2" data-student-flow-contract="first-turn-v2" data-student-primary-step="${escapeHtml(primaryStepKey)}" data-student-route-ready="${safeReady >= safeTotal ? 'true' : 'false'}" data-student-problems="${safeProblems}" aria-label="Маршрут хода">
       <div class="student-command-head">
         <div class="student-route-main">
           <span class="factory-node-label">Маршрут хода</span>
@@ -625,9 +635,9 @@ function renderStudentRoutePanel() {
       status: step.status || 'pending',
       active: step.key === guide.primaryKey,
     }));
-    const buttonAttrs = target.action
-      ? `data-student-route-action="${escapeHtml(target.action)}" data-student-route-value="${escapeHtml(target.value || '')}"`
-      : `data-student-route-tab="${escapeHtml(target.tab || 'operations')}" data-student-route-department="${escapeHtml(target.department || '')}" data-student-route-component="${escapeHtml(target.componentKey || '')}"`;
+    let targetTab = target.tab || 'operations';
+    if (target.action === 'next-turn') targetTab = 'events';
+    const buttonAttrs = `data-student-route-tab="${escapeHtml(targetTab)}" data-student-route-department="${escapeHtml(target.action === 'next-turn' ? '' : (target.department || ''))}" data-student-route-component="${escapeHtml(target.componentKey || '')}"`;
     return renderStudentCommandPanel({
       title: guide.title || 'Следующий шаг',
       summary: guide.summary || '',
@@ -637,7 +647,7 @@ function renderStudentRoutePanel() {
       totalCount,
       problemCount,
       currentText: primaryStep?.summary || guide.summary || 'Выполните текущий шаг, затем переходите дальше по маршруту.',
-      buttonLabel: guide.buttonLabel || 'Открыть шаг',
+      buttonLabel: target.action === 'next-turn' ? 'Открыть отчёт хода' : (guide.buttonLabel || 'Открыть шаг'),
       buttonAttrs,
     });
   }
@@ -680,6 +690,8 @@ function renderStudentRoutePanel() {
     return { tab: 'operations', department: 'command', action: '' };
   };
   const target = normalizeTarget(currentStep);
+  let targetTab = target.tab || 'operations';
+  if (target.action === 'next-turn') targetTab = 'events';
   const issueCount = checklist.filter(item => item.status !== 'ready').length;
   const isReady = issueCount === 0 && checklist.length > 0;
   const title = isReady ? 'Ход почти готов' : (currentStep?.title || currentStep?.label || 'Следующий шаг');
@@ -690,13 +702,11 @@ function renderStudentRoutePanel() {
     ? 'После завершения игра посчитает продажи, расходы и прибыль за ход.'
     : (currentStep?.outcome || currentStep?.action || 'Игра сразу обновит карточки и чеклист.');
   const buttonLabel = target.action === 'next-turn'
-    ? 'Завершить ход'
+    ? 'Открыть отчёт хода'
     : isReady
       ? 'Перейти к отчетам'
       : `Перейти: ${route[activeIndex]?.label || 'шаг'}`;
-  const buttonAttrs = target.action
-    ? `data-student-route-action="${escapeHtml(target.action)}"`
-    : `data-student-route-tab="${escapeHtml(target.tab || 'operations')}" data-student-route-department="${escapeHtml(target.department || '')}"`;
+  const buttonAttrs = `data-student-route-tab="${escapeHtml(targetTab)}" data-student-route-department="${escapeHtml(target.action === 'next-turn' ? '' : (target.department || ''))}"`;
   const compactHints = learningHints.slice(0, 2);
   const hintsMarkup = compactHints.length ? `
     <div class="student-route-hints" aria-label="Короткие подсказки">

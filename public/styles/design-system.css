@@ -1,0 +1,156 @@
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/assets/fonts/ibm-plex-sans-regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/assets/fonts/ibm-plex-sans-semibold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans";
+  src: url("/assets/fonts/ibm-plex-sans-bold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 700;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Condensed";
+  src: url("/assets/fonts/ibm-plex-sans-condensed-regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "IBM Plex Sans Condensed";
+  src: url("/assets/fonts/ibm-plex-sans-condensed-semibold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "Fira Code";
+  src: url("/assets/fonts/fira-code-regular.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+}
+
+@font-face {
+  font-family: "Fira Code";
+  src: url("/assets/fonts/fira-code-semibold.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: optional;
+}
+
+:root {
+  color-scheme: dark;
+
+  --surface-canvas: #050b13;
+  --surface-panel: #0b1423;
+  --surface-panel-soft: #111d2f;
+  --surface-panel-raised: #0d1829;
+  --surface-field: #08111f;
+  --surface-glass: rgba(255, 255, 255, 0.04);
+
+  --text-primary: #f6f8fc;
+  --text-secondary: #9aa8bd;
+  --line-subtle: #223048;
+  --line-strong: #31415c;
+
+  --control-primary: #6d75ff;
+  --control-primary-hover: #7c84ff;
+  --status-info: #31d9d2;
+  --status-success: #37e083;
+  --status-warning: #ffbe3d;
+  --status-danger: #ff5c80;
+  --status-neutral: #78869b;
+
+  --font-interface: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-heading: "IBM Plex Sans Condensed", "Arial Narrow", "Segoe UI", sans-serif;
+  --font-data: "Fira Code", "Cascadia Code", Consolas, monospace;
+
+  --motion-fast: 160ms;
+  --motion-standard: 220ms;
+  --motion-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
+  --radius-control: 6px;
+  --radius-panel: 8px;
+  --layout-gap: 8px;
+  --layout-nav-compact: 104px;
+  --layout-nav-standard: 116px;
+  --layout-action-rail: 260px;
+  --layout-hud-height: 74px;
+
+  --scene-detail: 1;
+  --scene-motion: 1;
+
+  --body-bg: var(--surface-canvas);
+  --panel: var(--surface-panel);
+  --panel-soft: var(--surface-panel-soft);
+  --surface-raised: var(--surface-panel-raised);
+  --field-bg: var(--surface-field);
+  --line: var(--line-subtle);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --accent: var(--control-primary);
+  --accent-2: var(--status-info);
+  --accent-3: #f0a12f;
+  --success: var(--status-success);
+  --warn: var(--status-warning);
+  --danger: var(--status-danger);
+  --button-text: #ffffff;
+  --success-soft: rgba(55, 224, 131, 0.14);
+  --warn-soft: rgba(255, 190, 61, 0.14);
+  --danger-soft: rgba(255, 92, 128, 0.14);
+  --accent-soft: rgba(109, 117, 255, 0.14);
+  --accent-soft-strong: rgba(109, 117, 255, 0.22);
+  --panel-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+  --visual-card-radius: var(--radius-panel);
+  --visual-node-radius: var(--radius-panel);
+  --visual-card-shadow: none;
+}
+
+h1,
+h2,
+h3,
+.app-sidebar-link strong,
+.factory-node-label {
+  font-family: var(--font-heading);
+  letter-spacing: 0;
+}
+
+.game-room-chip strong,
+.game-time-chip strong,
+.metric-value,
+.value,
+[data-metric-value] {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-standard: 0ms;
+    --scene-motion: 0;
+  }
+}

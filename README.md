@@ -22,6 +22,18 @@ The project is developed for educational use at the Almetyevsk branch of KNRTU-K
 
 Biz Arena remains browser-first internally. The Electron Server and Client applications package the same tested web runtime into a desktop experience; they are not separate game implementations.
 
+## Dual-Role Desktop Interface
+
+The classroom shares one visual system but gives each role a purpose-built workspace:
+
+- **Teacher Operations Center:** dense class monitoring, readiness and blocker signals, market context, help queue, and authoritative turn controls.
+- **Student Premium Tycoon:** the same classroom HUD and navigation language around a live 2.5D factory, guided business route, market context, and personal decision tools.
+- **One behavior contract:** Full, Standard, and Lite keep every classroom action in the same place while scaling scene assets, motion, and update cost.
+
+| Teacher Operations Center | Student Premium Tycoon |
+| --- | --- |
+| ![Teacher Operations Center](docs/assets/dual-role-ui/teacher-operations-center.png) | ![Student Premium Tycoon](docs/assets/dual-role-ui/student-premium-tycoon.png) |
+
 ## Classroom Flow
 
 1. The teacher opens `/server`, creates a room, and configures the scenario, difficulty, turn count, and timer.
@@ -206,6 +218,7 @@ Realtime messages invalidate client state; clients then request the appropriate 
 
 - [Architecture map](docs/architecture-map.md)
 - [UI role contract](docs/ui-role-contract-v1.md)
+- [Dual-role visual contract v2](docs/dual-role-visual-contract-v2.md)
 - [v1.0 pilot validation](docs/v1.0-pilot-validation.md)
 - [Pilot Gate B-lite runbook](docs/pilot-gate-runbook.md)
 - [Pilot evidence schema](docs/pilot-evidence-schema.md)
