@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+const { cloneCleanCheckout } = require('./lib/clean-checkout');
 const { npmCommandSpec } = require('./lib/npm-command');
 
 const rootDir = path.resolve(__dirname, '..');
@@ -15,7 +16,6 @@ if (status) {
 }
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'biz-arena-clean-checkout-'));
-const archivePath = path.join(tempRoot, 'source.zip');
 const checkoutDir = path.join(tempRoot, 'source');
 function run(command, args, options = {}) {
   execFileSync(command, args, {
@@ -31,23 +31,11 @@ function runNpm(args, options = {}) {
 }
 
 try {
-  run('git', ['archive', '--format=zip', '--output', archivePath, 'HEAD']);
-  fs.mkdirSync(checkoutDir, { recursive: true });
-  if (process.platform === 'win32') {
-    run('powershell.exe', [
-      '-NoProfile',
-      '-ExecutionPolicy',
-      'Bypass',
-      '-Command',
-      `Expand-Archive -LiteralPath '${archivePath.replace(/'/g, "''")}' -DestinationPath '${checkoutDir.replace(/'/g, "''")}' -Force`,
-    ]);
-  } else {
-    run('unzip', ['-q', archivePath, '-d', checkoutDir]);
-  }
+  const { commit } = cloneCleanCheckout({ sourceDir: rootDir, checkoutDir, stdio: 'inherit' });
   runNpm(['ci'], { cwd: checkoutDir });
   runNpm(['run', 'check'], { cwd: checkoutDir });
   runNpm(['test'], { cwd: checkoutDir });
-  console.log(JSON.stringify({ ok: true, commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' }).trim() }));
+  console.log(JSON.stringify({ ok: true, commit }));
 } finally {
   const resolvedTemp = path.resolve(tempRoot);
   if (resolvedTemp.startsWith(path.resolve(os.tmpdir()) + path.sep)) {
