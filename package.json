@@ -43,7 +43,7 @@
     "pilot:ingest": "node scripts/pilot-gate/cli.js ingest",
     "pilot:evaluate": "node scripts/pilot-gate/cli.js evaluate",
     "pilot:invalidate": "node scripts/pilot-gate/cli.js invalidate",
-    "test:pilot-gate": "node --test tests/pilot-gate-evaluator.test.js tests/pilot-gate-schema.test.js tests/pilot-gate-run-store.test.js tests/pilot-gate-cli-e2e.test.js",
+    "test:pilot-gate": "node --test tests/pilot-gate-evaluator.test.js tests/pilot-gate-schema.test.js tests/pilot-gate-run-store.test.js tests/pilot-gate-receipt-capture.test.js tests/pilot-gate-cli-e2e.test.js",
     "admin:storage": "node scripts/admin-storage.js",
     "admin:backup": "node scripts/admin-storage.js backup",
     "admin:restore": "node scripts/admin-storage.js restore",

@@ -35,10 +35,20 @@ function createOutputDigest() {
   };
 }
 
+function npmSpawnSpec(npmScript, { platform = process.platform, comspec = process.env.ComSpec } = {}) {
+  if (platform === 'win32') {
+    return {
+      executable: comspec || 'cmd.exe',
+      args: ['/d', '/s', '/c', 'npm.cmd', 'run', npmScript],
+    };
+  }
+  return { executable: 'npm', args: ['run', npmScript] };
+}
+
 function runNpmScript(rootDir, command, onOutput) {
   return new Promise((resolve, reject) => {
-    const executable = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-    const child = spawn(executable, ['run', command.npmScript], { cwd: rootDir, shell: false, windowsHide: true });
+    const { executable, args } = npmSpawnSpec(command.npmScript);
+    const child = spawn(executable, args, { cwd: rootDir, shell: false, windowsHide: true });
     const stdout = createOutputDigest(); const stderr = createOutputDigest();
     child.stdout.on('data', chunk => { stdout.write(chunk); if (onOutput) onOutput('stdout', chunk); else process.stdout.write(chunk); });
     child.stderr.on('data', chunk => { stderr.write(chunk); if (onOutput) onOutput('stderr', chunk); else process.stderr.write(chunk); });
@@ -132,4 +142,4 @@ async function captureReceipt({ rootDir, run, commandId, previousReceiptSha256 =
   });
 }
 
-module.exports = { MAX_CAPTURED_OUTPUT_BYTES, captureReceipt, classroomArtifactDigests, runNpmScript };
+module.exports = { MAX_CAPTURED_OUTPUT_BYTES, captureReceipt, classroomArtifactDigests, npmSpawnSpec, runNpmScript };
