@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 const { sourceProvenance, sha256File } = require('../lib/release-provenance');
+const { npmCommandSpec } = require('../lib/npm-command');
 const { createReceipt, getCommand } = require('./receipt-contract');
 
 const MAX_CAPTURED_OUTPUT_BYTES = 1024 * 1024;
@@ -36,13 +37,7 @@ function createOutputDigest() {
 }
 
 function npmSpawnSpec(npmScript, { platform = process.platform, comspec = process.env.ComSpec } = {}) {
-  if (platform === 'win32') {
-    return {
-      executable: comspec || 'cmd.exe',
-      args: ['/d', '/s', '/c', 'npm.cmd', 'run', npmScript],
-    };
-  }
-  return { executable: 'npm', args: ['run', npmScript] };
+  return npmCommandSpec(['run', npmScript], { platform, comspec });
 }
 
 function runNpmScript(rootDir, command, onOutput) {

@@ -2,6 +2,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
+const { npmCommandSpec } = require('./lib/npm-command');
 
 const rootDir = path.resolve(__dirname, '..');
 const status = execFileSync('git', ['status', '--porcelain=v1', '--untracked-files=normal'], {
@@ -16,14 +17,17 @@ if (status) {
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'biz-arena-clean-checkout-'));
 const archivePath = path.join(tempRoot, 'source.zip');
 const checkoutDir = path.join(tempRoot, 'source');
-const npmCommand = process.platform === 'win32' ? 'npm.cmd' : 'npm';
-
 function run(command, args, options = {}) {
   execFileSync(command, args, {
     cwd: options.cwd || rootDir,
     env: { ...process.env, CI: 'true' },
     stdio: 'inherit',
   });
+}
+
+function runNpm(args, options = {}) {
+  const command = npmCommandSpec(args);
+  run(command.executable, command.args, options);
 }
 
 try {
@@ -40,9 +44,9 @@ try {
   } else {
     run('unzip', ['-q', archivePath, '-d', checkoutDir]);
   }
-  run(npmCommand, ['ci'], { cwd: checkoutDir });
-  run(npmCommand, ['run', 'check'], { cwd: checkoutDir });
-  run(npmCommand, ['test'], { cwd: checkoutDir });
+  runNpm(['ci'], { cwd: checkoutDir });
+  runNpm(['run', 'check'], { cwd: checkoutDir });
+  runNpm(['test'], { cwd: checkoutDir });
   console.log(JSON.stringify({ ok: true, commit: execFileSync('git', ['rev-parse', 'HEAD'], { cwd: rootDir, encoding: 'utf8' }).trim() }));
 } finally {
   const resolvedTemp = path.resolve(tempRoot);
