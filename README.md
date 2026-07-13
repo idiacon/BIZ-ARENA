@@ -171,6 +171,20 @@ npm run smoke:packaged-electron
 
 `rehearsal:classroom` performs three isolated 30-student SQLite runs, requires 30 WebSocket sessions in each run, and enforces join/state/action p95 limits. Reports are written under `.runtime/rehearsals/` and are intentionally not committed.
 
+Pilot release evidence uses a CLI append-only, Git-anchored B-lite gate over
+the existing release commands. Create one run from a clean commit, capture the six canonical
+receipts, then add reviewed device and classroom attestations:
+
+```powershell
+$id = (npm run --silent pilot:create | ConvertFrom-Json).runId
+npm run pilot:receipt -- --run-id $id release-verify
+npm run pilot:evaluate -- --run-id $id
+```
+
+The expected verdict before real device/classroom evidence is `CONDITIONAL`.
+See the [Pilot Gate runbook](docs/pilot-gate-runbook.md) for the complete fixed
+order, privacy rules, aggregate anchor, and invalidation procedure.
+
 GitHub Actions runs syntax checks, automated tests, Local Classroom smoke, Cloud Classroom smoke, and the production dependency audit on a clean Ubuntu checkout.
 
 ## Architecture
@@ -193,6 +207,8 @@ Realtime messages invalidate client state; clients then request the appropriate 
 - [Architecture map](docs/architecture-map.md)
 - [UI role contract](docs/ui-role-contract-v1.md)
 - [v1.0 pilot validation](docs/v1.0-pilot-validation.md)
+- [Pilot Gate B-lite runbook](docs/pilot-gate-runbook.md)
+- [Pilot evidence schema](docs/pilot-evidence-schema.md)
 - [v1.0 rehearsal log](docs/v1.0-rehearsal-log.md)
 - [Teacher classroom handoff](docs/teacher-classroom-handoff.md)
 - [VPS cloud classroom runbook](docs/vps-cloud-classroom-runbook.md)

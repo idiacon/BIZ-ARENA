@@ -46,6 +46,9 @@ test('release-facing teacher handoffs and package README template are readable U
     'docs/v0.9-pilot-readiness.md',
     'docs/teacher-demo-checklist.md',
     'docs/teacher-defense-brief.md',
+    'docs/pilot-gate-runbook.md',
+    'docs/pilot-evidence-schema.md',
+    'docs/v1.0-pilot-validation.md',
     'scripts/build-classroom-package.js',
   ]) {
     assertReadableUtf8(relativePath);

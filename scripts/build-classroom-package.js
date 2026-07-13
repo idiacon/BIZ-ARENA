@@ -9,6 +9,13 @@ const version = packageJson.version;
 const distDir = path.join(rootDir, 'dist');
 const packageDir = path.join(distDir, `BizArena-Classroom-${version}`);
 const toolsDir = path.join(packageDir, 'tools');
+const pilotRunbookSource = path.join(rootDir, 'docs', 'pilot-gate-runbook.md');
+const pilotRunbookTarget = path.join(packageDir, 'PILOT-GATE.md');
+const pilotRunbookLinkTarget = path.join(packageDir, 'pilot-gate-runbook.md');
+const pilotSchemaSource = path.join(rootDir, 'docs', 'pilot-evidence-schema.md');
+const pilotSchemaTarget = path.join(packageDir, 'pilot-evidence-schema.md');
+const pilotTemplateSource = path.join(rootDir, 'docs', 'pilot-evidence-template.json');
+const pilotTemplateTarget = path.join(packageDir, 'pilot-evidence-template.json');
 const zipPath = path.join(distDir, `BizArena-Classroom-${version}.zip`);
 const manifestPath = path.join(distDir, `classroom-release-manifest-${version}.json`);
 
@@ -51,7 +58,21 @@ for (const helper of helperFiles) {
   copyRequired(path.join(rootDir, 'tools', helper), path.join(toolsDir, helper));
 }
 
+copyRequired(pilotRunbookSource, pilotRunbookTarget);
+copyRequired(pilotRunbookSource, pilotRunbookLinkTarget);
+copyRequired(pilotSchemaSource, pilotSchemaTarget);
+copyRequired(pilotTemplateSource, pilotTemplateTarget);
+
 const readme = `# Biz Arena Classroom ${version}
+
+## Pilot Gate files
+
+- [PILOT-GATE.md](PILOT-GATE.md) - normative operator runbook.
+- [pilot-evidence-schema.md](pilot-evidence-schema.md) - strict manual-evidence allowlist.
+- [pilot-evidence-template.json](pilot-evidence-template.json) - device and classroom attestation template.
+
+Before anyone creates or joins a room, assign pseudonyms S1-S7 and neutral
+company aliases A-G. Never enter real participant names into the pilot room.
 
 ## Что запускать
 
@@ -61,7 +82,7 @@ const readme = `# Biz Arena Classroom ${version}
    - LAN-ссылку вида \`http://192.168.x.x:3000/client\`;
    - QR-код из Network Doctor для страницы \`/client\`.
 3. На компьютерах учеников запустите \`BizArena Client\`.
-4. В Client введите адрес сервера, код комнаты, имя ученика и название компании.
+4. В Client введите адрес сервера, код комнаты, псевдоним S1-S7 и нейтральный alias компании A-G.
 
 ## Файлы внутри
 
@@ -71,6 +92,7 @@ const readme = `# Biz Arena Classroom ${version}
 - \`BizArena-Client-${version}-Portable-x64.exe\` - portable клиент без установки.
 - \`tools/Allow-BizArena-Firewall.bat\` - открыть Windows Firewall для Biz Arena.
 - \`tools/Check-BizArena-LAN.bat\` - проверить сервер с ученического компьютера.
+- \`PILOT-GATE.md\` - нормативная процедура проверки сборки и наблюдаемого занятия.
 
 ## Быстрая проверка перед занятием
 
@@ -97,13 +119,25 @@ Smoke-проверка подтверждает, что:
 
 ## Если пишет, что игрок уже в игре
 
-В \`BizArena Client\` измените поле \`Имя ученика\`. Одинаковый ник считается повторным входом того же игрока. Если ученик возвращается в свою старую компанию, он должен использовать то же имя и то же название компании.
+В \`BizArena Client\` измените псевдоним игрока. Одинаковый псевдоним считается повторным входом того же игрока. Если ученик возвращается в свою старую компанию, он должен использовать тот же псевдоним и тот же нейтральный alias компании.
 
 ## LAN-first правила
 
 - LAN быстрее и лучше подходит для одной аудитории, если сеть разрешает подключения между компьютерами.
 - Публичный tunnel не считается рабочим вариантом для текущего classroom release.
 - Если вузовская сеть блокирует прямые IP-подключения, используйте отдельную сеть для занятия.
+
+## Pilot Gate для ответственного за release
+
+До передачи пакета преподавателю запустите Pilot Gate из исходного репозитория:
+
+\`\`\`powershell
+$id = (npm run --silent pilot:create | ConvertFrom-Json).runId
+\`\`\`
+
+Дальнейший порядок receipts, device preflight и classroom evidence находится в
+\`PILOT-GATE.md\`. Эти npm-команды выполняются из исходного репозитория, а не из
+этой папки с готовыми EXE.
 `;
 
 fs.writeFileSync(path.join(packageDir, 'README-classroom.md'), readme, 'utf8');
@@ -111,6 +145,10 @@ fs.writeFileSync(path.join(packageDir, 'README-classroom.md'), readme, 'utf8');
 const packagedFiles = [
   ...artifacts.map(name => path.join(packageDir, name)),
   path.join(packageDir, 'README-classroom.md'),
+  pilotRunbookTarget,
+  pilotRunbookLinkTarget,
+  pilotSchemaTarget,
+  pilotTemplateTarget,
   ...helperFiles.map(name => path.join(toolsDir, name)),
 ];
 
