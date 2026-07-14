@@ -1080,16 +1080,25 @@ test('cloud classroom: teacher-owned room hides teacher host and rejects other t
   const studentSummary = bizArena.roomSummary(room, student.id, { view: 'student' });
   assert.equal(studentSummary.summaryView, 'student');
   assert.equal(studentSummary.summaryContract, 'student-v2');
-  assert.equal(studentSummary.teacherAccountId, '');
-  assert.deepEqual(studentSummary.teacherControls, { canManage: false, actions: {} });
-  assert.equal(studentSummary.teacherControls.eventCatalog, undefined);
-  assert.equal(studentSummary.classSnapshot, null);
-  assert.equal(studentSummary.classReadiness, null);
-  assert.equal(studentSummary.classDashboard, null);
-  assert.equal(studentSummary.classDebrief, null);
-  assert.equal(studentSummary.scenarioLab, null);
-  assert.equal(studentSummary.scenarioExperiment, null);
-  assert.equal(studentSummary.adminSnapshots, undefined);
+  for (const teacherOnlyKey of [
+    'teacherAccountId',
+    'teacherControls',
+    'lessonPlan',
+    'classSnapshot',
+    'classReadiness',
+    'classDashboard',
+    'classDebrief',
+    'scenarioLab',
+    'scenarioExperiment',
+    'adminSnapshots',
+    'saveMeta',
+  ]) {
+    assert.equal(
+      Object.hasOwn(studentSummary, teacherOnlyKey),
+      false,
+      `student-state-v2 must omit teacher-only key: ${teacherOnlyKey}`
+    );
+  }
   assert.equal(studentSummary.players.some(player => player.isTeacherHost), false);
   assert.equal(studentSummary.players.some(player => player.factory), false);
   assert.equal(studentSummary.players.some(player => player.turnGuide), false);

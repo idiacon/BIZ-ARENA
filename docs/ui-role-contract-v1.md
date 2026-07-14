@@ -207,3 +207,4 @@ Paused matches remain viewable as active matches after teacher reconnect. Busine
 - Student results root exposes `data-results-contract="student-results-v1"` and `data-results-role="student"`.
 - Students receive their personal `playerDebrief` only after finish.
 - Students must not receive or render `classDebrief`, the classroom report pack, teacher discussion prompts, or teacher action plan.
+- Student result exports must omit the `classDebrief` and `teacherReportPack` keys; teacher result exports include both payloads.

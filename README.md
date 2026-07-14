@@ -216,6 +216,7 @@ Realtime messages invalidate client state; clients then request the appropriate 
 
 ## Current Documentation
 
+- [Product roadmap](docs/product-roadmap.md)
 - [Architecture map](docs/architecture-map.md)
 - [UI role contract](docs/ui-role-contract-v1.md)
 - [Dual-role visual contract v2](docs/dual-role-visual-contract-v2.md)

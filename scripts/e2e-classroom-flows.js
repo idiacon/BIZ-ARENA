@@ -134,6 +134,47 @@ async function assertResponsiveMatrix(cdp, label, viewports = DESKTOP_VIEWPORTS)
   }
 }
 
+async function captureResultsExport(cdp) {
+  await evaluate(cdp, `(() => {
+    window.__resultsExportCapture = null;
+    if (!window.__resultsExportHookInstalled) {
+      const originalCreateObjectURL = URL.createObjectURL.bind(URL);
+      URL.createObjectURL = blob => {
+        const url = originalCreateObjectURL(blob);
+        blob.text().then(text => {
+          window.__resultsExportCapture = {
+            ...(window.__resultsExportCapture || {}),
+            text,
+            type: blob.type,
+          };
+        });
+        return url;
+      };
+      document.addEventListener('click', event => {
+        const anchor = event.target?.closest?.('a[download]');
+        if (!anchor) return;
+        window.__resultsExportCapture = {
+          ...(window.__resultsExportCapture || {}),
+          filename: anchor.download,
+        };
+      }, true);
+      window.__resultsExportHookInstalled = true;
+    }
+    document.querySelector('#export-results')?.click();
+    return true;
+  })()`);
+  await waitFor(
+    cdp,
+    'Boolean(window.__resultsExportCapture?.text && window.__resultsExportCapture?.filename)',
+    'results export capture'
+  );
+  return evaluate(cdp, `(() => ({
+    filename: window.__resultsExportCapture.filename,
+    type: window.__resultsExportCapture.type,
+    payload: JSON.parse(window.__resultsExportCapture.text),
+  }))()`);
+}
+
 async function visibleSidebarGameTabs(cdp) {
   return evaluate(cdp, `(() => {
     const isVisible = node => {
@@ -352,6 +393,12 @@ async function main() {
     assert.equal(await evaluate(teacherBrowser.cdp, 'document.querySelectorAll("#results-overview .classroom-report-pack").length'), 1);
     assert.equal(await evaluate(teacherBrowser.cdp, 'document.querySelectorAll("#results-overview [data-teacher-results-contract=\\"classroom-results-v2\\"]").length'), 1);
     assert.equal(await evaluate(teacherBrowser.cdp, 'document.querySelectorAll("#results-overview [data-teacher-debrief-contract=\\"class-debrief-v1\\"]").length'), 1);
+    const teacherExport = await captureResultsExport(teacherBrowser.cdp);
+    assert.match(teacherExport.filename, /^biz-arena-results-[a-z0-9-]+\.json$/i);
+    assert.match(teacherExport.type, /^application\/json/);
+    assert.equal(teacherExport.payload.room.code, teacher.roomCode);
+    assert.ok(teacherExport.payload.classDebrief);
+    assert.ok(teacherExport.payload.teacherReportPack);
 
     await navigate(studentBrowser.cdp, `http://127.0.0.1:${PORT}/client?roomCode=${teacher.roomCode}`);
     await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector("#results-screen.active #results-overview[data-results-contract=\\"student-results-v1\\"]"))', 'student finished results');
@@ -359,6 +406,12 @@ async function main() {
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll("#results-overview .classroom-report-pack").length'), 0);
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll("#results-overview [data-teacher-debrief-contract]").length'), 0);
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll("#results-overview .player-debrief-card").length'), 1);
+    const studentExport = await captureResultsExport(studentBrowser.cdp);
+    assert.match(studentExport.filename, /^biz-arena-results-[a-z0-9-]+\.json$/i);
+    assert.match(studentExport.type, /^application\/json/);
+    assert.equal(studentExport.payload.room.code, teacher.roomCode);
+    assert.equal(Object.hasOwn(studentExport.payload, 'classDebrief'), false);
+    assert.equal(Object.hasOwn(studentExport.payload, 'teacherReportPack'), false);
 
     assert.deepEqual(browserErrors(teacherBrowser.cdp), []);
     assert.deepEqual(browserErrors(studentBrowser.cdp), []);
@@ -370,10 +423,12 @@ async function main() {
       teacherLifecycle: true,
       teacherReconnectPaused: true,
       teacherDebrief: true,
+      teacherResultsExport: true,
       studentLobby: true,
       studentFirstTurn: true,
       studentReconnect: true,
       studentResultsRole: true,
+      studentResultsExport: true,
       studentLite: true,
       browserErrors: 0,
     }, null, 2));

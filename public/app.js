@@ -5815,8 +5815,10 @@ function exportResultsReport() {
       playerDebrief: summary.playerDebrief || null,
       marketReplay: summary.marketReplay || null,
     },
-    classDebrief: summary.classDebrief || null,
-    teacherReportPack: classroomReportPack,
+    ...(teacherViewer ? {
+      classDebrief: summary.classDebrief || null,
+      teacherReportPack: classroomReportPack,
+    } : {}),
     replay: {
       market: summary.marketReplay || null,
       turnReview: summary.turnReview || null,
