@@ -1,0 +1,33 @@
+# Keep graphify focused on Biz Arena source files. The repository root contains
+# generated release artifacts, previous graph output, local agent state, and
+# third-party resources that make `graphify update .` unbounded.
+
+node_modules/
+dist/
+data/
+github-resources/
+graphify-out/
+graphify-out.backup-*/
+.git/
+.codex/
+.codex-backups/
+.omx/
+defense-assets/
+тест бета/
+
+*.log
+npm-debug.log*
+*.zip
+*.exe
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.gif
+*.mp4
+*.pdf
+*.docx
+*.pptx
+
+tools/cloudflared*.exe
+tools/cloudflared*.log

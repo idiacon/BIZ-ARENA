@@ -1,0 +1,59 @@
+{
+  "devicePreflight": {
+    "contract": "pilot-attestation-v1",
+    "stage": "device-preflight",
+    "runId": "pilot-template-0001",
+    "buildCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": "1.0.0-beta.1",
+    "packageManifestHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "serverSetupSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "clientSetupSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "reviewedAt": "2099-01-01T00:00:00.000Z",
+    "reviewerRole": "release-reviewer",
+    "consentStatus": "recorded",
+    "accessOwner": "release-manager",
+    "retentionDeadline": "2099-02-01",
+    "deletionProcedure": "delete-reviewed-evidence",
+    "reviewedAttestation": true,
+    "thresholdsAccepted": true,
+    "devicePreflight": {
+      "setupHashesMatchManifest": true,
+      "cleanInstallSucceeded": true,
+      "secondDeviceJoinedByQrLan": true,
+      "externalHealthReachable": true,
+      "noManualUrlEditing": true
+    }
+  },
+  "classroomPilot": {
+    "contract": "pilot-attestation-v1",
+    "stage": "classroom-pilot",
+    "runId": "pilot-template-0001",
+    "buildCommit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "version": "1.0.0-beta.1",
+    "packageManifestHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "serverSetupSha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "clientSetupSha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "reviewedAt": "2099-01-01T00:00:00.000Z",
+    "reviewerRole": "release-reviewer",
+    "consentStatus": "recorded",
+    "accessOwner": "release-manager",
+    "retentionDeadline": "2099-02-01",
+    "deletionProcedure": "delete-reviewed-evidence",
+    "reviewedAttestation": true,
+    "thresholdsAccepted": true,
+    "classroomPilot": {
+      "participantCount": 5,
+      "pseudonyms": ["S1", "S2", "S3", "S4", "S5"],
+      "companyAliases": ["A", "B", "C", "D", "E"],
+      "turnsCompleted": 5,
+      "crisisCardCount": 1,
+      "roomSetupWithinFiveMinutes": true,
+      "allJoinedWithoutManualUrlEdits": true,
+      "firstTurnCompletionRate": 0.8,
+      "blockedTeamIdentifiedWithinFifteenSeconds": true,
+      "reconnectPreservedActions": true,
+      "historyAndExportObtained": true,
+      "debriefRecorded": true
+    }
+  }
+}

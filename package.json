@@ -1,23 +1,75 @@
 {
   "name": "biz-arena",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.1",
   "private": true,
   "author": "Damir Nadrov",
   "copyright": "Damir Nadrov",
-  "description": "Biz Arena — LAN-ready browser business strategy prototype inspired by Virtonomics and Simformer.",
+  "description": "Biz Arena - LAN-ready educational business simulator with a KAI championship demo flow.",
   "scripts": {
     "start": "node server.js",
-    "check": "C:\\Progra~1\\nodejs\\node.exe --check server.js && C:\\Progra~1\\nodejs\\node.exe --check public/app.js && C:\\Progra~1\\nodejs\\node.exe --check server/game-rules.js && C:\\Progra~1\\nodejs\\node.exe --check server/http/routes.js && C:\\Progra~1\\nodejs\\node.exe --check server/room/actions.js && C:\\Progra~1\\nodejs\\node.exe --check desktop/main.js && C:\\Progra~1\\nodejs\\node.exe --check desktop/preload.js",
-    "test": "C:\\Progra~1\\nodejs\\node.exe test\\game-rules.test.js && C:\\Progra~1\\nodejs\\node.exe test\\server-refactor.test.js && C:\\Progra~1\\nodejs\\node.exe test\\stabilization.test.js",
+    "start:server": "set BIZ_ARENA_APP_MODE=server&& node server.js",
+    "start:client": "set BIZ_ARENA_APP_MODE=client&& node server.js",
+    "start:cloud": "set BIZ_ARENA_DEPLOYMENT=cloud&& node server.js",
+    "dev:server": "set BIZ_ARENA_APP_MODE=server&& node server.js",
+    "dev:client": "set BIZ_ARENA_APP_MODE=client&& node server.js",
+    "check": "node --check server.js && node --check public/ui/role-contracts.js && node --check public/app-runtime.js && node --check public/app.js && node --check public/ui/server-admin-ui.js && node --check public/ui/student-ui.js && node --check public/ui/teacher-ui.js && node --check public/app-bootstrap.js && node --check server/game-rules.js && node --check server/factory/summary.js && node --check server/http/routes.js && node --check server/http/client-address.js && node --check server/http/request-url.js && node --check server/http/response-security.js && node --check server/room/actions.js && node --check server/scenarios/schema.js && node --check server/security/classroom-identity.js && node --check server/security/realtime-tickets.js && node --check server/storage/runtime-storage.js && node --check server/storage/schema-migrations.js && node --check server/experiments/runner.js && node --check desktop/main.js && node --check desktop/preload.js && node --check scripts/admin-storage.js && node --check scripts/lib/cdp-browser.js && node --check scripts/lib/clean-checkout.js && node --check scripts/lib/npm-command.js && node --check scripts/lib/release-provenance.js && node --check scripts/pilot-gate/cli.js && node --check scripts/pilot-gate/evaluate.js && node --check scripts/pilot-gate/index.js && node --check scripts/pilot-gate/receipt-capture.js && node --check scripts/pilot-gate/receipt-contract.js && node --check scripts/pilot-gate/run-store.js && node --check scripts/pilot-gate/schema.js && node --check scripts/pilot-gate/adapters/automation.js && node --check scripts/pilot-gate/adapters/classroom-pilot.js && node --check scripts/pilot-gate/adapters/device-preflight.js && node --check scripts/verify-clean-checkout.js && node --check scripts/e2e-classroom-flows.js && node --check scripts/load-classroom.js && node --check scripts/rehearse-classroom.js && node --check scripts/trace-ui-performance.js && node --check scripts/render-logo-preview.js && node --check scripts/build-desktop-mode.js && node --check scripts/smoke-classroom-lan.js && node --check scripts/smoke-cloud-classroom.js && node --check scripts/smoke-durable-cloud-profile.js && node --check scripts/smoke-oracle-profile.js && node --check scripts/smoke-vps-profile.js && node --check scripts/smoke-packaged-electron.js && node --check scripts/capture-classroom-flow-screenshots.js && node --check scripts/build-classroom-package.js && node --check scripts/build-cloud-package.js && node --check scripts/build-oracle-package.js && node --check scripts/build-vps-package.js && node --check scripts/build-kai-server-package.js && node --check scripts/ollama-pair.js && node --check scripts/update-graphify-bizarena.js",
+    "test": "node test/game-rules.test.js && node test/server-refactor.test.js && node test/stabilization.test.js && node --test tests/*.test.js",
     "desktop": "electron .",
     "desktop:dev": "electron .",
-    "dist": "electron-builder",
-    "dist:win": "electron-builder --win nsis portable"
+    "desktop:server": "set BIZ_ARENA_DESKTOP_MODE=server&& electron .",
+    "desktop:client": "set BIZ_ARENA_DESKTOP_MODE=client&& set BIZ_ARENA_SERVER_URL=http://127.0.0.1:3000&& electron .",
+    "predefense:readiness": "node scripts/pre-defense-readiness.js",
+    "report:docx": "node scripts/build-report-docx.js",
+    "release:defense-bundle": "node scripts/build-defense-bundle.js",
+    "release:classroom-package": "node scripts/build-classroom-package.js",
+    "release:cloud-package": "node scripts/build-cloud-package.js",
+    "release:vps-package": "node scripts/build-vps-package.js",
+    "release:kai-server-package": "npm run release:vps-package && node scripts/build-kai-server-package.js",
+    "release:verify": "npm run check && npm test && npm run smoke:classroom && npm run smoke:cloud && npm run smoke:cloud:sqlite && npm run smoke:vps && npm run e2e:classroom && npm audit --omit=dev",
+    "release:verify-clean": "node scripts/verify-clean-checkout.js",
+    "release:full": "npm run release:verify && npm run release:verify-clean && npm run screenshots:defense && npm run report:docx && npm run dist:classroom && npm run smoke:packaged && npm run release:classroom-package && npm run release:cloud-package && npm run release:vps-package && npm run release:kai-server-package && npm run predefense:readiness && npm run release:defense-bundle && npm run predefense:readiness",
+    "release:zip-unpacked": "node scripts/zip-win-unpacked.js",
+    "smoke:classroom": "node scripts/smoke-classroom-lan.js",
+    "smoke:cloud": "node scripts/smoke-cloud-classroom.js",
+    "smoke:cloud:sqlite": "set BIZ_ARENA_STORAGE=sqlite&& node scripts/smoke-cloud-classroom.js",
+    "smoke:vps": "node scripts/smoke-vps-profile.js",
+    "smoke:packaged": "node scripts/smoke-packaged-electron.js",
+    "smoke:packaged-electron": "node scripts/smoke-packaged-electron.js",
+    "e2e:classroom": "node scripts/e2e-classroom-flows.js",
+    "load:classroom": "node scripts/load-classroom.js",
+    "rehearsal:classroom": "node scripts/rehearse-classroom.js",
+    "trace:ui-performance": "node scripts/trace-ui-performance.js",
+    "pilot:create": "node scripts/pilot-gate/cli.js create",
+    "pilot:receipt": "node scripts/pilot-gate/cli.js receipt",
+    "pilot:ingest": "node scripts/pilot-gate/cli.js ingest",
+    "pilot:evaluate": "node scripts/pilot-gate/cli.js evaluate",
+    "pilot:invalidate": "node scripts/pilot-gate/cli.js invalidate",
+    "test:pilot-gate": "node --test tests/clean-checkout.test.js tests/npm-command.test.js tests/pilot-gate-evaluator.test.js tests/pilot-gate-schema.test.js tests/pilot-gate-run-store.test.js tests/pilot-gate-receipt-capture.test.js tests/pilot-gate-cli-e2e.test.js",
+    "admin:storage": "node scripts/admin-storage.js",
+    "admin:backup": "node scripts/admin-storage.js backup",
+    "admin:restore": "node scripts/admin-storage.js restore",
+    "ai:local:models": "node scripts/ollama-pair.js models",
+    "ai:local:verify": "node scripts/ollama-pair.js verify",
+    "ai:local:ask": "node scripts/ollama-pair.js ask",
+    "ai:local:review": "node scripts/ollama-pair.js review",
+    "ai:local:review:fast": "node scripts/ollama-pair.js review --preset code --model lfm2.5:latest",
+    "ai:local:review:balanced": "node scripts/ollama-pair.js review --preset code --model qwen3.5:9b",
+    "ai:local:review:code": "node scripts/ollama-pair.js review --preset code --model north-mini-code-1.0:latest",
+    "ai:local:review:ui": "node scripts/ollama-pair.js review --preset ui --model gemma4:latest",
+    "ai:local:review:docs": "node scripts/ollama-pair.js review --preset docs --model gemma4:latest",
+    "logos:preview": "electron scripts/render-logo-preview.js",
+    "screenshots:defense": "node scripts/capture-defense-screenshots.js",
+    "dist": "electron-builder --config.win.signExecutable=false",
+    "dist:win": "electron-builder --win nsis portable --config.win.signExecutable=false",
+    "dist:server": "node scripts/build-desktop-mode.js server",
+    "dist:client": "node scripts/build-desktop-mode.js client",
+    "dist:classroom": "npm run dist:server && npm run dist:client",
+    "graphify:update": "node scripts/update-graphify-bizarena.js"
   },
   "main": "desktop/main.js",
   "devDependencies": {
-    "electron": "^30.0.0",
-    "electron-builder": "^24.13.3"
+    "electron": "42.5.2",
+    "electron-builder": "26.15.3"
   },
   "build": {
     "appId": "com.bizarena.desktop",
@@ -41,7 +93,11 @@
         "portable"
       ]
     },
+    "portable": {
+      "artifactName": "Biz-Arena-${version}-Portable-${arch}.${ext}"
+    },
     "nsis": {
+      "artifactName": "Biz-Arena-${version}-Setup-${arch}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "installerIcon": "build/icon.ico",
@@ -50,5 +106,10 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Biz Arena"
     }
+  },
+  "dependencies": {
+    "better-sqlite3": "12.11.1",
+    "qrcode": "^1.5.4",
+    "ws": "^8.18.0"
   }
 }

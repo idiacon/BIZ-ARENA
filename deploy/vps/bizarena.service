@@ -1,0 +1,25 @@
+[Unit]
+Description=Biz Arena Cloud Classroom
+After=network.target
+
+[Service]
+Type=simple
+User=bizarena
+WorkingDirectory=/opt/bizarena
+EnvironmentFile=/etc/bizarena/bizarena.env
+ExecStart=/usr/bin/node /opt/bizarena/server.js
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/bizarena
+UMask=0027
+LimitNOFILE=8192
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bizarena
+
+[Install]
+WantedBy=multi-user.target

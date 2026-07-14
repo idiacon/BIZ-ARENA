@@ -237,6 +237,33 @@ test('buildFocusPlan returns readiness score and missing steps for a pivot targe
   assert.ok(plan.missingSteps.includes('upgrade_supply'));
 });
 
+test('buildFocusPlan ignores city switching for manufacturer scenarios', () => {
+  const plan = buildFocusPlan({
+    player: {
+      cityKey: 'regional',
+      productKey: 'motorcycle',
+      focusCityKey: '',
+      focusProductKey: 'motorcycle',
+      money: 42000,
+      quality: 2,
+      factory: {
+        inventory: { frame: 5, engine: 5 },
+        workers: [{ id: 'worker_1' }],
+        finishedGoods: 0,
+      },
+    },
+    focusCityKey: '',
+    focusProductKey: 'motorcycle',
+    forecastSegments: [
+      { cityKey: 'capital', productKey: 'motorcycle', forecastDemand: 150 },
+    ],
+  });
+
+  assert.equal(plan.forecastDemand, 0);
+  assert.equal(plan.missingSteps.includes('switch_city'), false);
+  assert.equal(plan.missingSteps.includes('expand_retail'), false);
+});
+
 test('buildPivotPreview recommends pivoting now when target demand is higher and readiness is high', () => {
   const preview = buildPivotPreview({
     player: {
@@ -256,6 +283,21 @@ test('buildPivotPreview recommends pivoting now when target demand is higher and
   assert.equal(preview.demandDelta, 45);
   assert.ok(preview.reasons.includes('higher_demand'));
   assert.ok(preview.reasons.includes('ready_now'));
+});
+
+test('buildExecutionAction keeps manufacturer queue away from city actions', () => {
+  const action = buildExecutionAction({
+    key: 'switch_city',
+    player: {
+      cityKey: 'regional',
+      focusCityKey: 'capital',
+      factory: { inventory: {}, workers: [] },
+    },
+  });
+
+  assert.equal(action.mode, 'blocked');
+  assert.equal(action.action, '');
+  assert.equal(action.blockedReason, 'already_aligned');
 });
 
 test('buildExecutionAction maps queue steps to direct business actions when possible', () => {

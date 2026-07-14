@@ -1,5 +1,37 @@
 node_modules/
 dist/
+.runtime/
+.playwright-cli/
+output/
 data/
+data/*.json
+.env
+.env.*
+!.env.*.example
+*.key
+*.pem
+*.pfx
+*.crt
 *.log
 npm-debug.log*
+tools/cloudflared*.exe
+tools/cloudflared*.log
+.omx/
+.codex/
+defense-assets/
+graphify-out/
+graphify-out.backup-*/
+github-resources/
+test-beta-screenshots/
+tmp/
+tmp-*/
+tmp-*.png
+*.tmp
+*.temp
+*.bak
+*.pyc
+тест бета/
+
+# Obsolete root-level UI copies; the maintained frontend lives in public/.
+/index.html
+/translations.js

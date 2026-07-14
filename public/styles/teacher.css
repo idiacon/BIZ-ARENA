@@ -1,0 +1,127 @@
+body[data-screen="game-screen"][data-player-role="teacher"] {
+  --role-accent: var(--status-info);
+  --role-workspace-share: 0.7;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-grid,
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-dashboard-summary {
+  min-width: 0;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] [data-role-navigation="teacher"] .active {
+  --role-navigation-accent: var(--role-accent);
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-operations-center {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.52fr) minmax(0, 1fr) minmax(280px, 0.62fr);
+  gap: var(--layout-gap);
+  align-items: start;
+  min-width: 0;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-operations-center > * {
+  min-width: 0;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-operations-center > .teacher-cockpit-card {
+  grid-column: 1;
+  align-self: start;
+  gap: 8px;
+  border-radius: var(--radius-panel);
+  padding: 10px;
+  background: var(--surface-panel-strong);
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-main {
+  grid-column: 2;
+  gap: var(--layout-gap);
+  align-content: start;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-side {
+  grid-column: 3;
+  position: sticky;
+  top: 8px;
+  gap: var(--layout-gap);
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  padding-right: 2px;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-head {
+  display: grid;
+  gap: 8px;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-head strong {
+  font-size: 1.08rem;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-head p {
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-status {
+  min-width: 0;
+  padding: 8px;
+  text-align: left;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-status b {
+  font-size: 1.12rem;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-card .teacher-class-readiness {
+  gap: 7px;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-card .teacher-cockpit-grid,
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-card .readiness-stats {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-main > *,
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-side > * {
+  border-radius: var(--radius-panel);
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-side button {
+  min-height: 38px;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-secondary-drawer,
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-crisis-drawer,
+body[data-screen="game-screen"][data-player-role="teacher"] .teacher-advanced-tools {
+  border-color: var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+@media (min-width: 2200px) {
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-operations-center {
+    grid-template-columns: minmax(280px, 0.46fr) minmax(0, 1fr) minmax(320px, 0.56fr);
+  }
+}
+
+@media (max-width: 1180px) {
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-operations-center {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-operations-center > .teacher-cockpit-card,
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-main,
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-side {
+    grid-column: 1;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+}

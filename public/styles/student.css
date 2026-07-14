@@ -1,0 +1,226 @@
+body[data-screen="game-screen"][data-player-role="student"] {
+  --role-accent: var(--status-warning);
+  --role-workspace-share: 0.55;
+  --student-scene-min-height: 560px;
+  --student-action-rail-width: 304px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console {
+  width: 100%;
+  min-width: 0;
+  overflow: clip;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-command-stage,
+body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene {
+  min-width: 0;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-command-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, var(--student-action-rail-width));
+  gap: 12px;
+  align-items: start;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-command-support[data-ui-slot="role-action-rail"] {
+  position: sticky;
+  top: 8px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  max-height: min(680px, calc(100vh - 190px));
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene,
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene {
+  min-height: var(--student-scene-min-height);
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene {
+  background-image:
+    linear-gradient(180deg, rgba(5, 11, 19, 0.1), rgba(5, 11, 19, 0.92)),
+    url("/assets/factory-blueprint-full.jpg");
+}
+
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene {
+  background-image:
+    linear-gradient(180deg, rgba(5, 11, 19, 0.26), rgba(5, 11, 19, 0.94)),
+    url("/assets/factory-blueprint-standard.jpg");
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene-grid,
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene-grid {
+  position: relative;
+  display: block;
+  min-height: 430px;
+  padding: 30px 12px 22px;
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node,
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node {
+  position: absolute;
+  width: clamp(176px, 25%, 246px);
+  min-height: 118px;
+  transform: translate3d(0, 0, 0);
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node:hover,
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node:hover {
+  transform: translate3d(0, -4px, 0);
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node[data-scene-station="purchase"],
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node[data-scene-station="purchase"] {
+  left: 4%;
+  bottom: 8%;
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node[data-scene-station="workforce"],
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node[data-scene-station="workforce"] {
+  left: 26%;
+  top: 10%;
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node[data-scene-station="assembly"],
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node[data-scene-station="assembly"] {
+  left: 43%;
+  bottom: 18%;
+}
+
+html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node[data-scene-station="market"],
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node[data-scene-station="market"] {
+  right: 4%;
+  top: 12%;
+}
+
+html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] {
+  --student-scene-min-height: 520px;
+}
+
+html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-command-stage {
+  align-items: start;
+}
+
+html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node,
+html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-node:hover {
+  position: relative;
+  inset: auto;
+  width: auto;
+  transform: none;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] [data-role-navigation="student"] .active {
+  --role-navigation-accent: var(--role-accent);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-route-flowline span {
+  min-height: 62px;
+  padding: 7px 9px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-command-kpis .live-metric-card {
+  min-height: 82px;
+  padding: 9px 10px;
+}
+
+@media (min-width: 1181px) {
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-command-head {
+    grid-template-columns: minmax(0, 1fr) minmax(360px, 0.5fr);
+    gap: 10px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-route-main {
+    padding: 12px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-route-main > small {
+    display: none;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-route-status-strip {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-route-status-strip .live-metric-card {
+    min-height: 88px;
+    padding: 9px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-route-main h3 {
+    margin-block: 3px;
+    font-size: 1.35rem;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-route-main p {
+    margin-block: 3px 8px;
+  }
+}
+
+@media (min-width: 2200px) {
+  body[data-screen="game-screen"][data-player-role="student"] {
+    --student-scene-min-height: 680px;
+    --student-action-rail-width: 340px;
+  }
+
+  html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] {
+    --student-scene-min-height: 620px;
+  }
+
+  html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene-grid,
+  html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene-grid {
+    min-height: 540px;
+  }
+}
+
+@media (max-width: 1180px) {
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-command-stage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-command-support[data-ui-slot="role-action-rail"] {
+    position: static;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    max-height: none;
+    overflow: visible;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-task-stack,
+  body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-help-card {
+    grid-column: 1 / -1;
+  }
+
+  html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene,
+  html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene {
+    min-height: 500px;
+  }
+
+  html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene-grid,
+  html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    min-height: 370px;
+    padding: 28px 4px 18px;
+  }
+
+  html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-factory-node[data-scene-station],
+  html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-factory-node[data-scene-station],
+  html[data-performance-mode="full"] body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-factory-node[data-scene-station]:hover,
+  html[data-performance-mode="standard"] body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-factory-node[data-scene-station]:hover {
+    position: relative;
+    inset: auto;
+    width: auto;
+    min-height: 126px;
+    transform: none;
+  }
+}

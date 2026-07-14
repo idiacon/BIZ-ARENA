@@ -1,0 +1,20 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="c3edge" x1="88" y1="76" x2="428" y2="444" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#5ED7FF"/>
+      <stop offset="1" stop-color="#4E8DFF"/>
+    </linearGradient>
+    <linearGradient id="c3roof" x1="124" y1="170" x2="388" y2="170" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F3B852"/>
+      <stop offset="1" stop-color="#7EF3A1"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="#06111D"/>
+  <path d="M256 58L420 154V358L256 454L92 358V154L256 58Z" fill="#0B2138" stroke="url(#c3edge)" stroke-width="15" stroke-linejoin="round"/>
+  <path d="M128 342V238L206 188L250 230L326 174L386 226V342" stroke="#8FE7FF" stroke-width="18" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M128 238L206 188L250 230L326 174L386 226" stroke="url(#c3roof)" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="160" y="284" width="44" height="58" rx="8" fill="#5ED7FF"/>
+  <rect x="234" y="254" width="44" height="88" rx="8" fill="#7EF3A1"/>
+  <rect x="308" y="292" width="44" height="50" rx="8" fill="#4E8DFF"/>
+  <path d="M178 158L214 118L256 158L298 118L334 158" stroke="#F3B852" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

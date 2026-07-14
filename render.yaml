@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: biz-arena-cloud
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node server.js
+    healthCheckPath: /api/health
+    envVars:
+      - key: BIZ_ARENA_DEPLOYMENT
+        value: cloud
+      - key: BIZ_ARENA_APP_MODE
+        value: server
+      - key: BIZ_ARENA_ALLOW_REGISTRATION
+        value: true
+      - key: BIZ_ARENA_PUBLIC_URL
+        sync: false

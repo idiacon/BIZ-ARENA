@@ -1,122 +1,746 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Biz Arena</title>
+    <link rel="icon" type="image/svg+xml" href="/assets/biz-arena-logo.svg" />
+    <link rel="stylesheet" href="/styles/design-system.css" />
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="stylesheet" href="/styles/teacher.css" />
+    <link rel="stylesheet" href="/styles/student.css" />
+    <link rel="stylesheet" href="/styles/runtime.css" />
   </head>
-  <body>
+  <body data-screen="main-menu-screen" data-ui-contract="dual-role-visual-v2">
+    <div id="toast-stack" class="toast-stack" aria-live="polite" aria-atomic="true"></div>
     <div class="shell">
+      <nav class="app-sidebar" data-ui-slot="role-navigation" aria-label="Основная навигация">
+        <div class="app-sidebar-status">
+          <span class="connection-dot" aria-hidden="true"></span>
+          <span>Не подключено</span>
+        </div>
+        <button type="button" class="app-sidebar-brand" data-home-link aria-label="На начальный экран">
+          <div class="brand-mark logo-symbol" aria-hidden="true">
+            <img src="/assets/biz-arena-logo.svg" alt="" />
+          </div>
+          <div>
+            <strong>Biz <span>Arena</span></strong>
+            <small>БИЗНЕС-СИМУЛЯТОР</small>
+          </div>
+        </button>
+        <div class="app-sidebar-nav" data-navigation-surface="game-sidebar">
+          <button type="button" data-open-screen="main-menu-screen" class="app-sidebar-link app-nav-link">
+            <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-play"></use></svg>
+            <strong>Играть</strong>
+            <small>Создать комнату</small>
+          </button>
+          <button type="button" data-open-screen="profile-screen" class="app-sidebar-link app-nav-link">
+            <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-profile"></use></svg>
+            <strong>Профиль</strong>
+            <small>Достижения</small>
+          </button>
+          <button type="button" data-open-screen="settings-screen" class="app-sidebar-link app-nav-link">
+            <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-settings"></use></svg>
+            <strong>Настройки</strong>
+            <small>Язык и вид</small>
+          </button>
+          <button type="button" data-open-screen="about-screen" class="app-sidebar-link app-nav-link">
+            <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-info"></use></svg>
+            <strong>О проекте</strong>
+            <small>Методика</small>
+          </button>
+          <div class="game-role-nav" data-role-navigation="teacher" aria-label="Навигация преподавателя">
+            <button type="button" class="app-sidebar-link game-sidebar-link teacher-tab-button" data-game-tab="teacher" data-role-tab="teacher">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-cabinet"></use></svg>
+              <strong>Кабинет</strong>
+              <small>Пульт класса</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="overview" data-role-tab="teacher">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-overview"></use></svg>
+              <strong>Комната</strong>
+              <small>Ход и состояние</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="competitors" data-role-tab="teacher">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-teams"></use></svg>
+              <strong>Команды</strong>
+              <small>Прогресс класса</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="market" data-role-tab="teacher">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-market"></use></svg>
+              <strong>Рынок</strong>
+              <small>Спрос и заявки</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="events" data-role-tab="teacher">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-crisis"></use></svg>
+              <strong>События</strong>
+              <small>Кризисные карты</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="statistics" data-role-tab="teacher">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-reports"></use></svg>
+              <strong>Результаты</strong>
+              <small>Метрики ходов</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-screen-link" data-open-screen="settings-screen" data-role-tab="teacher">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-settings"></use></svg>
+              <strong>Настройки</strong>
+              <small>Вид и доступность</small>
+            </button>
+          </div>
+
+          <div class="game-role-nav" data-role-navigation="student" aria-label="Навигация ученика">
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="overview" data-role-tab="student">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-overview"></use></svg>
+              <strong>Обзор</strong>
+              <small>Компания и ход</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="purchase" data-role-tab="student">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-purchase"></use></svg>
+              <strong>Закупка</strong>
+              <small>Поставщики</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="operations" data-role-tab="student">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-production"></use></svg>
+              <strong>Производство</strong>
+              <small>Сборка товара</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="market" data-role-tab="student">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-market"></use></svg>
+              <strong>Рынок</strong>
+              <small>Продажи</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="competitors" data-role-tab="student">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-teams"></use></svg>
+              <strong>Команда</strong>
+              <small>Сотрудники и рейтинг</small>
+            </button>
+            <button type="button" class="app-sidebar-link game-sidebar-link" data-game-tab="events" data-role-tab="student">
+              <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-reports"></use></svg>
+              <strong>Отчёт</strong>
+              <small>Итоги хода</small>
+            </button>
+          </div>
+        </div>
+        <small class="app-sidebar-version">v1.0.0-beta.1 - pilot beta</small>
+      </nav>
+
+      <section id="server-home-screen" class="screen hidden" data-teacher-entry-contract="create-or-exit">
+        <div class="screen-shell server-home-shell teacher-start-shell">
+          <section class="panel screen-panel span-2 teacher-start-topbar">
+            <div class="teacher-start-brand">
+              <div class="brand-mark logo-symbol" aria-hidden="true">
+                <img src="/assets/biz-arena-logo.svg" alt="" />
+              </div>
+              <div>
+                <span class="factory-node-label">BizArena Server</span>
+                <h2>Кабинет преподавателя</h2>
+              </div>
+            </div>
+            <div class="teacher-start-status">
+              <span id="server-mode-status" class="status">LAN server</span>
+            </div>
+          </section>
+
+          <section class="panel screen-panel teacher-start-main">
+            <div>
+              <span class="factory-node-label">Старт занятия</span>
+              <h2>Создайте игру, задайте параметры и откройте лобби класса</h2>
+              <p class="muted">До создания комнаты преподавателю нужны только два действия: начать занятие или выйти. Ссылка, QR, список учеников и кнопка запуска появятся в лобби после создания игры.</p>
+            </div>
+            <div class="teacher-start-actions">
+              <button type="button" class="command-action-primary" data-teacher-entry-action="create" data-open-screen="create-room-screen">Создать игру</button>
+              <button id="teacher-resume-room" type="button" class="ghost" hidden data-open-screen="lobby-screen">Продолжить занятие</button>
+              <button type="button" class="ghost" data-teacher-entry-action="exit" data-server-exit>Выход</button>
+            </div>
+            <div class="teacher-start-deck" aria-label="Что будет после создания игры" hidden>
+              <article>
+                <span class="teacher-start-deck-icon"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-cabinet"></use></svg></span>
+                <strong>Параметры матча</strong>
+                <small>Сценарий, сложность, командный лимит, длина сезона и время хода.</small>
+              </article>
+              <article>
+                <span class="teacher-start-deck-icon"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-join"></use></svg></span>
+                <strong>Лобби класса</strong>
+                <small>Ученики входят по коду, видят друг друга и подтверждают готовность.</small>
+              </article>
+              <article>
+                <span class="teacher-start-deck-icon"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-check"></use></svg></span>
+                <strong>Запуск без хаоса</strong>
+                <small>Система покажет, можно ли стартовать, и кто еще не готов.</small>
+              </article>
+            </div>
+            <div class="server-address-grid teacher-start-addresses" hidden>
+              <article>
+                <span>Локально на этом ПК</span>
+                <strong id="server-local-url">http://127.0.0.1:3000</strong>
+                <button type="button" class="ghost server-copy-button" data-server-copy="local">Скопировать</button>
+              </article>
+              <article>
+                <span>Для учеников в локальной сети</span>
+                <strong id="server-lan-url">LAN адрес появится после запуска</strong>
+                <button type="button" class="ghost server-copy-button" data-server-copy="lan">Скопировать</button>
+              </article>
+              <article class="server-student-link-card">
+                <span>Ссылка для BizArena Client</span>
+                <strong id="server-client-url">Адрес появится после запуска</strong>
+                <button type="button" class="ghost server-copy-button" data-server-copy="client">Скопировать для учеников</button>
+              </article>
+              <article>
+                <span>Порт</span>
+                <strong id="server-port">3000</strong>
+              </article>
+            </div>
+            <div id="server-client-links" class="server-client-links top-gap" hidden></div>
+          </section>
+
+          <section class="panel screen-panel teacher-start-guide" hidden>
+            <div class="panel-header">
+              <h2>Что делать сейчас</h2>
+            </div>
+            <div class="teacher-start-checklist">
+              <article><span>1</span><strong>Создайте игру</strong><small>Выберите сценарий, сложность, число команд, ходов и время.</small></article>
+              <article><span>2</span><strong>Дайте QR или ссылку</strong><small>Ученики входят как гости, видят параметры и нажимают готовность.</small></article>
+              <article><span>3</span><strong>Запустите матч</strong><small>После готовности класса переходите в dashboard преподавателя.</small></article>
+            </div>
+          </section>
+
+          <section class="panel screen-panel span-2 server-admin-home-panel" hidden>
+            <div id="server-admin-overview" class="server-admin-overview"></div>
+          </section>
+        </div>
+      </section>
+
       <section id="main-menu-screen" class="screen active">
-        <header class="hero hero-single">
+        <div class="role-entry-shell">
+          <div class="role-entry-topbar">
+            <div class="role-entry-brand" aria-label="Biz Arena">
+              <span class="role-entry-logo" aria-hidden="true">
+                <img src="/assets/biz-arena-logo.svg" alt="" />
+              </span>
+              <span>
+                <strong>Biz <b>Arena</b></strong>
+                <small>Учебный бизнес-симулятор</small>
+              </span>
+            </div>
+
+            <div class="role-entry-system">
+              <span class="role-entry-connection">
+                <span class="connection-dot" aria-hidden="true"></span>
+                <span id="session-status" class="status off">Не подключено</span>
+              </span>
+              <span id="build-badge" class="role-entry-version" data-i18n="build_badge_text">v1.0.0-beta.1</span>
+              <button type="button" class="role-entry-tool" data-open-screen="settings-screen" aria-label="Настройки" title="Настройки">
+                <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-settings"></use></svg>
+              </button>
+              <button type="button" class="role-entry-tool" data-open-screen="about-screen" aria-label="О проекте" title="О проекте">
+                <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-info"></use></svg>
+              </button>
+            </div>
+          </div>
+
+          <main class="role-entry-content">
+            <div class="role-entry-heading">
+              <span class="role-entry-kicker">Начало занятия</span>
+              <h1>Выберите свою роль</h1>
+              <p>Преподаватель создаёт комнату и управляет ходом игры. Ученик входит по коду и развивает свою компанию.</p>
+            </div>
+
+            <div class="role-entry-options" aria-label="Выбор роли">
+              <button type="button" class="role-entry-option role-entry-teacher" data-entry-role="teacher" data-open-screen="server-home-screen">
+                <span class="role-entry-option-icon" aria-hidden="true">
+                  <svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-cabinet"></use></svg>
+                </span>
+                <span class="role-entry-option-copy">
+                  <small>Управление занятием</small>
+                  <strong>Преподаватель</strong>
+                  <span>Создать комнату, пригласить класс и следить за прогрессом команд.</span>
+                </span>
+                <svg class="game-ui-icon role-entry-arrow" aria-hidden="true"><use href="/assets/game-icons.svg#icon-chevron"></use></svg>
+              </button>
+
+              <button type="button" class="role-entry-option role-entry-student" data-entry-role="student" data-open-screen="join-room-screen">
+                <span class="role-entry-option-icon" aria-hidden="true">
+                  <svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-join"></use></svg>
+                </span>
+                <span class="role-entry-option-copy">
+                  <small>Участие в игре</small>
+                  <strong>Ученик</strong>
+                  <span>Войти по коду комнаты, управлять компанией и завершать ходы.</span>
+                </span>
+                <svg class="game-ui-icon role-entry-arrow" aria-hidden="true"><use href="/assets/game-icons.svg#icon-chevron"></use></svg>
+              </button>
+            </div>
+          </main>
+
+          <div class="role-entry-footer">
+            <span>LAN-first</span>
+            <span>До 30 участников</span>
+            <span>Browser + Desktop</span>
+          </div>
+        </div>
+
+        <header class="hero hero-single legacy-main-menu" hidden>
+          <div class="main-topbar span-2" aria-label="Статус приложения">
+            <div class="topbar-status">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M5 9.5a10.2 10.2 0 0 1 14 0" />
+                <path d="M8.5 13a5.1 5.1 0 0 1 7 0" />
+                <path d="M12 17h.01" />
+              </svg>
+              <span class="connection-dot" aria-hidden="true"></span>
+              <span id="legacy-session-status" class="status off">Не подключено</span>
+            </div>
+            <div class="topbar-controls">
+              <span id="legacy-build-badge" class="topbar-version" data-i18n="build_badge_text">v1.0.0-beta.1 - Pilot Beta</span>
+              <button type="button" class="topbar-button" aria-label="Язык">RU <span aria-hidden="true">⌄</span></button>
+              <button type="button" class="topbar-icon-button" aria-label="Справка" title="Справка">
+                <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-info"></use></svg>
+              </button>
+              <button type="button" class="topbar-icon-button" aria-label="Тема" title="Тема">
+                <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-theme"></use></svg>
+              </button>
+            </div>
+          </div>
+
           <div class="hero-copy panel hero-card-large">
-            <p class="eyebrow">LAN business league</p>
-            <h1>Biz Arena</h1>
-            <p id="build-badge" class="hero-note">v0.1.0 вЂў desktop showcase build</p>
-            <p class="lead" data-i18n="hero_lead">
-              Milestone 11: execution queue steps can now be launched from the strategy panel.
-            </p>
-            <div class="badge-row badge-row-wide">
-              <span class="badge" data-i18n="badge_rooms">Rooms</span>
-              <span class="badge" data-i18n="badge_progress">Boardroom goals</span>
-              <span class="badge" data-i18n="badge_research">Advisors + policies</span>
+            <img class="hero-blueprint" src="/assets/factory-blueprint.png" alt="" aria-hidden="true" />
+            <div class="brand-lockup logo-row">
+              <div class="brand-mark logo-symbol" aria-hidden="true">
+                <img src="/assets/biz-arena-logo.svg" alt="" />
+              </div>
+              <div>
+                <h1 class="brand-title">Biz <span>Arena</span></h1>
+                <p class="eyebrow">БИЗНЕС-СИМУЛЯТОР ДЛЯ УНИВЕРСИТЕТОВ</p>
+              </div>
             </div>
-            <div class="hero-demo-card">
-              <strong>Р РµР¶РёРј РїРѕРєР°Р·Р°</strong>
-              <p class="muted small">РњРѕР¶РЅРѕ СЃСЂР°Р·Сѓ Р·Р°РїСѓСЃС‚РёС‚СЊ РґРµРјРѕ-РјР°С‚С‡ СЃ Р±РѕС‚Р°РјРё Рё РїРѕРєР°Р·Р°С‚СЊ РёРіСЂРѕРІРѕР№ С†РёРєР» Р±РµР· СЂСѓС‡РЅРѕР№ РїРѕРґРіРѕС‚РѕРІРєРё РєРѕРјРЅР°С‚С‹.</p>
+            <div class="hero-rule"></div>
+            <div class="demo-callout">
+              <div class="icon-frame icon-frame-large" aria-hidden="true">
+                <svg viewBox="0 0 24 24">
+                  <path d="M3 8.5 12 4l9 4.5-9 4.5Z" />
+                  <path d="M6.5 10.5v4.2c1.4 1.8 3.2 2.7 5.5 2.7s4.1-.9 5.5-2.7v-4.2" />
+                </svg>
+              </div>
+              <div>
+                <h2 data-i18n="hero_demo_title">Готовый учебный матч</h2>
+                <p>Проведите учебный матч за 15-30 минут: управляйте заводом, принимайте решения и соревнуйтесь в эффективности.</p>
+              </div>
+            </div>
+            <div class="feature-grid">
+              <article class="feature-item">
+                <div class="icon-frame" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M7 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                    <path d="M17 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z" />
+                    <path d="M3 19c.8-3 2.3-4.5 4-4.5s3.2 1.5 4 4.5" />
+                    <path d="M13 19c.8-3 2.3-4.5 4-4.5s3.2 1.5 4 4.5" />
+                  </svg>
+                </div>
+                <h3>Комнаты и матчи</h3>
+                <p>Создавайте комнаты, приглашайте студентов и запускайте учебные матчи за пару кликов.</p>
+              </article>
+              <article class="feature-item">
+                <div class="icon-frame" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="7" />
+                    <circle cx="12" cy="12" r="3" />
+                    <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                  </svg>
+                </div>
+                <h3>Учебные цели</h3>
+                <p>Финансы, производство, ценообразование, маркетинг и стратегия в одном цикле.</p>
+              </article>
+              <article class="feature-item">
+                <div class="icon-frame" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 7 12 3l8 4-8 4Z" />
+                    <path d="M7 10v5l5 3 5-3v-5" />
+                    <path d="M20 7v6" />
+                  </svg>
+                </div>
+                <h3>Разбор и советник</h3>
+                <p>Итоги хода, рекомендации и разбор решений для закрепления знаний.</p>
+              </article>
             </div>
           </div>
-          <div class="panel hero-card menu-card">
-            <div class="panel-header panel-header-tight">
-              <h2 data-i18n="main_menu_title">Main menu</h2>
-              <span id="session-status" class="status off">Not connected</span>
+          <div class="panel hero-card menu-card command-card">
+            <h2>Что вы хотите сделать?</h2>
+            <div class="command-list">
+              <button type="button" class="command-action command-action-primary" data-open-screen="main-menu-screen">
+                <span class="command-icon" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-play"></use></svg></span>
+                <span class="command-copy">
+                  <strong data-i18n="menu_play">Играть</strong>
+                  <small>Присоединиться к комнате или начать новый матч</small>
+                </span>
+                <span class="chevron" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-chevron"></use></svg></span>
+              </button>
+              <button type="button" id="profile-toggle" class="command-action" data-open-screen="profile-screen">
+                <span class="command-icon" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-profile"></use></svg></span>
+                <span class="command-copy">
+                  <strong data-i18n="profile_button">Профиль</strong>
+                  <small>Ваши достижения, статистика и рейтинг</small>
+                </span>
+                <span class="chevron" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-chevron"></use></svg></span>
+              </button>
+              <button type="button" id="settings-toggle" class="command-action" data-open-screen="settings-screen">
+                <span class="command-icon" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-settings"></use></svg></span>
+                <span class="command-copy">
+                  <strong data-i18n="settings_button">Настройки</strong>
+                  <small>Общие настройки, язык и управление</small>
+                </span>
+                <span class="chevron" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-chevron"></use></svg></span>
+              </button>
+              <button type="button" class="command-action" data-open-screen="about-screen">
+                <span class="command-icon" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-info"></use></svg></span>
+                <span class="command-copy">
+                  <strong data-i18n="menu_about">О проекте</strong>
+                  <small>О симуляторе, методике и команде проекта</small>
+                </span>
+                <span class="chevron" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-chevron"></use></svg></span>
+              </button>
             </div>
-            <div class="menu-grid">
-              <button type="button" data-open-screen="play-menu-screen" data-i18n="menu_play">Play</button>
-              <button type="button" id="profile-toggle" class="ghost" data-open-screen="profile-screen" data-i18n="profile_button">Profile</button>
-              <button type="button" id="settings-toggle" class="ghost" data-open-screen="settings-screen" data-i18n="settings_button">Settings</button>
-              <button type="button" class="ghost" data-open-screen="about-screen" data-i18n="menu_about">About</button>
-            </div>
-            <p class="muted small" data-i18n="main_menu_hint">Choose a section to continue. This build adds board policies, season goals, advisors, and richer career tracking.</p>
           </div>
+
         </header>
       </section>
 
-      <section id="play-menu-screen" class="screen hidden">
-        <div class="screen-shell narrow-stack">
-          <div class="panel screen-panel">
-            <div class="panel-header">
-              <h2 data-i18n="play_menu_title">Play</h2>
-              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+      <section id="play-menu-screen" class="screen hidden" data-legacy-screen="play-menu" hidden inert aria-hidden="true">
+        <div class="screen-shell play-hub-shell">
+          <section class="panel screen-panel play-lobby-board">
+            <div class="panel-header play-hub-header">
+              <div>
+                <h2>1. ЛОББИ И КОМНАТЫ</h2>
+              </div>
+              <div class="inline-actions">
+                <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+              </div>
             </div>
-            <div class="menu-grid">
-              <button type="button" data-open-screen="create-room-screen" data-i18n="menu_create_game">Create game</button>
-              <button type="button" id="demo-start-button">Р”РµРјРѕ-РјР°С‚С‡ РґР»СЏ РїРѕРєР°Р·Р°</button>
-              <button type="button" class="ghost" data-open-screen="join-room-screen" data-i18n="menu_join_game">Join game</button>
+
+            <section class="student-start-panel" aria-label="Быстрый старт для школьника">
+              <div class="student-start-copy">
+                <span class="factory-node-label">Первый взгляд</span>
+                <h3>Для ученика 11 класса: цель простая</h3>
+                <p>Ты управляешь заводом. За один ход нужно купить детали, нанять людей, собрать товар, выставить продажу и завершить ход.</p>
+              </div>
+              <div class="student-start-steps" aria-label="Пять шагов первого хода">
+                <span><b>1</b> Закупка <small>купи детали</small></span>
+                <span><b>2</b> Персонал <small>найми людей</small></span>
+                <span><b>3</b> Завод <small>собери товар</small></span>
+                <span><b>4</b> Маркетинг <small>поставь цену</small></span>
+                <span><b>5</b> Отчеты <small>проверь прибыль</small></span>
+              </div>
+              <div class="student-glossary" aria-label="Словарь простыми словами">
+                <span><strong>Лот</strong> партия деталей</span>
+                <span><strong>Заявка</strong> товар на продажу</span>
+                <span><strong>Капитал</strong> ценность компании</span>
+                <span><strong>Ход</strong> один раунд решений</span>
+              </div>
+              <div class="student-start-actions">
+                <button type="button" data-student-start-tutorial>Пройти первый ход с подсказками</button>
+                <button type="button" class="ghost" id="student-demo-start-button">Открыть демо-матч</button>
+              </div>
+            </section>
+
+            <div class="play-command-grid">
+              <button type="button" class="play-command-card" data-open-screen="create-room-screen">
+                <span class="play-command-icon" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-cabinet"></use></svg></span>
+                <span>
+                  <strong data-i18n="menu_create_game">Create game</strong>
+                  <small>Создайте новую комнату и пригласите участников.</small>
+                </span>
+                <b data-i18n="menu_create_game">Создать комнату</b>
+              </button>
+              <button type="button" class="play-command-card" data-open-screen="join-room-screen">
+                <span class="play-command-icon" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-join"></use></svg></span>
+                <span>
+                  <strong data-i18n="menu_join_game">Join game</strong>
+                  <small>Введите код комнаты, чтобы присоединиться.</small>
+                </span>
+                <b>Ввести код комнаты</b>
+              </button>
+              <button type="button" id="demo-start-button" class="play-command-card play-command-primary">
+                <span class="play-command-icon" aria-hidden="true"><svg class="game-ui-icon"><use href="/assets/game-icons.svg#icon-flash"></use></svg></span>
+                <span>
+                  <strong data-i18n="menu_demo_match">Demo match</strong>
+                  <small data-i18n="demo_match_hint">The demo creates a ready championship match without LAN setup.</small>
+                </span>
+                <b>Найти матч</b>
+              </button>
+            </div>
+
+            <section class="available-rooms-panel">
+              <div class="panel-header panel-header-tight">
+                <h3>Доступные комнаты</h3>
+                <label class="room-search">
+                  <span class="hidden">Поиск</span>
+                  <input type="text" placeholder="Поиск по названию..." />
+                </label>
+              </div>
+              <div class="rooms-table" role="table" aria-label="Доступные комнаты">
+                <div class="rooms-row rooms-head" role="row">
+                  <span>Комната</span>
+                  <span>Преподаватель</span>
+                  <span>Команды</span>
+                  <span>Режим</span>
+                  <span>Раунд</span>
+                  <span>Статус</span>
+                </div>
+                <div class="rooms-row" role="row">
+                  <strong>Завод бытовой техники — 1</strong>
+                  <span>Иванов И.И.</span>
+                  <span>5 / 6</span>
+                  <span>Учебный</span>
+                  <span>3 / 30</span>
+                  <b class="room-state open">Идёт</b>
+                </div>
+                <div class="rooms-row" role="row">
+                  <strong>Производство 2024</strong>
+                  <span>Петров П.П.</span>
+                  <span>4 / 6</span>
+                  <span>Учебный</span>
+                  <span>2 / 30</span>
+                  <b class="room-state waiting">Ожидание</b>
+                </div>
+                <div class="rooms-row" role="row">
+                  <strong>Фабрика успеха</strong>
+                  <span>Сидорова А.А.</span>
+                  <span>6 / 6</span>
+                  <span>Учебный</span>
+                  <span>5 / 30</span>
+                  <b class="room-state open">Идёт</b>
+                </div>
+                <div class="rooms-row" role="row">
+                  <strong>Тренировочная комната</strong>
+                  <span>Кузнецов К.К.</span>
+                  <span>2 / 6</span>
+                  <span>Песочница</span>
+                  <span>1 / ∞</span>
+                  <b class="room-state waiting">Ожидание</b>
+                </div>
+              </div>
+              <div class="rooms-footer">
+                <span>Показано 1-4 из 12 комнат</span>
+                <span><b>1</b><b>2</b><b>3</b><b>›</b></span>
+              </div>
+            </section>
+
+            <div class="lobby-stat-strip">
+              <article><span>Активных матчей</span><strong>24</strong></article>
+              <article><span>Игроков онлайн</span><strong>136</strong></article>
+              <article><span>Команд сегодня</span><strong>58</strong></article>
+              <article><span>Среднее время хода</span><strong>12:34</strong></article>
+              <article><span>Симуляций запущено</span><strong>1 248</strong></article>
+            </div>
+
+            <div class="lobby-session-actions">
+              <button type="button" id="tutorial-start-button" class="ghost" data-i18n="menu_tutorial_match">First-turn tutorial</button>
               <button type="button" class="ghost" data-open-screen="lobby-screen" data-requires-connection="true" data-i18n="menu_continue_lobby">Current lobby</button>
               <button type="button" class="ghost" data-open-screen="game-screen" data-requires-running-game="true" data-i18n="menu_continue_game">Current game</button>
             </div>
-            <p class="muted small" data-i18n="play_menu_hint">Create a room, join by code, or return to your active session.</p>
-            <div class="panel-subtitle" data-i18n="runtime_title">v0.1 host info</div>
-            <div id="runtime-meta" class="info-stack placeholder">
-              <div data-i18n="runtime_loading">Checking local launch infoвЂ¦</div>
+
+            <div id="runtime-meta" class="info-stack placeholder runtime-grid compact-runtime">
+              <div data-i18n="runtime_loading">Checking local launch info...</div>
             </div>
-          </div>
+          </section>
         </div>
       </section>
 
       <section id="create-room-screen" class="screen hidden">
-        <div class="screen-shell narrow-stack">
-          <div class="panel screen-panel">
+        <div class="screen-shell create-room-classroom">
+          <div class="panel screen-panel create-room-designer">
             <div class="panel-header">
-              <h2 data-i18n="create_room_screen">Create game</h2>
+              <div>
+                <span class="factory-node-label">Параметры занятия</span>
+                <h2 data-i18n="create_room_screen">Create game</h2>
+                <span class="muted">Настройте комнату до входа учеников. Эти параметры будут видны в лобби.</span>
+              </div>
               <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+            </div>
+            <div class="create-room-blueprint" aria-label="Маршрут запуска занятия" hidden>
+              <span><b>1</b><strong>Параметры</strong><small>сценарий, время хода, сезон</small></span>
+              <span><b>2</b><strong>Ссылка и QR</strong><small>ученики входят по комнате</small></span>
+              <span><b>3</b><strong>Принять участие</strong><small>каждая команда подтверждает готовность</small></span>
+              <span><b>4</b><strong>Запуск матча</strong><small>преподаватель стартует игру</small></span>
+            </div>
+            <div class="create-room-metrics" aria-label="Краткая сводка будущего матча" hidden>
+              <article>
+                <span>Рынок</span>
+                <strong>Спрос + производство</strong>
+              </article>
+              <article>
+                <span>Кризисы</span>
+                <strong>С 3 хода</strong>
+              </article>
+              <article>
+                <span>Победа</span>
+                <strong>Капитал + доля</strong>
+              </article>
+            </div>
+            <div id="create-room-live-summary" class="create-room-live-summary" aria-live="polite">
+              <article>
+                <span>Комната</span>
+                <strong>Classroom</strong>
+                <small>Название появится здесь при вводе.</small>
+              </article>
+              <article>
+                <span>Команды</span>
+                <strong>8</strong>
+                <small>Максимум участников в лобби.</small>
+              </article>
+              <article>
+                <span>Формат</span>
+                <strong>30 ходов</strong>
+                <small>30 минут на ход.</small>
+              </article>
+              <article>
+                <span>Сложность</span>
+                <strong>Лёгкая</strong>
+                <small>Подходит для первого занятия.</small>
+              </article>
             </div>
             <form id="create-form" class="stack-form">
               <label>
                 <span data-i18n="room_name">Room name</span>
-                <input id="room-name" type="text" maxlength="24" data-i18n-placeholder="room_name_placeholder" placeholder="Sunday League" required />
+                <input id="room-name" type="text" maxlength="24" value="Аудитория" data-i18n-placeholder="room_name_placeholder" placeholder="Аудитория" required />
               </label>
               <label>
                 <span data-i18n="company_name">Company name</span>
-                <input id="create-company-name" type="text" maxlength="24" data-i18n-placeholder="company_name_placeholder" placeholder="North Capital" required />
+                <input id="create-company-name" type="text" maxlength="24" value="Команда преподавателя" data-i18n-placeholder="company_name_placeholder" placeholder="Команда преподавателя" required />
+              </label>
+              <label>
+                <span data-i18n="max_players">Max players</span>
+                <select id="create-max-players-select">
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                  <option value="5">5</option>
+                  <option value="6">6</option>
+                  <option value="7">7</option>
+                  <option value="8">8</option>
+                  <option value="15">15</option>
+                  <option value="20">20</option>
+                  <option value="25">25</option>
+                  <option value="30" selected>30</option>
+                </select>
+              </label>
+              <label>
+                <span data-i18n="day_limit_title">Season length</span>
+                <select id="create-day-limit-select">
+                  <option value="10">10</option>
+                  <option value="14">14</option>
+                  <option value="18">18</option>
+                  <option value="24">24</option>
+                  <option value="30" selected>30</option>
+                </select>
               </label>
               <label>
                 <span data-i18n="scenario_title">Scenario</span>
                 <select id="create-scenario-select">
-                  <option value="standard" data-i18n="scenario_standard">Balanced growth</option>
-                  <option value="boom" data-i18n="scenario_boom">Consumer boom</option>
-                  <option value="crunch" data-i18n="scenario_crunch">Supply crunch</option>
-                  <option value="tech" data-i18n="scenario_tech">Tech acceleration</option>
+                  <option value="motorcycles" data-i18n="scenario_motorcycles_label">Motorcycle plant</option>
+                  <option value="drones" data-i18n="scenario_drones_label">Drone factory</option>
+                  <option value="smartphones" data-i18n="scenario_smartphones_label">Smartphone assembly</option>
+                  <option value="ev_scooters" data-i18n="scenario_ev_scooters_label">EV scooter line</option>
+                  <option value="appliances" data-i18n="scenario_appliances_label">Appliance workshop</option>
                 </select>
               </label>
-              <button type="submit" data-i18n="create_room_btn">Create and host</button>
+              <label>
+                <span>Время хода</span>
+                <select id="create-turn-duration-select">
+                  <option value="300000">5 минут</option>
+                  <option value="600000">10 минут</option>
+                  <option value="900000">15 минут</option>
+                  <option value="1200000">20 минут</option>
+                  <option value="1800000" selected>30 минут</option>
+                </select>
+              </label>
+              <input id="create-difficulty-select" type="hidden" value="easy" />
+              <div id="create-difficulty-picker" class="difficulty-picker" aria-label="Difficulty">
+                <button type="button" class="difficulty-card active" data-create-difficulty="easy">
+                  <span data-i18n="difficulty_easy">Easy</span>
+                  <strong data-i18n="difficulty_easy_for">New player</strong>
+                  <small data-i18n="difficulty_easy_hint">Guided flow, fewer panels, softer economy.</small>
+                </button>
+                <button type="button" class="difficulty-card" data-create-difficulty="normal">
+                  <span data-i18n="difficulty_normal">Normal</span>
+                  <strong data-i18n="difficulty_normal_for">Standard match</strong>
+                  <small data-i18n="difficulty_normal_hint">Current rules with cleaner default panels.</small>
+                </button>
+                <button type="button" class="difficulty-card" data-create-difficulty="hard">
+                  <span data-i18n="difficulty_hard">Hard</span>
+                  <strong data-i18n="difficulty_hard_for">Full sim</strong>
+                  <small data-i18n="difficulty_hard_hint">All panels, tighter cash, stronger volatility.</small>
+                </button>
+              </div>
+              <div class="create-room-submit-band">
+                <div>
+                  <strong>После создания откроется лобби</strong>
+                  <small>Ученики увидят преподавателя, друг друга, параметры занятия и кнопку “Принять участие”.</small>
+                </div>
+                <button type="submit" data-i18n="create_room_btn">Create and host</button>
+              </div>
             </form>
           </div>
+          <aside class="create-room-side" aria-label="Сценарий и следующий шаг">
+            <section class="panel screen-panel create-room-side-card">
+              <div class="panel-header compact">
+                <div>
+                  <span class="factory-node-label">Сценарий справа</span>
+                  <h2>Проверка рынка</h2>
+                </div>
+              </div>
+              <div id="create-scenario-preview" class="scenario-preview" aria-live="polite"></div>
+            </section>
+            <section class="panel screen-panel create-room-side-card create-room-flow" hidden>
+              <span class="factory-node-label">Путь дальше</span>
+              <h2>После создания комнаты</h2>
+              <div class="create-room-flow-list">
+                <article><b>1</b><span>Получить код комнаты, ссылку и QR.</span></article>
+                <article><b>2</b><span>Дать ученикам войти и нажать готовность.</span></article>
+                <article><b>3</b><span>Проверить состав класса и запустить матч.</span></article>
+              </div>
+            </section>
+          </aside>
         </div>
       </section>
 
       <section id="join-room-screen" class="screen hidden">
-        <div class="screen-shell narrow-stack">
-          <div class="panel screen-panel">
+        <div class="screen-shell student-entry-shell">
+          <div class="panel screen-panel student-entry-card">
             <div class="panel-header">
-              <h2 data-i18n="join_room_screen">Join game</h2>
+              <h2 data-i18n="join_room_screen">Войти в комнату преподавателя</h2>
               <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
             </div>
-            <form id="join-form" class="stack-form">
+            <div class="student-entry-note" data-client-entry-note>
+              <strong>Режим ученика</strong>
+              <span>Введите код комнаты, имя и команду. После входа нажмите “Готов” и следуйте первому шагу.</span>
+            </div>
+            <form id="join-form" class="stack-form" novalidate>
+              <label>
+                <span>Ваше имя</span>
+                <input id="join-user-name" type="text" maxlength="24" placeholder="Например: Иван 11А" required />
+              </label>
               <label>
                 <span data-i18n="room_code">Room code</span>
                 <input id="room-code" type="text" maxlength="5" data-i18n-placeholder="room_code_placeholder" placeholder="ABCDE" required />
               </label>
               <label>
-                <span data-i18n="company_name">Company name</span>
-                <input id="join-company-name" type="text" maxlength="24" data-i18n-placeholder="company_name_placeholder" placeholder="South Trade" required />
+                <span data-i18n="company_name">Название команды</span>
+                <input id="join-company-name" type="text" maxlength="24" data-i18n-placeholder="company_name_placeholder" placeholder="Команда 11А" required />
               </label>
-              <button type="submit" data-i18n="join_room_btn">Join room</button>
+              <button type="submit" data-i18n="join_room_btn">Войти и ждать старт</button>
+              <p id="join-form-status" class="form-status" role="status" aria-live="polite"></p>
             </form>
-            <p class="muted small" data-i18n="join_hint">Host launches the match after everyone joins with the room code.</p>
+            <p class="muted small" data-i18n="join_hint">Введите код с экрана преподавателя. После входа нажмите “Готов”, дальше игра покажет первый шаг.</p>
           </div>
+          <aside class="panel screen-panel student-entry-side" aria-label="Student route">
+            <span class="factory-node-label">Путь ученика</span>
+            <h2>Войти, принять участие, дождаться старта</h2>
+            <div class="student-entry-route">
+              <span><b>1</b><strong>Код комнаты</strong><small>Введите код с экрана преподавателя или QR.</small></span>
+              <span><b>2</b><strong>Команда</strong><small>Укажите имя и название компании.</small></span>
+              <span><b>3</b><strong>Принять участие</strong><small>В лобби нажмите готовность и проверьте параметры.</small></span>
+              <span><b>4</b><strong>Первый ход</strong><small>После старта игра поведет по маршруту Купить - Нанять - Собрать - Продать.</small></span>
+            </div>
+          </aside>
         </div>
       </section>
 
@@ -127,7 +751,7 @@
               <h2 data-i18n="profile_title">Profile</h2>
               <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
             </div>
-            <span id="profile-status" class="muted">вЂ”</span>
+            <span id="profile-status" class="muted">—</span>
             <div class="profile-grid top-gap">
               <div class="avatar-box">
                 <img id="profile-avatar-preview" alt="avatar preview" />
@@ -167,41 +791,176 @@
       </section>
 
       <section id="settings-screen" class="screen hidden">
-        <div class="screen-shell narrow-stack">
-          <div id="settings-panel" class="panel screen-panel">
+        <div class="screen-shell settings-workspace">
+          <div id="settings-panel" class="panel screen-panel settings-board">
             <div class="panel-header">
-              <h2 data-i18n="settings_title">Settings</h2>
-              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+              <div>
+                <h2>3. НАСТРОЙКИ • О ПРОЕКТЕ • РЕЗУЛЬТАТЫ</h2>
+                <span class="muted" data-i18n="settings_local">Stored locally on this device</span>
+              </div>
+              <div class="inline-actions">
+                <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+              </div>
             </div>
-            <span class="muted" data-i18n="settings_local">Stored locally on this device</span>
-            <div class="settings-grid top-gap">
-              <label>
-                <span data-i18n="language">Language</span>
-                <select id="language-select">
-                  <option value="ru">Р СѓСЃСЃРєРёР№</option>
-                  <option value="en">English</option>
-                  <option value="tt">РўР°С‚Р°СЂС‡Р°</option>
-                </select>
-              </label>
-              <label>
-                <span data-i18n="font_size">Font size</span>
-                <select id="font-size-select">
-                  <option value="14">Small</option>
-                  <option value="16">Medium</option>
-                  <option value="18">Large</option>
-                </select>
-              </label>
-              <label>
-                <span data-i18n="background_theme">Background</span>
-                <select id="background-select">
-                  <option value="navy" data-i18n="bg_navy">Navy</option>
-                  <option value="midnight" data-i18n="bg_midnight">Midnight</option>
-                  <option value="aurora" data-i18n="bg_aurora">Aurora</option>
-                </select>
-              </label>
-              <button id="save-settings" type="button" data-i18n="save_settings">Save settings</button>
+            <div class="settings-tabs" aria-label="Разделы настроек">
+              <button type="button" class="active" data-i18n="settings_title">Settings</button>
+              <button type="button" data-open-screen="about-screen" data-i18n="about_title">About</button>
+              <button type="button" data-open-screen="results-screen" data-i18n="results_title">Match results</button>
+            </div>
+            <div class="settings-console-grid">
+              <section class="settings-card settings-card-main">
+                <h3>Общие</h3>
+                <label>
+                  <span data-i18n="language">Language</span>
+                  <select id="language-select">
+                    <option value="ru">Русский</option>
+                    <option value="en">English</option>
+                  </select>
+                </label>
+                <label>
+                  <span data-i18n="background_theme">Background</span>
+                  <select id="background-select">
+                    <option value="navy">Синий пульт</option>
+                    <option value="midnight">Ночная смена</option>
+                    <option value="aurora">Аврора</option>
+                    <option value="daylight">Дневной контраст</option>
+                    <option value="ivory">Тёплая смена</option>
+                    <option value="mint">Мятная смена</option>
+                  </select>
+                </label>
+                <label>
+                  <span data-i18n="visual_preset">Visual preset</span>
+                  <select id="visual-preset-select">
+                    <option value="factory_board" data-i18n="visual_factory_board">Factory board game</option>
+                    <option value="friendly_tycoon" data-i18n="visual_friendly_tycoon">Friendly tycoon</option>
+                    <option value="industrial_sim" data-i18n="visual_industrial_sim">Industrial sim</option>
+                  </select>
+                </label>
+                <label>
+                  <span>Качество интерфейса</span>
+                  <select id="performance-mode-select">
+                    <option value="auto">Авто · по мощности устройства</option>
+                    <option value="full">Full · 16 ГБ</option>
+                    <option value="standard">Standard · 8 ГБ</option>
+                    <option value="lite">Lite · 6 ГБ</option>
+                  </select>
+                  <small id="performance-mode-summary" class="settings-helper" aria-live="polite">Авто подберет визуальный режим без удаления данных и действий.</small>
+                </label>
+                <label>
+                  <span>Частота обновления</span>
+                  <select id="refresh-cadence-select">
+                    <option value="auto">Авто</option>
+                    <option value="fast">Быстро</option>
+                    <option value="normal">Нормально</option>
+                    <option value="slow">Экономно</option>
+                  </select>
+                  <small class="settings-helper">В скрытой вкладке обновление замедляется до 20 секунд.</small>
+                </label>
+                <label>
+                  <span data-i18n="font_size">Font size</span>
+                  <select id="font-size-select">
+                    <option value="14" data-i18n="font_small">Small</option>
+                    <option value="16" data-i18n="font_medium">Medium</option>
+                    <option value="18" data-i18n="font_large">Large</option>
+                  </select>
+                </label>
+                <div class="settings-toggle-row">
+                  <span>Подтверждать запуск хода</span>
+                  <i aria-hidden="true"></i>
+                </div>
+                <label>
+                  <span>Анимации интерфейса</span>
+                  <select id="animation-mode-select">
+                    <option value="auto">Авто</option>
+                    <option value="on">Включены</option>
+                    <option value="off">Выключены</option>
+                  </select>
+                </label>
+              </section>
+              <section class="settings-card">
+                <h3>Уведомления</h3>
+                <div class="settings-toggle-row"><span>Звуковые уведомления</span><i aria-hidden="true"></i></div>
+                <div class="settings-toggle-row"><span>Уведомления в браузере</span><i aria-hidden="true"></i></div>
+                <div class="settings-toggle-row"><span>Сообщения от преподавателя</span><i aria-hidden="true"></i></div>
+                <label>
+                  <span>Напоминание о ходе</span>
+                  <select>
+                    <option>За 2 минуты</option>
+                    <option>За 5 минут</option>
+                  </select>
+                </label>
+              </section>
+              <section class="settings-card">
+                <h3>Управление</h3>
+                <div class="settings-action-row"><span>Горячие клавиши</span><button type="button" class="ghost">Настроить</button></div>
+                <div class="settings-action-row"><span>Сбросить настройки</span><button type="button" class="ghost danger-button">Сброс</button></div>
+                <button id="save-settings" type="button" data-i18n="save_settings">Save settings</button>
+              </section>
             </div>
           </div>
+          <section class="panel screen-panel settings-about-panel">
+            <div class="settings-tabs single-tab" aria-hidden="true">
+              <button type="button" class="active">О проекте</button>
+            </div>
+            <div class="settings-about-card">
+              <div class="brand-mini-row">
+                <span class="brand-mark small-mark logo-symbol" aria-hidden="true"><img src="/assets/biz-arena-logo.svg" alt="" /></span>
+                <div>
+                  <h3>Biz Arena</h3>
+                  <p>Бизнес-симулятор для университетов</p>
+                </div>
+              </div>
+              <p class="muted">Платформа для обучения управлению бизнесом на примере работы производственного предприятия. Разработано с участием преподавателей и экспертов в области бизнес-образования.</p>
+              <dl class="about-meta-list">
+                <div><dt>Версия</dt><dd>v1.0.0-beta.1 • pilot beta</dd></div>
+                <div><dt>Сборка</dt><dd>2024.05.20.1200</dd></div>
+                <div><dt>Лицензия</dt><dd>Учебная</dd></div>
+              </dl>
+              <div class="settings-link-list">
+                <a href="#" aria-label="Документация">Документация ↗</a>
+                <a href="#" aria-label="Методика">Методика ↗</a>
+                <a href="#" aria-label="Поддержка">Поддержка ↗</a>
+              </div>
+              <small class="muted">© 2024 Biz Arena. Все права защищены.</small>
+            </div>
+          </section>
+          <section class="panel screen-panel settings-result-panel">
+            <div class="settings-tabs" aria-label="Результаты">
+              <button type="button" class="active">Мой результат</button>
+              <button type="button" data-open-screen="results-screen">Результаты команд</button>
+            </div>
+            <div class="settings-result-card">
+              <div class="result-headline">
+                <div>
+                  <strong>Итог матча: Завод бытовой техники — 1</strong>
+                  <small>Раундов сыграно: 30 из 30</small>
+                </div>
+                <span class="room-state open">Победа</span>
+              </div>
+              <div class="result-kpi-grid">
+                <article><span>Итоговый капитал</span><strong>24 580 000 ₽</strong><small class="positive">▲ +4 230 000 ₽</small></article>
+                <article><span>Прибыль</span><strong>7 890 000 ₽</strong><small>Рентабельность 21.4%</small></article>
+                <article><span>Выполнено контрактов</span><strong>8 / 9</strong><small>89%</small></article>
+                <article><span>Доля рынка</span><strong>23.7%</strong><small>Лидер</small></article>
+              </div>
+              <div class="mini-chart-card">
+                <h3>Динамика капитала</h3>
+                <svg viewBox="0 0 160 82" role="img" aria-label="Динамика капитала">
+                  <polyline points="0,75 16,42 32,55 48,28 64,38 80,22 96,30 112,15 128,20 144,8 160,14" />
+                </svg>
+              </div>
+              <div class="achievement-list">
+                <h3>Ваши достижения</h3>
+                <article><b>1</b><span><strong>Лидер рынка</strong><small>Заняли 1 место по доле рынка</small></span></article>
+                <article><b>2</b><span><strong>Финансовый гуру</strong><small>Получили максимальную прибыль</small></span></article>
+                <article><b>3</b><span><strong>Эффективное производство</strong><small>Минимальный брак: 1.4%</small></span></article>
+              </div>
+              <div class="button-pair two-cols">
+                <button type="button" class="ghost" data-open-screen="results-screen">Экспорт отчета</button>
+                <button type="button" data-open-screen="main-menu-screen">Новый матч</button>
+              </div>
+            </div>
+          </section>
         </div>
       </section>
 
@@ -214,28 +973,36 @@
             </div>
             <div class="info-stack">
               <article class="market-item">
-                <strong>РџСЂРѕРµРєС‚</strong>
-                <p class="muted">РЈС‡РµР±РЅС‹Р№ Р±РёР·РЅРµСЃ-СЃРёРјСѓР»СЏС‚РѕСЂ РґР»СЏ Р»РѕРєР°Р»СЊРЅРѕРіРѕ LAN-РїРѕРєР°Р·Р° Рё РґРµРјРѕРЅСЃС‚СЂР°С†РёРё СЃС‚СЂР°С‚РµРіРёС‡РµСЃРєРёС… РёРіСЂРѕРІС‹С… РјРµС…Р°РЅРёРє.</p>
+                <strong data-i18n="about_project_title">Project</strong>
+                <p class="muted" data-i18n="about_project_body">Educational business simulator for local classroom and championship-style demonstrations.</p>
               </article>
               <article class="market-item">
                 <strong data-i18n="about_stage_title">Current build</strong>
-                <p class="muted" data-i18n="about_stage_body">Biz Arena is now a Milestone 11 prototype with an execution queue that can trigger matching next-step actions directly from the Intel panel.</p>
+                <p class="muted" data-i18n="about_stage_body">Version v1.0.0-beta.1 delivers the classroom pilot with a preflight gate, a focused teacher cockpit, one student next action, session history, and verified reconnect.</p>
               </article>
               <article class="market-item">
-                <strong data-i18n="about_flow_title">Longer progression</strong>
-                <p class="muted" data-i18n="about_flow_body">Profiles now keep deeper achievements, while each season adds executive policies, goals, advisors, and contracts.</p>
+                <strong data-i18n="about_flow_title">Game cycle</strong>
+                <p class="muted" data-i18n="about_flow_body">The player chooses purchasing, staffing, assembly, pricing, and sales decisions, then sees the result after turn resolution.</p>
+              </article>
+              <article class="market-item">
+                <strong data-i18n="about_championship_title">Championship flow</strong>
+                <p class="muted" data-i18n="about_championship_body">The demo follows a KAI-style cycle: register a company, make production decisions, resolve a turn, and compare the rating.</p>
+              </article>
+              <article class="market-item">
+                <strong data-i18n="about_learning_title">Learning focus</strong>
+                <p class="muted" data-i18n="about_learning_body">The player practices demand, price, components, payroll, contracts, debt, and result analysis.</p>
+              </article>
+              <article class="market-item">
+                <strong data-i18n="about_delivery_title">Delivery package</strong>
+                <p class="muted" data-i18n="about_delivery_body">The June package includes a Windows build, presentation, explanatory note, demo script, and optional GitHub repository.</p>
               </article>
               <article class="market-item">
                 <strong data-i18n="about_author_title">Created by</strong>
-                <p class="muted" data-i18n="about_author_body">РќР°РґСЂРѕРІ Р”Р°РјРёСЂ РР»СЊРЅСѓСЂРѕРІРёС‡</p>
+                <p class="muted" data-i18n="about_author_body">Надров Дамир Ильнурович</p>
               </article>
               <article class="market-item">
-                <strong>Учебная цель</strong>
-                <p class="muted">Проект показывает клиент-серверную архитектуру, persistence, desktop-упаковку и UI для экономической стратегии.</p>
-              </article>
-              <article class="market-item">
-                <strong>Организация</strong>
-                <p class="muted">АФ КНИТУ-КАИ</p>
+                <strong data-i18n="about_org_title">Organization</strong>
+                <p class="muted" data-i18n="about_org_body">Almetyevsk branch of KNRTU-KAI</p>
               </article>
             </div>
           </div>
@@ -243,12 +1010,16 @@
       </section>
 
       <section id="lobby-screen" class="screen hidden">
-        <div class="screen-shell">
-          <section class="panel span-2 screen-panel">
+        <div class="screen-shell lobby-workspace">
+          <section class="panel span-2 screen-panel lobby-brief-panel">
             <div class="panel-header">
-              <h2 data-i18n="lobby_title">Lobby</h2>
+              <div>
+                <span class="factory-node-label">Ожидание класса</span>
+                <h2>Лобби комнаты</h2>
+                <span class="muted">Подготовка матча, состав участников и запуск занятия</span>
+              </div>
               <div class="inline-actions">
-                <span id="room-code-chip" class="muted">Code: вЂ”</span>
+                <span id="room-code-chip" class="muted">Code: —</span>
                 <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
               </div>
             </div>
@@ -257,10 +1028,12 @@
             </div>
           </section>
 
-          <section class="panel screen-panel">
+          <section class="panel screen-panel lobby-settings-panel">
             <div class="panel-header">
-              <h2 data-i18n="room_settings_title">Room settings</h2>
-              <span class="muted" data-i18n="room_settings_hint">Only host can edit in lobby</span>
+              <div>
+                <h2 data-i18n="room_settings_title">Room settings</h2>
+                <span class="muted" data-i18n="room_settings_hint">Only host can edit in lobby</span>
+              </div>
             </div>
             <form id="room-settings-form" class="stack-form">
               <label>
@@ -273,6 +1046,10 @@
                   <option value="6">6</option>
                   <option value="7">7</option>
                   <option value="8">8</option>
+                  <option value="15">15</option>
+                  <option value="20">20</option>
+                  <option value="25">25</option>
+                  <option value="30">30</option>
                 </select>
               </label>
               <label>
@@ -288,12 +1065,31 @@
                 <select id="scenario-select"></select>
               </label>
               <label>
+                <span data-i18n="difficulty_title">Difficulty</span>
+                <select id="difficulty-select">
+                  <option value="easy" data-i18n="difficulty_easy">Easy</option>
+                  <option value="normal" data-i18n="difficulty_normal">Normal</option>
+                  <option value="hard" data-i18n="difficulty_hard">Hard</option>
+                </select>
+              </label>
+              <label>
                 <span data-i18n="day_limit_title">Season length</span>
                 <select id="day-limit-select">
                   <option value="10">10</option>
                   <option value="14">14</option>
                   <option value="18">18</option>
                   <option value="24">24</option>
+                  <option value="30">30</option>
+                </select>
+              </label>
+              <label>
+                <span>Время хода</span>
+                <select id="turn-duration-select">
+                  <option value="300000">5 минут</option>
+                  <option value="600000">10 минут</option>
+                  <option value="900000">15 минут</option>
+                  <option value="1200000">20 минут</option>
+                  <option value="1800000">30 минут</option>
                 </select>
               </label>
               <div class="button-pair">
@@ -311,15 +1107,18 @@
             </div>
           </section>
 
-          <section class="panel screen-panel">
+          <section class="panel screen-panel lobby-roster-panel">
             <div class="panel-header">
-              <h2 data-i18n="companies_room">Companies in room</h2>
+              <div>
+                <h2 data-i18n="companies_room">Companies in room</h2>
+                <span class="muted">Готовность команд</span>
+              </div>
               <span id="player-count" class="muted">0 players</span>
             </div>
             <div id="player-list" class="leaderboard"></div>
           </section>
 
-          <section class="panel screen-panel">
+          <section class="panel screen-panel lobby-leaderboard-panel">
             <div class="panel-header">
               <h2 data-i18n="leaderboard_title">Leaderboard</h2>
               <span class="muted" data-i18n="by_networth">By net worth</span>
@@ -327,7 +1126,7 @@
             <div id="leaderboard" class="leaderboard"></div>
           </section>
 
-          <section class="panel span-2 screen-panel">
+          <section class="panel span-2 screen-panel lobby-events-panel">
             <div class="panel-header">
               <h2 data-i18n="events_title">Events</h2>
               <span class="muted" data-i18n="room_history">Room history</span>
@@ -338,24 +1137,58 @@
       </section>
 
       <section id="game-screen" class="screen hidden">
-        <div class="screen-shell">
-          <section class="panel screen-panel span-2">
+        <div class="screen-shell game-cockpit-shell">
+          <section class="panel screen-panel span-2 game-hud-panel">
             <div id="game-hud" class="hud-grid"></div>
           </section>
 
-          <section class="panel screen-panel span-2">
-            <div class="panel-header">
-              <h2 data-i18n="game_control_center">Control center</h2>
-              <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
+          <section class="panel screen-panel span-2 game-control-panel" data-ui-slot="classroom-hud">
+            <div class="game-topbar">
+              <div class="game-room-chip game-topbar-chip">
+                <span class="game-chip-label"><svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-cabinet"></use></svg><span>Комната</span></span>
+                <strong id="game-room-code-topbar">ROOM----</strong>
+                <small id="game-room-meta-topbar">Код появится после входа</small>
+              </div>
+              <div class="game-server-chip game-topbar-chip" data-status="offline">
+                <span class="game-chip-label"><svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-check"></use></svg><span>Статус сервера</span></span>
+                <strong id="game-server-status-topbar">Не подключено</strong>
+                <small id="game-server-meta-topbar">Ожидание комнаты</small>
+              </div>
+              <div id="game-student-link-chip" class="game-student-link-chip game-topbar-chip">
+                <div>
+                  <span id="game-student-link-label" class="game-chip-label"><svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-external"></use></svg><span>Ссылка для студентов</span></span>
+                  <strong id="game-student-link-topbar">/client</strong>
+                  <small id="game-student-link-meta">QR для входа в комнату</small>
+                </div>
+                <button type="button" id="game-copy-student-link" class="ghost game-icon-button" title="Скопировать ссылку" aria-label="Скопировать ссылку">
+                  <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-external"></use></svg>
+                </button>
+                <img id="game-student-qr" alt="QR для входа студентов" />
+              </div>
+              <div class="game-time-chip game-topbar-chip">
+                <span class="game-chip-label"><svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-flash"></use></svg><span>Время в игре</span></span>
+                <strong id="game-turn-timer">--:--</strong>
+                <small>Ход <span id="game-round-inline">1 / 30</span></small>
+              </div>
+              <div class="game-profile-chip game-topbar-chip">
+                <span id="game-profile-avatar" class="game-profile-avatar">BA</span>
+                <div>
+                  <strong id="game-profile-name">Biz Arena</strong>
+                  <small id="game-profile-role">Участник</small>
+                </div>
+              </div>
+              <div class="inline-actions game-top-actions">
+                <button type="button" id="game-tutorial-button" class="ghost tutorial-top-button" title="Запустить обучение" aria-label="Запустить обучение">Обучение</button>
+                <button type="button" id="leave-game-button" class="ghost" title="Покинуть игру" aria-label="Покинуть игру" data-i18n="leave_room">Покинуть игру</button>
+                <button type="button" class="ghost back-button" title="Назад" aria-label="Назад" data-back data-i18n="back_btn">Back</button>
+              </div>
             </div>
-            <div class="game-tabs">
-              <button type="button" class="ghost tab-button active" data-game-tab="overview" data-i18n="tab_overview">Overview</button>
-              <button type="button" class="ghost tab-button" data-game-tab="operations" data-i18n="tab_operations">Operations</button>
-              <button type="button" class="ghost tab-button" data-game-tab="market" data-i18n="tab_market">Market</button>
-	              <button type="button" class="ghost tab-button" data-game-tab="competitors" data-i18n="tab_competitors">Competitors</button>
-	              <button type="button" class="ghost tab-button" data-game-tab="intel" data-i18n="tab_intel">Intel</button>
-	              <button type="button" class="ghost tab-button" data-game-tab="events" data-i18n="tab_events">Events</button>
-            </div>
+            <button type="button" id="game-next-action-chip" class="game-next-action-chip">
+              <span>Следующее действие</span>
+              <strong id="game-next-action-title">Откройте игру</strong>
+              <small id="game-next-action-body">Подсказка появится после старта матча</small>
+              <small id="game-turn-limit">Время на ход: --</small>
+            </button>
           </section>
 
           <section class="panel screen-panel span-2 game-panel" data-game-panel="overview">
@@ -377,10 +1210,11 @@
 
           <section class="panel screen-panel span-2 game-panel hidden" data-game-panel="operations">
             <div class="panel-header">
-              <h2 data-i18n="management_title">Operations</h2>
+              <h2>Производственные отделы</h2>
               <span class="muted" data-i18n="management_hint">Business actions unlock after match start</span>
             </div>
-            <div class="actions-grid four-cols">
+            <div id="factory-operations" class="factory-shell hidden"></div>
+            <div id="legacy-operations-grid" class="actions-grid four-cols">
               <div class="action-card">
                 <h3 data-i18n="price_title">Price</h3>
                 <p class="muted small" data-i18n="price_hint_card">Change your market positioning for the next tick.</p>
@@ -394,7 +1228,7 @@
                 <select id="product-select"></select>
                 <button data-action="set-product" data-source="product-select" data-i18n="apply_product">Apply product</button>
               </div>
-              <div class="action-card">
+              <div class="action-card hidden" aria-hidden="true">
                 <h3 data-i18n="city_focus">City market</h3>
                 <p class="muted small" data-i18n="city_hint_card">Choose the city where your company competes the hardest.</p>
                 <select id="city-select"></select>
@@ -467,18 +1301,51 @@
             </div>
           </section>
 
+          <section class="panel screen-panel span-2 game-panel hidden" data-game-panel="purchase">
+            <div class="panel-header">
+              <h2>Закупка комплектующих</h2>
+              <span class="muted">Общие предложения поставщиков: выкупленный лот исчезает у всех игроков</span>
+            </div>
+            <div id="factory-purchases" class="factory-shell hidden"></div>
+          </section>
+
           <section class="panel screen-panel game-panel hidden" data-game-panel="market">
             <div class="panel-header">
               <h2 data-i18n="market_title">Market</h2>
               <span class="muted" data-i18n="market_live_hint">Live room economy</span>
             </div>
+            <div id="factory-market" class="market-stack hidden"></div>
             <div id="market-overview" class="market-stack"></div>
-            <div class="panel-subtitle" data-i18n="event_title">Live event</div>
+            <div class="panel-subtitle market-event-title" data-i18n="event_title">Live event</div>
             <div id="market-event" class="market-stack"></div>
-            <div class="panel-subtitle" data-i18n="contract_title">Contracts</div>
+            <div class="panel-subtitle market-contract-title" data-i18n="contract_title">Contracts</div>
             <div id="contract-board" class="market-stack"></div>
-            <div class="panel-subtitle" data-i18n="segments_title">Hot segments</div>
+            <div class="panel-subtitle market-segments-title" data-i18n="segments_title">Hot segments</div>
             <div id="segments-overview" class="market-stack"></div>
+          </section>
+
+          <section class="panel screen-panel span-2 game-panel hidden" data-game-panel="statistics">
+            <div class="panel-header">
+              <h2 data-i18n="stats_title">Statistics</h2>
+              <span class="muted" data-i18n="stats_hint">Demand, sales, profit, and recent turns</span>
+            </div>
+            <div id="statistics-overview" class="statistics-kpi-grid placeholder">
+              <div data-i18n="stats_empty">Statistics appear after the first resolved turn.</div>
+            </div>
+            <div class="panel-subtitle" data-i18n="stats_trend_title">Recent turns</div>
+            <div id="statistics-trend" class="market-stack placeholder">
+              <div data-i18n="stats_empty">Statistics appear after the first resolved turn.</div>
+            </div>
+          </section>
+
+          <section class="panel screen-panel span-2 game-panel hidden" data-game-panel="teacher">
+            <div class="panel-header">
+              <h2 data-i18n="teacher_panel_title">Teacher console</h2>
+              <span class="muted" data-i18n="teacher_panel_hint">Host tools, class KPI snapshot, and classroom pacing controls.</span>
+            </div>
+            <div id="teacher-panel" class="market-stack placeholder">
+              <div data-i18n="teacher_panel_empty">Teacher tools appear here for the room host.</div>
+            </div>
           </section>
 
 	          <section class="panel screen-panel game-panel hidden" data-game-panel="competitors">
@@ -493,38 +1360,39 @@
 
 	          <section class="panel screen-panel game-panel hidden" data-game-panel="intel">
 	            <div class="panel-header">
-	              <h2 data-i18n="intel_title">Strategic intelligence</h2>
-		              <span class="muted" data-i18n="intel_hint">Market outlook, CEO brief, focus plan, pivot preview, and an execution queue with one-click actions.</span>
+	              <h2 data-i18n="intel_title">Advisor</h2>
+		              <span class="muted" data-i18n="intel_hint">Market outlook, brief, focus plan, strategy shift, and an action queue with one-click steps.</span>
 	            </div>
-	            <div class="panel-subtitle" data-i18n="forecast_title">Segment forecast</div>
+	            <div class="panel-subtitle" data-i18n="forecast_title">Операционная панель</div>
 	            <div id="intel-overview" class="market-stack placeholder">
-	              <div data-i18n="intel_empty">Intel appears after you join a room.</div>
+	              <div data-i18n="intel_empty">Advisor data appears after you join a room.</div>
 	            </div>
 	            <div class="panel-subtitle" data-i18n="focus_plan_title">Focus plan</div>
 	            <div class="actions-grid">
-	              <label>
-	                <span data-i18n="focus_city">Target city</span>
-	                <select id="focus-city-select"></select>
-	              </label>
 	              <label>
 	                <span data-i18n="focus_product">Target product</span>
 	                <select id="focus-product-select"></select>
 	              </label>
 	              <button id="save-focus-plan" type="button" data-i18n="apply_focus_plan">Save focus</button>
 	            </div>
-	            <div class="panel-subtitle" data-i18n="brief_title">CEO brief</div>
+	            <div class="panel-subtitle" data-i18n="brief_title">План действий</div>
 	            <div id="intel-brief" class="market-stack placeholder">
-	              <div data-i18n="intel_empty">Intel appears after you join a room.</div>
+	              <div data-i18n="intel_empty">Advisor data appears after you join a room.</div>
 	            </div>
 	          </section>
 
-	          <section class="panel screen-panel game-panel hidden" data-game-panel="events">
+          <section class="panel screen-panel game-panel hidden" data-game-panel="events">
             <div class="panel-header">
               <h2 data-i18n="events_title">Events</h2>
               <span class="muted" data-i18n="events_hint_card">Review what happened recently in the room</span>
             </div>
+            <div id="turn-report-summary" class="statistics-kpi-grid report-turn-summary"></div>
             <div id="event-log-game" class="event-log"></div>
           </section>
+
+            <aside class="game-market-rail" aria-label="Рынок и действия"></aside>
+
+          <div id="turn-control-dock" class="turn-control-dock hidden"></div>
         </div>
       </section>
 
@@ -543,12 +1411,12 @@
             </div>
             <div class="button-pair top-gap">
               <button id="play-again" type="button" data-i18n="play_again">Play again</button>
-              <button id="export-results" type="button" class="ghost">Экспорт итогов</button>
+              <button id="export-results" type="button" class="ghost" data-i18n="export_results">Export results</button>
               <button id="leave-after-results" type="button" class="ghost" data-i18n="leave_room">Leave room</button>
             </div>
           </section>
 
-          <section class="panel screen-panel">
+          <section class="panel screen-panel span-2 results-leaderboard-panel">
             <div class="panel-header">
               <h2 data-i18n="leaderboard_title">Leaderboard</h2>
               <span class="muted" data-i18n="by_networth">By net worth</span>
@@ -556,7 +1424,7 @@
             <div id="leaderboard-results" class="leaderboard"></div>
           </section>
 
-          <section class="panel span-2 screen-panel">
+          <section class="panel span-2 screen-panel results-events-panel">
             <div class="panel-header">
               <h2 data-i18n="events_title">Events</h2>
               <span class="muted" data-i18n="room_history">Room history</span>
@@ -567,6 +1435,65 @@
       </section>
     </div>
 
+    <div id="tutorial-overlay" class="tutorial-overlay hidden" aria-live="polite">
+      <div class="tutorial-overlay-backdrop"></div>
+      <div id="tutorial-focus-ring" class="tutorial-focus-ring hidden"></div>
+      <aside class="tutorial-card">
+        <div class="tutorial-card-topline">
+          <span id="tutorial-step-chip" class="badge">Обучение</span>
+          <button type="button" id="tutorial-skip-button" class="ghost" data-tutorial-control="skip">Пропустить</button>
+        </div>
+        <div class="tutorial-progress" aria-hidden="true">
+          <span id="tutorial-progress-bar" class="tutorial-progress-bar"></span>
+        </div>
+        <div id="tutorial-route" class="tutorial-route" aria-label="Маршрут обучения"></div>
+        <div class="tutorial-card-body">
+          <div class="tutorial-mentor" aria-hidden="true">
+            <svg viewBox="0 0 160 180" role="presentation">
+              <defs>
+                <linearGradient id="mentor-core" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#72f6ff" />
+                  <stop offset="48%" stop-color="#21b7ff" />
+                  <stop offset="100%" stop-color="#ffb936" />
+                </linearGradient>
+                <linearGradient id="mentor-panel" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#16395d" />
+                  <stop offset="54%" stop-color="#09203a" />
+                  <stop offset="100%" stop-color="#040b14" />
+                </linearGradient>
+                <radialGradient id="mentor-halo" cx="50%" cy="32%" r="64%">
+                  <stop offset="0%" stop-color="#72f6ff" stop-opacity="0.44" />
+                  <stop offset="70%" stop-color="#21b7ff" stop-opacity="0.08" />
+                  <stop offset="100%" stop-color="#21b7ff" stop-opacity="0" />
+                </radialGradient>
+              </defs>
+              <path d="M25 40 80 10l55 30v75l-55 33-55-33Z" fill="url(#mentor-panel)" stroke="url(#mentor-core)" stroke-width="2.5" />
+              <path d="M36 47 80 23l44 24v60l-44 27-44-27Z" fill="url(#mentor-halo)" stroke="rgba(114,246,255,0.28)" />
+              <path d="M55 69c0-14 11-25 25-25s25 11 25 25v16c0 14-11 25-25 25S55 99 55 85Z" fill="rgba(3,10,20,0.94)" stroke="rgba(114,246,255,0.74)" stroke-width="3" />
+              <path d="M65 73c4-5 26-5 30 0v16c-5 5-25 5-30 0Z" fill="rgba(33,183,255,0.14)" stroke="#72f6ff" stroke-width="2" />
+              <path d="M70 82h20" stroke="#72f6ff" stroke-width="4" stroke-linecap="round" />
+              <path d="M80 44V31M70 31h20" stroke="#ffb936" stroke-width="3" stroke-linecap="round" />
+              <circle cx="80" cy="27" r="4" fill="#ffcf67" />
+              <path d="M43 121h74l10 38H33Z" fill="rgba(33,183,255,0.1)" stroke="rgba(114,246,255,0.32)" />
+              <path d="M50 132h24M86 132h24M56 145h48" stroke="#72f6ff" stroke-width="3.5" stroke-linecap="round" opacity="0.88" />
+              <path d="M38 62h-13M122 62h13M80 148v16" stroke="rgba(126,243,161,0.72)" stroke-width="3.5" stroke-linecap="round" />
+              <circle cx="36" cy="62" r="3" fill="#7ef3a1" />
+              <circle cx="124" cy="62" r="3" fill="#ffb936" />
+            </svg>
+          </div>
+          <div class="tutorial-copy">
+            <div class="tutorial-caption">AI-куратор смены</div>
+            <h3 id="tutorial-title">Первый ход</h3>
+            <p id="tutorial-text">Следуй подсказкам справа и нажимай только по выделенной зоне.</p>
+            <div id="tutorial-hint" class="tutorial-hint">Нажмите по выделенной зоне, чтобы перейти дальше.</div>
+          </div>
+        </div>
+        <div class="tutorial-card-actions">
+          <button type="button" id="tutorial-next-button" class="hidden" data-tutorial-control="next">Продолжить</button>
+        </div>
+      </aside>
+    </div>
+
     <template id="stat-card-template">
       <article class="stat-card">
         <span class="label"></span>
@@ -575,6 +1502,13 @@
       </article>
     </template>
 
+    <script src="/translations.js"></script>
+    <script src="/ui/role-contracts.js"></script>
+    <script src="/app-runtime.js"></script>
     <script src="/app.js"></script>
+    <script src="/ui/server-admin-ui.js"></script>
+    <script src="/ui/student-ui.js"></script>
+    <script src="/ui/teacher-ui.js"></script>
+    <script src="/app-bootstrap.js"></script>
   </body>
 </html>
