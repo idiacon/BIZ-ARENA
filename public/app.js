@@ -417,6 +417,7 @@ const state = {
     completed: localStorage.getItem(TUTORIAL_COMPLETED_KEY) === '1',
     autoStarted: false,
     lastAnnouncedStep: '',
+    lastAutoScrollKey: '',
     startedDay: 0,
   },
   factorySaleDraft: null,
@@ -6093,7 +6094,7 @@ elements.tutorialNextButton.addEventListener('click', () => advanceTutorialStep(
 document.addEventListener('click', handleTutorialClick, true);
 document.addEventListener('keydown', handleTutorialKeydown);
 window.addEventListener('resize', renderTutorialOverlay);
-window.addEventListener('scroll', renderTutorialOverlay, true);
+window.addEventListener('scroll', refreshTutorialGeometry, true);
 document.addEventListener('visibilitychange', () => {
   scheduleRefreshLoop();
   if (!document.hidden) refreshState();

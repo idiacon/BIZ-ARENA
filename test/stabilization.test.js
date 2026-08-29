@@ -2479,7 +2479,7 @@ test('UI contract: game navigation and classroom HUD occupy stable desktop shell
   assert.match(styles, /data-player-role="student"\] \.game-student-link-chip[\s\S]*display: none/);
 });
 
-test('UI contract: first-turn coach follows server progress with a non-modal spotlight and five real actions', () => {
+test('UI contract: first-turn coach follows server progress with four real actions and a host-owned finish', () => {
   const publicRoot = path.join(__dirname, '..', 'public');
   const appJs = fs.readFileSync(path.join(publicRoot, 'app.js'), 'utf8');
   const tutorialUi = fs.readFileSync(path.join(publicRoot, 'ui', 'tutorial-ui.js'), 'utf8');
@@ -2509,7 +2509,7 @@ test('UI contract: first-turn coach follows server progress with a non-modal spo
   assert.match(renderTutorialOverlay, /syncTutorialStepFromGuide\(\)/);
   assert.match(renderTutorialOverlay, /dataset\.firstTurnStep/);
   assert.match(renderTutorialOverlay, /dataset\.firstTurnTargetMode/);
-  assert.match(renderTutorialOverlay, /setTutorialFocus\(resolution\.target, step\.key\)/);
+  assert.match(renderTutorialOverlay, /setTutorialFocus\(resolution\.target, step\.key, focusOptions\)/);
   assert.match(renderTutorialRoute, /aria-label=/);
   assert.match(renderTutorialRoute, /aria-current="step"/);
   assert.match(setTutorialFocus, /mobileCardRect/);
@@ -2586,6 +2586,23 @@ test('Studio V3 polish keeps one teacher scroll surface, one mobile tutorial CTA
   assert.match(serverJs, /Финансовый результат хода/);
   assert.match(serverJs, /Расчётная маржа на единицу/);
   assert.doesNotMatch(serverJs, /Заработано за последний ход|hint: 'simulation score'/);
+});
+
+test('First-turn tutorial never fights manual scrolling and explains the host-owned fifth step', () => {
+  const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const tutorialUi = fs.readFileSync(path.join(__dirname, '..', 'public', 'ui', 'tutorial-ui.js'), 'utf8');
+  const classroomE2e = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'e2e-classroom-flows.js'), 'utf8');
+
+  assert.match(tutorialUi, /function refreshTutorialGeometry\(\)/);
+  assert.match(tutorialUi, /document\.querySelector\('\[data-first-turn-target\]'\)/);
+  assert.match(appJs, /window\.addEventListener\('scroll', refreshTutorialGeometry, true\)/);
+  assert.doesNotMatch(appJs, /window\.addEventListener\('scroll', renderTutorialOverlay, true\)/);
+  assert.match(tutorialUi, /lastAutoScrollKey/);
+  assert.match(tutorialUi, /window\.innerWidth <= 720 \? 'mobile' : 'desktop'/);
+  assert.match(tutorialUi, /allowScroll: autoScrollKey !== state\.tutorial\.lastAutoScrollKey/);
+  assert.match(tutorialUi, /Нажимать ничего не нужно: преподаватель или хост запускает пересчёт хода/);
+  assert.match(tutorialUi, /Ожидайте расчёта хода/);
+  assert.match(classroomE2e, /Tutorial fought manual scrolling/);
 });
 
 test('UI contract: student entry and settings use focused, non-duplicated workspaces', () => {

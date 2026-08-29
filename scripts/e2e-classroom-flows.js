@@ -476,6 +476,19 @@ async function main() {
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll("#tutorial-route [data-first-turn-progress-step]").length'), 5);
     assert.equal(await evaluate(studentBrowser.cdp, 'Boolean(document.querySelector("[data-first-turn-target=workforce]"))'), true);
     await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector("#tutorial-arrow-path")?.getAttribute("d"))', 'student tutorial arrow');
+    const tutorialManualScroll = await evaluate(studentBrowser.cdp, `(async () => {
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+      const current = window.scrollY;
+      const requested = current > 120 ? current - 120 : Math.min(maxScroll, current + 120);
+      window.scrollTo({ top: requested, behavior: 'auto' });
+      await new Promise(resolve => window.setTimeout(resolve, 200));
+      return {
+        ok: Math.abs(window.scrollY - requested) <= 2,
+        requested: Math.round(requested),
+        actual: Math.round(window.scrollY),
+      };
+    })()`);
+    assert.equal(tutorialManualScroll.ok, true, `Tutorial fought manual scrolling: ${JSON.stringify(tutorialManualScroll)}`);
     await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,

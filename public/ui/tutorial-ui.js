@@ -94,21 +94,21 @@ function buildTutorialSteps() {
       ['Команда', 'Наймите сотрудника', 'Без сотрудника сборочная линия не запустится. Выберите доступного кандидата.', 'Открыть Команду'],
       ['Сборочная линия', 'Соберите первый товар', 'Используйте купленные детали и соберите минимум одну единицу товара.', 'Открыть линию'],
       ['Отгрузка', 'Выставьте заявку', 'Укажите цену и объём, затем отправьте готовый товар на рынок.', 'Открыть Отгрузку'],
-      ['Завершение', 'Завершите первый ход', 'Проверьте, что все четыре решения готовы. Пересчёт запускает преподаватель или хост.', 'Открыть итог'],
+      ['Завершение', 'Ожидайте расчёта хода', 'Нажимать ничего не нужно: преподаватель или хост запускает пересчёт хода. После пересчёта обучение завершится автоматически.', 'Открыть итог'],
     ],
     en: [
       ['Warehouse', 'Buy a complete parts set', 'Open Warehouse and buy enough parts for at least one assembly.', 'Open Warehouse'],
       ['Team', 'Hire one employee', 'The assembly line needs a worker. Choose an available candidate.', 'Open Team'],
       ['Assembly line', 'Build the first product', 'Use the purchased parts to assemble at least one product.', 'Open assembly'],
       ['Shipping', 'Submit a market offer', 'Set a price and quantity, then send the finished goods to market.', 'Open Shipping'],
-      ['Finish', 'Finish the first turn', 'Check that all four decisions are ready. The teacher or host resolves the turn.', 'Open results'],
+      ['Finish', 'Wait for the turn calculation', 'There is nothing else to click: the teacher or host resolves the turn. The tutorial will finish automatically afterwards.', 'Open results'],
     ],
     tt: [
       ['Склад', 'Детальләр комплектын сатып алыгыз', 'Складны ачып, бер җыю өчен җитәрлек деталь алыгыз.', 'Складны ачу'],
       ['Команда', 'Бер хезмәткәр яллагыз', 'Җыю линиясе өчен хезмәткәр кирәк. Уңай кандидатны сайлагыз.', 'Команданы ачу'],
       ['Җыю линиясе', 'Беренче товарны җыегыз', 'Алынган детальләрдән кимендә бер товар җыегыз.', 'Линияне ачу'],
       ['Отгрузка', 'Сату заявкасын куегыз', 'Бәя һәм күләмне билгеләп, товарны базарга чыгарыгыз.', 'Отгрузканы ачу'],
-      ['Тәмамлау', 'Беренче йөрешне тәмамлагыз', 'Дүрт карар әзерме икәнен тикшерегез. Йөрешне укытучы яки хост исәпли.', 'Нәтиҗәне ачу'],
+      ['Тәмамлау', 'Йөреш исәбен көтегез', 'Башка бернәрсәгә дә басарга кирәкми: йөрешне укытучы яки хост исәпли. Аннары өйрәтү автоматик тәмамлана.', 'Нәтиҗәне ачу'],
     ],
   };
   const copy = localized[state.settings.language] || localized.ru;
@@ -238,6 +238,8 @@ function resolveTutorialTarget(step) {
   const actionTarget = firstVisibleTutorialTarget(step.actionSelectors);
   if (actionTarget) return { target: actionTarget, mode: step.key === 'finish' ? 'confirm' : 'action' };
 
+  if (step.key === 'finish') return { target: null, mode: 'confirm' };
+
   const navigationTarget = firstVisibleTutorialTarget(step.navigationSelectors);
   if (navigationTarget) return { target: navigationTarget, mode: step.key === 'finish' ? 'confirm' : 'navigation' };
 
@@ -302,7 +304,7 @@ function setTutorialArrow(target) {
   elements.tutorialArrow.classList.remove('hidden');
 }
 
-function setTutorialFocus(target, stepKey = '') {
+function setTutorialFocus(target, stepKey = '', { allowScroll = false } = {}) {
   clearTutorialTarget();
   if (!elements.tutorialFocusRing || !target) return;
 
@@ -325,17 +327,22 @@ function setTutorialFocus(target, stepKey = '') {
     || rect.left < 8
     || rect.bottom > visibleBottom
     || rect.right > window.innerWidth - 8;
-  if (outsideVisibleArea) {
+  if (outsideVisibleArea && allowScroll) {
     target.scrollIntoView({
-      block: mobileCardRect?.height ? 'center' : 'nearest',
+      block: 'center',
       inline: 'nearest',
-      behavior: mobileCardRect?.height || animationsDisabled() || window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+      behavior: 'auto',
     });
     rect = target.getBoundingClientRect();
     if (mobileCardRect?.height && rect.bottom > visibleBottom) {
       window.scrollBy({ top: rect.bottom - visibleBottom, behavior: 'auto' });
       rect = target.getBoundingClientRect();
     }
+  }
+  if (outsideVisibleArea && !allowScroll) {
+    elements.tutorialFocusRing.classList.add('hidden');
+    elements.tutorialArrow?.classList.add('hidden');
+    return;
   }
   const padding = isTutorialTurnTarget(target) ? 14 : 10;
   const left = Math.max(rect.left - padding, 8);
@@ -361,6 +368,13 @@ function getTutorialCardPlacement(target) {
   if (inBottomHalf) return 'top-left';
   if (inLeftHalf) return 'bottom-right';
   return 'bottom-left';
+}
+
+function refreshTutorialGeometry() {
+  if (!tutorialShouldRender()) return;
+  const target = document.querySelector('[data-first-turn-target]');
+  if (!target) return;
+  setTutorialFocus(target, target.dataset.firstTurnTarget || 'current', { allowScroll: false });
 }
 
 function announceTutorialStep(step, mode, displayIndex, target = null) {
@@ -454,7 +468,11 @@ function renderTutorialOverlay() {
     elements.tutorialNextButton.classList.add('hidden');
   }
 
-  setTutorialFocus(resolution.target, step.key);
+  const viewportMode = window.innerWidth <= 720 ? 'mobile' : 'desktop';
+  const autoScrollKey = `${step.key}:${resolution.mode}:${displayIndex}:${viewportMode}`;
+  const focusOptions = { allowScroll: autoScrollKey !== state.tutorial.lastAutoScrollKey };
+  if (focusOptions.allowScroll) state.tutorial.lastAutoScrollKey = autoScrollKey;
+  setTutorialFocus(resolution.target, step.key, focusOptions);
   announceTutorialStep(step, resolved ? 'completed' : resolution.mode, displayIndex, resolution.target);
 }
 
@@ -476,6 +494,7 @@ function startTutorial({ auto = false } = {}) {
     completed: false,
     autoStarted: Boolean(auto),
     lastAnnouncedStep: '',
+    lastAutoScrollKey: '',
     startedDay: Number(state.room?.day || 1),
   };
   state.tutorial.stepIndex = tutorialGuideStepIndex();
@@ -506,6 +525,7 @@ function stopTutorial({ completed = false, dismissed = false } = {}) {
     completed: keepCompleted,
     autoStarted: false,
     lastAnnouncedStep: '',
+    lastAutoScrollKey: '',
     startedDay: 0,
   };
   if (completed && state.room) {
