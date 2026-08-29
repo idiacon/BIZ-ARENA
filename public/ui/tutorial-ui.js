@@ -429,7 +429,7 @@ function renderTutorialOverlay() {
   if (elements.tutorialProgressBar) {
     const totalSteps = Math.max(state.tutorial.steps.length, 1);
     const progress = ((resolved ? totalSteps : displayIndex + 1) / totalSteps) * 100;
-    elements.tutorialProgressBar.style.width = `${Math.max(8, Math.min(progress, 100))}%`;
+    elements.tutorialProgressBar.style.setProperty('--tutorial-progress', String(Math.max(8, Math.min(progress, 100)) / 100));
   }
 
   elements.tutorialStepChip.textContent = resolved ? '5 из 5' : step.chip;

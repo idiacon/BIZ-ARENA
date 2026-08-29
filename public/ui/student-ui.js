@@ -235,7 +235,11 @@ function renderGameMarketRail() {
     </section>`;
 
   elements.gameMarketRail.querySelectorAll('[data-rail-game-tab]').forEach(button => {
-    button.addEventListener('click', () => setGameTab(button.dataset.railGameTab));
+    button.addEventListener('click', () => setGameTab(button.dataset.railGameTab, {
+      opener: button,
+      pushWorkspaceHistory: true,
+      focusDialog: true,
+    }));
   });
 }
 
@@ -679,9 +683,15 @@ function renderStudentFactoryScene(routeItems = []) {
   const routeMotionAttribute = routeState => routeState === 'current'
     ? 'data-factory-motion="route-flow"'
     : '';
+  const cityMarketState = (state.room?.market || []).length ? 'active' : 'waiting';
+  const cityCapitalState = Number(state.player?.money || 0) < 0
+    ? 'risk'
+    : Number(state.player?.money || 0) > Number(state.room?.factoryScenario?.startingMoney || 0)
+      ? 'growth'
+      : 'stable';
 
   return `
-    <section class="student-factory-scene" data-student-factory-scene="live" data-scene-presentation="isometric-map" data-scene-version="v8-live-stage" data-scene-active="${escapeHtml(activeStation.key)}" aria-label="Интерактивная карта предприятия">
+    <section class="student-factory-scene" data-student-factory-scene="live" data-scene-presentation="isometric-map" data-scene-version="v9-industrial-district" data-scene-active="${escapeHtml(activeStation.key)}" data-city-market-state="${cityMarketState}" data-city-capital-state="${cityCapitalState}" aria-label="Интерактивная карта предприятия">
       <div class="student-factory-scene-head">
         <div>
           <span class="factory-node-label">Ваше предприятие · текущий ход</span>
@@ -710,6 +720,31 @@ function renderStudentFactoryScene(routeItems = []) {
             </marker>
           </defs>
           <ellipse class="student-factory-map-campus-glow" cx="500" cy="250" rx="430" ry="218" fill="url(#student-factory-campus-light)"></ellipse>
+          <g class="student-factory-city-backdrop" data-factory-environment="city-backdrop" aria-hidden="true">
+            <path class="student-factory-city-arterial" d="M-20 207 L128 130 L230 183 M770 177 L875 123 L1020 198"></path>
+            <g class="student-factory-city-block city-block-west">
+              <polygon class="city-building-top" points="18,136 60,114 98,133 56,156"></polygon>
+              <polygon class="city-building-side" points="18,136 56,156 56,207 18,186"></polygon>
+              <polygon class="city-building-front" points="56,156 98,133 98,184 56,207"></polygon>
+              <path class="city-building-windows" d="M29 151 L45 159 M29 166 L45 174 M68 156 L87 146 M68 171 L87 161"></path>
+              <polygon class="city-building-top" points="104,109 141,90 174,107 137,127"></polygon>
+              <polygon class="city-building-side" points="104,109 137,127 137,171 104,153"></polygon>
+              <polygon class="city-building-front" points="137,127 174,107 174,151 137,171"></polygon>
+            </g>
+            <g class="student-factory-city-block city-bank" data-city-landmark="bank">
+              <polygon class="city-building-top" points="835,98 882,74 925,96 878,121"></polygon>
+              <polygon class="city-building-side" points="835,98 878,121 878,185 835,162"></polygon>
+              <polygon class="city-building-front" points="878,121 925,96 925,160 878,185"></polygon>
+              <path class="city-bank-columns" d="M888 124 L888 169 M901 117 L901 162 M914 110 L914 155"></path>
+              <path class="city-bank-signal" d="M880 82 L880 55 M870 62 L880 54 L890 62"></path>
+            </g>
+            <g class="student-factory-city-block city-market-district" data-city-landmark="market-district">
+              <polygon class="city-building-top" points="928,157 957,142 985,156 956,172"></polygon>
+              <polygon class="city-building-side" points="928,157 956,172 956,204 928,189"></polygon>
+              <polygon class="city-building-front" points="956,172 985,156 985,188 956,204"></polygon>
+              <path class="city-market-pulse" d="M938 151 L946 143 L954 148 L964 132 L976 138"></path>
+            </g>
+          </g>
           <polygon class="student-factory-map-platform-side" points="54,258 500,25 946,258 500,514"></polygon>
           <polygon class="student-factory-map-platform" points="54,232 500,0 946,232 500,488" fill="url(#student-factory-platform)"></polygon>
           <polygon class="student-factory-map-grid" points="54,232 500,0 946,232 500,488" fill="url(#student-factory-grid)"></polygon>
@@ -910,24 +945,20 @@ function renderStudentMarketPulse() {
   const activeEvent = state.room?.activeEvent || null;
   const saleQuantity = Number(factory.saleOffer?.quantity || 0);
   const fallbackDemand = latestMarket.demand || state.room?.factoryScenario?.baseDemandMax || 1200;
-  const history = marketChartHistory({
-    demand: fallbackDemand,
-    totalSales: latestMarket.totalSales || saleQuantity,
-    avgPrice: latestMarket.avgPrice || factory.saleOffer?.price || state.room?.factoryScenario?.priceRange?.max || 18000,
-  });
-  const latest = history[history.length - 1] || {};
+  const history = marketChartHistory();
+  const latest = history[history.length - 1] || latestMarket;
   const previous = history[history.length - 2] || latest;
   const demandValues = history.map(entry => Number(entry.demand || 0));
-  const demandDelta = Number(latest.demand || 0) - Number(previous.demand || 0);
+  const demandDelta = history.length >= 2 ? Number(latest.demand || 0) - Number(previous.demand || 0) : null;
   const offerPrice = Number(factory.saleOffer?.price || 0);
   return `
     <section class="student-market-mini" aria-label="Рынок команды">
       <div class="student-support-head">
         <strong>Спрос на рынке</strong>
-        <span class="${demandDelta >= 0 ? 'positive' : 'negative'}">${demandDelta >= 0 ? '+' : ''}${compactMarketNumber(demandDelta)}</span>
+        <span class="${demandDelta === null ? '' : demandDelta >= 0 ? 'positive' : 'negative'}">${demandDelta === null ? 'нет тренда' : `${demandDelta >= 0 ? '+' : ''}${compactMarketNumber(demandDelta)}`}</span>
       </div>
       <div class="student-market-chart">
-        ${miniChart(demandValues, 'positive')}
+        ${history.length ? miniChart(demandValues, 'positive') : '<div class="exchange-mini-placeholder">После первого расчёта появятся фактические данные</div>'}
         <div>
           <b>${compactMarketNumber(latest.demand || fallbackDemand)}</b>
           <small>ед. на этот ход</small>

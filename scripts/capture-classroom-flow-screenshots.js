@@ -24,6 +24,12 @@ const QA_VIEWPORTS = [
   { width: 2560, height: 1440, mobile: false, deviceScaleFactor: 1 },
   ULTRAWIDE,
 ];
+const STUDENT_QA_VIEWPORTS = [
+  { width: 375, height: 812, mobile: true, deviceScaleFactor: 1 },
+  { width: 768, height: 1024, mobile: true, deviceScaleFactor: 1 },
+  { width: 1024, height: 768, mobile: false, deviceScaleFactor: 1 },
+  ...QA_VIEWPORTS,
+];
 const STUDENT_QUALITY_PROFILES = ['full', 'standard', 'lite'];
 
 function ensureDir(dir) {
@@ -270,7 +276,11 @@ async function verifyPartialFactoryNavigation(cdp) {
     || result.assemblyDepartment !== 'assembly') {
     throw new Error(`Student factory navigation replaced too much DOM: ${JSON.stringify(result)}`);
   }
-  await evaluate(cdp, 'delete window.__bizArenaFactoryRoot; true');
+  await evaluate(cdp, `(() => {
+    dismissStudentWorkspace({ fromHistory: true });
+    delete window.__bizArenaFactoryRoot;
+    return true;
+  })()`);
   return result;
 }
 
@@ -466,7 +476,7 @@ async function collectStudentSceneAudit(cdp) {
       && minimumHotspotSize >= 44
       && hotspotOverlaps.length === 0
       && presentation === 'isometric-map'
-      && sceneVersion === 'v8-live-stage'
+      && sceneVersion === 'v9-industrial-district'
       && routeSegments === hotspots.length - 1
       && routeFocusStates.filter(state => state === 'current').length <= 1
       && routeFocusStates.filter(state => state === 'next').length <= 1
@@ -481,7 +491,7 @@ async function collectStudentSceneAudit(cdp) {
       && guidanceStates.every(entry => ['complete', 'current', 'attention', 'waiting'].includes(entry.state))
       && activityStates.length === hotspots.length
       && activityStates.every(entry => Boolean(entry.state))
-      && environmentTypes.join('|') === 'parking|utilities|safety-markings|loading-yard|service-vehicle'
+      && environmentTypes.join('|') === 'city-backdrop|parking|utilities|safety-markings|loading-yard|service-vehicle'
       && motionArtifacts.length <= 2
       && new Set(motionArtifacts.map(entry => entry.motion)).size === motionArtifacts.length
       && zoneAlignment.length === hotspots.length
@@ -1114,7 +1124,7 @@ async function main() {
     let studentMarketDisclosureAudit = null;
     for (const mode of STUDENT_QUALITY_PROFILES) {
       await setPerformanceMode(studentBrowser.cdp, mode);
-      for (const viewport of QA_VIEWPORTS) {
+      for (const viewport of STUDENT_QA_VIEWPORTS) {
         await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', viewport);
         await sleep(250);
         layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, `student game ${mode} ${viewport.width}px`));
@@ -1128,7 +1138,7 @@ async function main() {
         studentMarketStatAudit = await collectStudentMarketStatAudit(studentBrowser.cdp, 'student market stats full 1440px');
         studentMarketDisclosureAudit = await collectStudentMarketDisclosureAudit(studentBrowser.cdp, 'student market disclosure full 1440px');
         await capture(studentBrowser.cdp, '06-student-game-full-1440x900.png', 'window.scrollTo(0, 0)');
-        await capture(studentBrowser.cdp, '06a-student-factory-map-v8-1440x900.png', scrollBelowSticky('.student-factory-scene'));
+        await capture(studentBrowser.cdp, '06a-student-factory-map-v9-1440x900.png', scrollBelowSticky('.student-factory-scene'));
         await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', ULTRAWIDE);
         await sleep(350);
         await capture(studentBrowser.cdp, '07-student-game-full-3440x1440.png', 'window.scrollTo(0, 0)');
@@ -1184,7 +1194,7 @@ async function main() {
     await sleep(350);
     layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, 'student turn review desktop'));
     await capture(studentBrowser.cdp, '10-student-turn-review-1440x900.png', scrollBelowSticky('.turn-review-card'));
-    for (const viewport of QA_VIEWPORTS) {
+    for (const viewport of STUDENT_QA_VIEWPORTS) {
       await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', viewport);
       await sleep(250);
       layoutAudits.push(await collectViewportAudit(studentBrowser.cdp, `student turn review ${viewport.width}px`));
@@ -1203,7 +1213,7 @@ async function main() {
       '.decision-option-item:first-child .decision-option-effect',
       '.decision-option-item:first-child .decision-option-action',
     ]);
-    for (const viewport of QA_VIEWPORTS) {
+    for (const viewport of STUDENT_QA_VIEWPORTS) {
       await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', viewport);
       await sleep(250);
       await evaluate(studentBrowser.cdp, scrollBelowSticky('.decision-round-card'));
@@ -1317,7 +1327,7 @@ async function main() {
         '04-teacher-cockpit-1000x760.png',
         '05-teacher-cockpit-3440x1440.png',
         '06-student-game-full-1440x900.png',
-        '06a-student-factory-map-v8-1440x900.png',
+        '06a-student-factory-map-v9-1440x900.png',
         '06b-student-first-turn-tutorial-1440x900.png',
         '06c-student-first-turn-tutorial-390x844.png',
         '07-student-game-full-3440x1440.png',

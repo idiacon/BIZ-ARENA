@@ -265,6 +265,74 @@ body[data-screen="game-screen"][data-player-role="student"] .student-factory-map
   opacity: 0.94;
 }
 
+body[data-screen="game-screen"][data-player-role="student"] .student-factory-city-backdrop {
+  opacity: 0.72;
+  filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.28));
+  transition: opacity 220ms ease, filter 220ms ease;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-factory-city-arterial {
+  fill: none;
+  stroke: rgba(124, 166, 181, 0.24);
+  stroke-width: 18;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-factory-city-block {
+  pointer-events: none;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .city-building-top {
+  fill: rgba(76, 111, 133, 0.72);
+  stroke: rgba(152, 196, 210, 0.38);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .city-building-side {
+  fill: rgba(19, 43, 59, 0.92);
+  stroke: rgba(112, 157, 174, 0.25);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .city-building-front {
+  fill: rgba(31, 63, 82, 0.92);
+  stroke: rgba(112, 157, 174, 0.3);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .city-building-windows,
+body[data-screen="game-screen"][data-player-role="student"] .city-bank-columns {
+  fill: none;
+  stroke: rgba(134, 231, 225, 0.48);
+  stroke-width: 4;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .city-bank-signal,
+body[data-screen="game-screen"][data-player-role="student"] .city-market-pulse {
+  fill: none;
+  stroke: rgba(255, 190, 61, 0.62);
+  stroke-width: 4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene[data-city-market-state="active"] .city-market-pulse,
+body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene[data-city-market-state="active"] .city-bank-signal {
+  stroke: var(--accent-2);
+  animation: student-city-signal 2.8s ease-in-out infinite;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene[data-city-capital-state="growth"] .city-bank .city-building-top {
+  fill: rgba(78, 231, 220, 0.34);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-factory-scene[data-city-capital-state="risk"] .city-bank-signal {
+  stroke: var(--danger);
+}
+
+@keyframes student-city-signal {
+  0%, 100% { opacity: 0.46; }
+  50% { opacity: 1; }
+}
+
 body[data-screen="game-screen"][data-player-role="student"] .student-factory-map-platform-side {
   fill: #02070c;
   stroke: rgba(129, 178, 195, 0.18);
@@ -1089,6 +1157,247 @@ html[data-animation-mode="off"] body[data-screen="game-screen"][data-player-role
   }
 }
 
+/* Student workspace: the factory map remains the home surface while every task opens in one dialog system. */
+body[data-screen="game-screen"][data-player-role="student"] .student-workspace-backdrop {
+  position: fixed;
+  inset: 0 0 0 calc(var(--layout-nav-standard) + 8px);
+  z-index: 36;
+  display: block;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(8, 18, 31, 0.22), rgba(2, 7, 13, 0.72) 72%),
+    rgba(2, 7, 13, 0.42);
+  backdrop-filter: blur(3px) saturate(0.78);
+  cursor: pointer;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-workspace-backdrop.hidden {
+  display: none;
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .game-panel[data-game-panel="operations"] {
+  pointer-events: none;
+  user-select: none;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog {
+  position: fixed !important;
+  inset: clamp(52px, 6vh, 82px) clamp(22px, 4vw, 72px) clamp(22px, 5vh, 64px) calc(var(--layout-nav-standard) + clamp(22px, 4vw, 72px)) !important;
+  z-index: 38 !important;
+  display: grid !important;
+  width: min(1180px, calc(100vw - var(--layout-nav-standard) - clamp(52px, 10vw, 154px))) !important;
+  max-width: 1180px !important;
+  max-height: calc(100vh - clamp(84px, 11vh, 146px)) !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: auto !important;
+  padding: clamp(16px, 2vw, 26px) !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+  border: 1px solid rgba(101, 214, 229, 0.34) !important;
+  border-radius: 16px !important;
+  background:
+    radial-gradient(circle at 88% 6%, rgba(63, 217, 224, 0.09), transparent 30%),
+    linear-gradient(180deg, rgba(20, 37, 53, 0.985), rgba(7, 17, 29, 0.99)) !important;
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.56), 0 0 0 1px rgba(255, 255, 255, 0.035) inset !important;
+  isolation: isolate;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog {
+  grid-template-columns: minmax(0, 1fr) !important;
+  align-content: start !important;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog > *,
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog #market-overview,
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog #market-event,
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog #contract-board,
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog #segments-overview {
+  grid-column: 1 / -1 !important;
+  grid-row: auto !important;
+  min-width: 0;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog #market-event:empty,
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog #contract-board:empty,
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog #segments-overview:empty,
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog .market-event-title:has(+ #market-event:empty),
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog .market-contract-title:has(+ #contract-board:empty),
+body[data-screen="game-screen"][data-player-role="student"] .game-panel.student-workspace-dialog .market-segments-title:has(+ #segments-overview:empty) {
+  display: none !important;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-dashboard[data-analytics-mode="learning"] {
+  gap: 12px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-dashboard[data-analytics-mode="learning"] .exchange-main-chart {
+  min-height: 190px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-dashboard[data-analytics-mode="learning"] .exchange-chart {
+  height: 180px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-line.price {
+  stroke: var(--accent-2);
+  stroke-width: 5;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .legend-price {
+  display: inline-block;
+  width: 18px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--accent-2);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-empty {
+  grid-template-columns: 64px minmax(0, 1fr);
+  align-items: center;
+  min-height: 190px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-empty-icon {
+  display: grid;
+  width: 58px;
+  height: 58px;
+  place-items: center;
+  border: 1px solid rgba(78, 231, 220, 0.28);
+  border-radius: 16px;
+  color: var(--accent-2);
+  background: rgba(78, 231, 220, 0.07);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-empty-icon .game-ui-icon {
+  width: 28px;
+  height: 28px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-empty h3,
+body[data-screen="game-screen"][data-player-role="student"] .exchange-empty p {
+  margin: 5px 0 0;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-empty p,
+body[data-screen="game-screen"][data-player-role="student"] .exchange-single-value small,
+body[data-screen="game-screen"][data-player-role="student"] .exchange-mini-placeholder {
+  color: var(--muted);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-single-value {
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(78, 231, 220, 0.2);
+  border-radius: 10px;
+  background: rgba(78, 231, 220, 0.055);
+  padding: 14px 16px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-single-value strong {
+  font: 800 clamp(1.45rem, 3vw, 2.3rem) / 1 var(--font-heading);
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .exchange-mini-placeholder {
+  display: grid;
+  min-height: 54px;
+  place-items: center start;
+  font-size: 0.78rem;
+  line-height: 1.35;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog:focus {
+  outline: 2px solid rgba(78, 231, 220, 0.88);
+  outline-offset: 3px;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .student-workspace-close {
+  position: sticky;
+  top: 0;
+  right: 0;
+  z-index: 8;
+  justify-self: end;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  margin: 0 0 -44px;
+  border: 1px solid rgba(151, 188, 202, 0.26);
+  border-radius: 12px;
+  background: rgba(5, 15, 26, 0.92);
+  color: var(--text);
+  font-size: 1.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .student-workspace-close:hover,
+body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .student-workspace-close:focus-visible {
+  border-color: var(--accent-2);
+  background: rgba(34, 211, 238, 0.12);
+  color: #ffffff;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .factory-detail.student-workspace-dialog {
+  align-content: start;
+}
+
+body[data-screen="game-screen"][data-player-role="student"] .game-market-rail {
+  display: none !important;
+}
+
+@media (max-width: 900px) {
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-backdrop {
+    inset: 0;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog {
+    inset: 0 !important;
+    width: 100vw !important;
+    max-width: none !important;
+    max-height: 100dvh !important;
+    height: 100dvh !important;
+    border-radius: 0 !important;
+    padding: 58px 14px 20px !important;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .student-workspace-close {
+    position: fixed;
+    top: 8px;
+    right: 8px;
+    margin: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-backdrop {
+    backdrop-filter: none;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-factory-city-backdrop,
+  body[data-screen="game-screen"][data-player-role="student"] .city-bank-signal,
+  body[data-screen="game-screen"][data-player-role="student"] .city-market-pulse {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .student-workspace-backdrop {
+  backdrop-filter: none;
+  background: rgba(2, 7, 13, 0.78);
+}
+
+html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-city-backdrop {
+  opacity: 0.34;
+  filter: none;
+}
+
+html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .city-bank-signal,
+html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .city-market-pulse {
+  animation: none !important;
+}
+
 html[data-performance-mode="lite"] body[data-screen="game-screen"][data-player-role="student"] .student-factory-map {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1487,11 +1796,14 @@ body[data-screen="game-screen"][data-player-role="student"] .tutorial-card[data-
 
 body[data-screen="game-screen"][data-player-role="student"] .tutorial-card[data-first-turn-card] .tutorial-progress-bar {
   display: block;
+  width: 100%;
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #21b7ff, #72f6ff, #7ef3a1);
   box-shadow: 0 0 14px rgba(114, 246, 255, 0.72);
-  transition: width 220ms ease;
+  transform: scaleX(var(--tutorial-progress, 0.08));
+  transform-origin: left center;
+  transition: transform 220ms ease;
 }
 
 body[data-screen="game-screen"][data-player-role="student"] .tutorial-card[data-first-turn-card] .tutorial-route {

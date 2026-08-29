@@ -550,6 +550,38 @@ async function main() {
     await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-skip-button")?.click()');
     await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.classList.contains("hidden")', 'student tutorial skip');
     assert.equal(await evaluate(studentBrowser.cdp, 'Object.entries(localStorage).some(([key, value]) => key.startsWith("bizArenaFirstTurnTutorial:") && value === "skipped")'), true);
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.body.dataset.studentWorkspace'), 'dialog');
+    assert.equal(await evaluate(studentBrowser.cdp, 'Boolean(document.querySelector("[data-factory-department-detail].student-workspace-dialog"))'), true);
+    assert.equal(await evaluate(studentBrowser.cdp, '!document.querySelector("[data-game-panel=operations]").classList.contains("hidden")'), true);
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-student-workspace-close]")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student workspace close button');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-role-navigation=student] [data-game-tab=purchase]")?.click()');
+    await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector("[data-game-panel=purchase].student-workspace-dialog"))', 'student purchase dialog');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-student-workspace-backdrop]")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student workspace backdrop close');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-role-navigation=student] [data-game-tab=market]")?.click()');
+    await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector("[data-game-panel=market].student-workspace-dialog"))', 'student market dialog');
+    await evaluate(studentBrowser.cdp, 'history.back()');
+    await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student workspace browser back');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-role-navigation=student] [data-game-tab=events]")?.click()');
+    await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector("[data-game-panel=events].student-workspace-dialog"))', 'student report dialog');
+    await evaluate(studentBrowser.cdp, 'document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }))');
+    await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student workspace Escape close');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-scene-station=market]")?.click()');
+    await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector("#market-sale-price"))', 'student sale draft dialog');
+    await evaluate(studentBrowser.cdp, `(() => {
+      const input = document.querySelector('#market-sale-price');
+      input.value = '6417';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      return input.value;
+    })()`);
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-student-workspace-close]")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student sale draft close');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-scene-station=market]")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("#market-sale-price")?.value === "6417"', 'student sale draft restore');
+    assert.equal(await evaluate(studentBrowser.cdp, 'state.factorySaleDraft?.price'), '6417');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-student-workspace-close]")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student sale draft final close');
     await assertReadableVisibleText(studentBrowser.cdp, 'student first turn desktop');
     await assertNoHorizontalOverflow(studentBrowser.cdp, 'student first turn desktop');
 
@@ -561,7 +593,8 @@ async function main() {
     assert.deepEqual(liteProfile.controls, fullProfile.controls);
     assert.equal(fullProfile.mode, 'full');
     assert.equal(fullProfile.scene.presentation, 'isometric-map');
-    assert.equal(fullProfile.scene.version, 'v8-live-stage');
+    assert.equal(fullProfile.scene.version, 'v9-industrial-district');
+    assert.ok(fullProfile.scene.environmentTypes.includes('city-backdrop'));
     assert.equal(fullProfile.scene.activeStation, 'workforce');
     assert.deepEqual(fullProfile.scene.guidanceStates, [
       { station: 'purchase', guidanceState: 'complete' },
@@ -576,6 +609,7 @@ async function main() {
       { station: 'market', activityState: 'empty' },
     ]);
     assert.deepEqual(fullProfile.scene.environmentTypes, [
+      'city-backdrop',
       'parking',
       'utilities',
       'safety-markings',

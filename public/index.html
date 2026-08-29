@@ -877,6 +877,14 @@
                     <option value="off">Выключены</option>
                   </select>
                 </label>
+                <label>
+                  <span>Аналитика ученика</span>
+                  <select id="analytics-mode-select">
+                    <option value="learning">Учебный · решение за 10 секунд</option>
+                    <option value="advanced">Расширенный · больше данных</option>
+                  </select>
+                  <small class="settings-helper">Меняет только представление графиков и подсказок. Игровые данные остаются теми же.</small>
+                </label>
               </section>
               <section class="settings-card">
                 <h3>Уведомления</h3>
@@ -1390,6 +1398,8 @@
             <div id="turn-report-summary" class="statistics-kpi-grid report-turn-summary"></div>
             <div id="event-log-game" class="event-log"></div>
           </section>
+
+          <div class="student-workspace-backdrop hidden" data-student-workspace-backdrop aria-hidden="true"></div>
 
             <aside class="game-market-rail" aria-label="Рынок и действия"></aside>
 

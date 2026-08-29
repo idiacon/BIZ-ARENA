@@ -2653,11 +2653,14 @@ test('UI contract: student tycoon workspace keeps live factory hotspots and neve
   });
   assert.match(renderStudentFactoryScene, /renderStudentFactoryBuilding\(station\.key, sceneState\)/);
   assert.match(renderStudentFactoryScene, /const sceneState = \{/);
-  assert.match(renderStudentFactoryScene, /data-scene-version="v8-live-stage"/);
+  assert.match(renderStudentFactoryScene, /data-scene-version="v9-industrial-district"/);
+  assert.match(renderStudentFactoryScene, /data-factory-environment="city-backdrop"/);
+  assert.match(renderStudentFactoryScene, /data-city-landmark="bank"/);
+  assert.match(renderStudentFactoryScene, /data-city-landmark="market-district"/);
   assert.match(renderStudentFactoryScene, /data-factory-guidance-state=/);
   assert.match(renderStudentFactoryScene, /data-factory-activity=/);
   assert.match(renderStudentFactoryScene, /data-map-route-state=/);
-  assert.equal((renderStudentFactoryScene.match(/data-factory-environment="/g) || []).length, 5);
+  assert.equal((renderStudentFactoryScene.match(/data-factory-environment="/g) || []).length, 6);
   assert.match(renderStudentFactoryScene, /data-factory-motion="service-vehicle"/);
   assert.match(renderStudentFactoryScene, /data-factory-motion="route-flow"/);
   assert.match(renderStudentFactoryScene, /data-map-anchor="zone-center"/);
@@ -2705,7 +2708,7 @@ test('UI QA contract: dual-role screenshot runner covers all student performance
   assert.match(captureScript, /async function setPerformanceMode\(cdp, mode\)/);
   assert.match(captureScript, /student game \$\{mode\} \$\{viewport\.width\}px/);
   assert.match(captureScript, /student-game-full-1440x900\.png/);
-  assert.match(captureScript, /student-factory-map-v8-1440x900\.png/);
+  assert.match(captureScript, /student-factory-map-v9-1440x900\.png/);
   assert.match(captureScript, /student-game-standard-1440x900\.png/);
   assert.match(captureScript, /student-game-lite-1000x760\.png/);
   assert.match(captureScript, /async function collectStudentMarketStatAudit/);
@@ -3149,7 +3152,7 @@ test('UI contract: market side rail is rendered from live game state', () => {
   assert.doesNotMatch(renderGameMarketRail, /data-rail-action/);
   assert.match(renderGameMarketRail, /data-rail-game-tab/);
   assert.doesNotMatch(renderGameMarketRail, /sendAction\(button\.dataset\.railAction\)/);
-  assert.match(renderGameMarketRail, /setGameTab\(button\.dataset\.railGameTab\)/);
+  assert.match(renderGameMarketRail, /setGameTab\(button\.dataset\.railGameTab, \{/);
 
   assert.match(styles, /\.rail-live-market-card/);
   assert.match(styles, /\.market-rail-stats/);
@@ -3292,6 +3295,40 @@ test('UI contract: student operations use a live factory map without changing co
   assert.match(styles, /\.student-factory-map[\s\S]*grid-template-columns/);
   assert.match(styles, /html\[data-performance-mode="lite"\] \.student-command-stage[\s\S]*align-items: start/);
   assert.match(styles, /body\[data-screen="game-screen"\]\[data-player-role="student"\]\[data-game-tab="operations"\] \.game-market-rail/);
+});
+
+test('UI contract: student factory workspace keeps the map behind accessible dismissible dialogs', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const indexHtml = fs.readFileSync(path.join(publicRoot, 'index.html'), 'utf8');
+  const appJs = fs.readFileSync(path.join(publicRoot, 'app.js'), 'utf8');
+
+  assert.match(indexHtml, /data-student-workspace-backdrop/);
+  assert.match(indexHtml, /id="analytics-mode-select"/);
+  assert.match(appJs, /function openStudentWorkspaceDepartment\(/);
+  assert.match(appJs, /function dismissStudentWorkspace\(/);
+  assert.match(appJs, /function trapStudentWorkspaceFocus\(/);
+  assert.match(appJs, /history\.pushState\(/);
+  assert.match(appJs, /window\.addEventListener\('popstate'/);
+  assert.match(appJs, /event\.target === elements\.studentWorkspaceBackdrop/);
+  assert.match(appJs, /event\.key === 'Escape'/);
+  assert.match(appJs, /panel\.dataset\.gamePanel === 'operations'/);
+  assert.match(appJs, /localStorage\.setItem\('bizArenaAnalyticsMode'/);
+});
+
+test('UI contract: student market charts use only factual history and expose honest empty states', () => {
+  const appJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const studentUi = fs.readFileSync(path.join(__dirname, '..', 'public', 'ui', 'student-ui.js'), 'utf8');
+  const marketChartHistory = sourceFunctionBlock(appJs, 'marketChartHistory');
+  const renderExchangeDashboard = sourceFunctionBlock(appJs, 'renderExchangeDashboard');
+
+  assert.match(marketChartHistory, /state\.room\?\.market/);
+  assert.doesNotMatch(marketChartHistory, /pattern|baseDemand|baseSales|multiplier/);
+  assert.match(renderExchangeDashboard, /data-market-history-state="empty"/);
+  assert.match(renderExchangeDashboard, /data-market-history-state="single"/);
+  assert.match(renderExchangeDashboard, /data-market-history-state="trend"/);
+  assert.match(renderExchangeDashboard, /data-analytics-mode/);
+  assert.match(renderExchangeDashboard, /Истории пока нет/);
+  assert.match(studentUi, /После первого расчёта появятся фактические данные/);
 });
 
 test('UI contract: mobile game navigation exposes the active role links as one compact horizontal rail', () => {

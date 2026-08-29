@@ -337,6 +337,7 @@ const ROOM_AUTO_ENTRY_SCREENS = ['create-room-screen', 'join-room-screen', 'main
 const PERFORMANCE_MODES = ['auto', 'full', 'standard', 'lite'];
 const REFRESH_CADENCES = ['auto', 'fast', 'normal', 'slow'];
 const ANIMATION_MODES = ['auto', 'on', 'off'];
+const ANALYTICS_MODES = ['learning', 'advanced'];
 
 function normalizePerformanceMode(value) {
   return PERFORMANCE_MODES.includes(value) ? value : 'auto';
@@ -347,6 +348,10 @@ function normalizeRefreshCadence(value) {
 
 function normalizeAnimationMode(value) {
   return ANIMATION_MODES.includes(value) ? value : 'auto';
+}
+
+function normalizeAnalyticsMode(value) {
+  return ANALYTICS_MODES.includes(value) ? value : 'learning';
 }
 
 function requestedAppMode() {
@@ -390,6 +395,11 @@ const state = {
   screenHistory: [],
   roomAutoOpenDismissed: false,
   currentGameTab: localStorage.getItem('bizArenaGameTab') || 'overview',
+  studentWorkspace: {
+    department: '',
+    opener: null,
+    historyActive: false,
+  },
   factoryDepartment: localStorage.getItem('bizArenaFactoryDepartment') || 'command',
   factoryPurchaseComponent: localStorage.getItem('bizArenaFactoryPurchaseComponent') || '',
   settings: {
@@ -400,6 +410,7 @@ const state = {
     performanceMode: normalizePerformanceMode(localStorage.getItem('bizArenaPerformanceMode') || 'auto'),
     refreshCadence: normalizeRefreshCadence(localStorage.getItem('bizArenaRefreshCadence') || 'auto'),
     animationMode: normalizeAnimationMode(localStorage.getItem('bizArenaAnimationMode') || 'auto'),
+    analyticsMode: normalizeAnalyticsMode(localStorage.getItem('bizArenaAnalyticsMode') || 'learning'),
   },
   profile: {
     userName: localStorage.getItem('bizArenaUserName') || 'BizPlayer',
@@ -527,6 +538,7 @@ const elements = {
   contractBoard: document.querySelector('#contract-board'),
   segmentsOverview: document.querySelector('#segments-overview'),
   gameMarketRail: document.querySelector('.game-market-rail'),
+  studentWorkspaceBackdrop: document.querySelector('[data-student-workspace-backdrop]'),
   statisticsOverview: document.querySelector('#statistics-overview'),
   statisticsTrend: document.querySelector('#statistics-trend'),
   turnReportSummary: document.querySelector('#turn-report-summary'),
@@ -583,6 +595,7 @@ const elements = {
   performanceModeSummary: document.querySelector('#performance-mode-summary'),
   refreshCadenceSelect: document.querySelector('#refresh-cadence-select'),
   animationModeSelect: document.querySelector('#animation-mode-select'),
+  analyticsModeSelect: document.querySelector('#analytics-mode-select'),
   saveSettings: document.querySelector('#save-settings'),
   roomSettingsForm: document.querySelector('#room-settings-form'),
   maxPlayersSelect: document.querySelector('#max-players-select'),
@@ -1691,21 +1704,149 @@ function revealActiveGameTab(button) {
   });
 }
 
-function setGameTab(tabId) {
+function isStudentWorkspaceViewer() {
+  return state.currentScreen === 'game-screen'
+    && Boolean(state.player)
+    && !isTeacherViewer()
+    && isFactoryRoom();
+}
+
+function studentWorkspaceDialog() {
+  if (!isStudentWorkspaceViewer()) return null;
+  if (state.studentWorkspace.department) {
+    return elements.factoryOperations?.querySelector('[data-factory-department-detail]') || null;
+  }
+  if (state.currentGameTab === 'operations') return null;
+  return [...elements.gamePanels].find(panel => panel.dataset.gamePanel === state.currentGameTab) || null;
+}
+
+function studentWorkspaceTitle(tabId = state.currentGameTab, department = state.studentWorkspace.department) {
+  if (department) {
+    return ({ command: 'Обзор предприятия', warehouse: 'Склад', workforce: 'Команда', assembly: 'Сборочная линия', sales: 'Отгрузка' })[department] || 'Участок предприятия';
+  }
+  return ({ overview: 'Обзор', purchase: 'Закупка', market: 'Рынок и отгрузка', competitors: 'Команда', events: 'Отчёт хода', statistics: 'Показатели', intel: 'Помощник' })[tabId] || 'Рабочее окно';
+}
+
+function ensureStudentWorkspaceChrome(dialog) {
+  if (!dialog || dialog.querySelector(':scope > [data-student-workspace-close]')) return;
+  dialog.insertAdjacentHTML('afterbegin', `
+    <button type="button" class="student-workspace-close" data-student-workspace-close aria-label="Закрыть ${escapeHtml(studentWorkspaceTitle())}">
+      <span aria-hidden="true">×</span>
+    </button>`);
+}
+
+function syncStudentWorkspaceUi({ focusDialog = false } = {}) {
+  const dialog = studentWorkspaceDialog();
+  const open = Boolean(dialog);
+  document.body.dataset.studentWorkspace = open ? 'dialog' : 'map';
+  document.documentElement.dataset.studentWorkspace = open ? 'dialog' : 'map';
+  elements.studentWorkspaceBackdrop?.classList.toggle('hidden', !open);
+  elements.studentWorkspaceBackdrop?.setAttribute('aria-hidden', open ? 'false' : 'true');
+  elements.gamePanels.forEach(panel => {
+    const activeDialog = panel === dialog;
+    panel.classList.toggle('student-workspace-dialog', activeDialog);
+    panel.toggleAttribute('data-student-workspace-dialog', activeDialog);
+    if (!activeDialog) {
+      panel.removeAttribute('role');
+      panel.removeAttribute('aria-modal');
+    }
+  });
+  const departmentDetail = elements.factoryOperations?.querySelector('[data-factory-department-detail]');
+  if (departmentDetail) {
+    const activeDepartmentDialog = departmentDetail === dialog;
+    departmentDetail.classList.toggle('student-workspace-dialog', activeDepartmentDialog);
+    departmentDetail.toggleAttribute('data-student-workspace-dialog', activeDepartmentDialog);
+    if (!activeDepartmentDialog) {
+      departmentDetail.removeAttribute('role');
+      departmentDetail.removeAttribute('aria-modal');
+    }
+  }
+  if (!open) return;
+  ensureStudentWorkspaceChrome(dialog);
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
+  dialog.setAttribute('aria-label', studentWorkspaceTitle());
+  dialog.tabIndex = -1;
+  if (focusDialog) requestAnimationFrame(() => dialog.focus({ preventScroll: true }));
+}
+
+function rememberStudentWorkspaceOpener(opener) {
+  if (opener instanceof HTMLElement) state.studentWorkspace.opener = opener;
+}
+
+function openStudentWorkspaceDepartment(department, opener = null) {
+  rememberStudentWorkspaceOpener(opener || document.activeElement);
+  setGameTab('operations', { department, pushWorkspaceHistory: true, focusDialog: true });
+}
+
+function dismissStudentWorkspace({ fromHistory = false } = {}) {
+  if (!studentWorkspaceDialog()) return;
+  if (!fromHistory && state.studentWorkspace.historyActive) {
+    history.back();
+    return;
+  }
+  const opener = state.studentWorkspace.opener;
+  state.studentWorkspace.department = '';
+  state.studentWorkspace.historyActive = false;
+  setGameTab('operations', { preserveWorkspaceHistory: true });
+  requestAnimationFrame(() => {
+    const fallback = document.querySelector('[data-role-navigation="student"] [data-game-tab="operations"]');
+    const focusTarget = opener?.isConnected ? opener : fallback;
+    focusTarget?.focus({ preventScroll: true });
+  });
+}
+
+function trapStudentWorkspaceFocus(event) {
+  const dialog = studentWorkspaceDialog();
+  if (!dialog || event.key !== 'Tab') return;
+  const focusable = [...dialog.querySelectorAll('button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')]
+    .filter(node => !node.hidden && node.getClientRects().length);
+  if (!focusable.length) {
+    event.preventDefault();
+    dialog.focus({ preventScroll: true });
+    return;
+  }
+  const first = focusable[0];
+  const last = focusable[focusable.length - 1];
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault();
+    last.focus();
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault();
+    first.focus();
+  }
+}
+
+function setGameTab(tabId, options = {}) {
   const visibleTabs = visibleGameTabs();
   const nextTabId = visibleTabs.has(tabId) ? tabId : (visibleTabs.has('operations') ? 'operations' : [...visibleTabs][0] || 'overview');
+  const studentWorkspace = isStudentWorkspaceViewer();
+  if (studentWorkspace) {
+    if (options.department) state.studentWorkspace.department = options.department;
+    else if (nextTabId !== 'operations' || !options.preserveDepartment) state.studentWorkspace.department = '';
+    rememberStudentWorkspaceOpener(options.opener);
+    const opensDialog = nextTabId !== 'operations' || Boolean(state.studentWorkspace.department);
+    if (opensDialog && options.pushWorkspaceHistory && !state.studentWorkspace.historyActive) {
+      history.pushState({ ...(history.state || {}), bizArenaStudentWorkspace: true }, document.title);
+      state.studentWorkspace.historyActive = true;
+    }
+  }
   state.currentGameTab = nextTabId;
   document.body.dataset.gameTab = nextTabId;
   document.documentElement.dataset.gameTab = nextTabId;
-  localStorage.setItem('bizArenaGameTab', nextTabId);
+  localStorage.setItem('bizArenaGameTab', studentWorkspace ? 'operations' : nextTabId);
   let activeNavigationButton = null;
   elements.gameTabs.forEach(button => {
     const active = button.dataset.gameTab === nextTabId;
     button.classList.toggle('active', active);
     if (active && button.closest?.('.app-sidebar-nav')) activeNavigationButton = button;
   });
-  elements.gamePanels.forEach(panel => panel.classList.toggle('hidden', panel.dataset.gamePanel !== nextTabId));
+  elements.gamePanels.forEach(panel => {
+    const persistentMap = studentWorkspace && panel.dataset.gamePanel === 'operations';
+    panel.classList.toggle('hidden', !persistentMap && panel.dataset.gamePanel !== nextTabId);
+  });
   revealActiveGameTab(activeNavigationButton);
+  syncStudentWorkspaceUi({ focusDialog: Boolean(options.focusDialog) });
   renderTutorialOverlay();
 }
 
@@ -3025,6 +3166,7 @@ function renderFactoryOperations() {
   elements.factoryOperations.querySelectorAll('[data-factory-node]').forEach(button => {
     button.addEventListener('click', () => {
       patchFactoryDepartment(button.dataset.factoryNode);
+      if (isStudentWorkspaceViewer()) openStudentWorkspaceDepartment(button.dataset.factoryNode, button);
     });
   });
   bindTurnChecklist(elements.factoryOperations);
@@ -3034,7 +3176,11 @@ function renderFactoryOperations() {
     });
   });
   elements.factoryOperations.querySelectorAll('[data-guided-game-tab]').forEach(button => {
-    button.addEventListener('click', () => setGameTab(button.dataset.guidedGameTab));
+    button.addEventListener('click', () => setGameTab(button.dataset.guidedGameTab, {
+      opener: button,
+      pushWorkspaceHistory: true,
+      focusDialog: true,
+    }));
   });
   elements.factoryOperations.querySelectorAll('[data-guided-action]').forEach(button => {
     button.addEventListener('click', () => sendAction(button.dataset.guidedAction));
@@ -3052,7 +3198,15 @@ function renderFactoryOperations() {
       if (component) setFactoryPurchaseComponent(component);
       const nextTab = button.dataset.studentRouteTab || 'operations';
       if (department && nextTab === 'operations') patchFactoryDepartment(department);
-      setGameTab(nextTab);
+      if (department && nextTab === 'operations' && isStudentWorkspaceViewer()) {
+        openStudentWorkspaceDepartment(department, button);
+      } else {
+        setGameTab(nextTab, {
+          opener: button,
+          pushWorkspaceHistory: true,
+          focusDialog: true,
+        });
+      }
       if (component) renderFactoryPurchases();
     });
   });
@@ -3082,7 +3236,11 @@ function renderFactoryOperations() {
     root.querySelectorAll('[data-purchase-shortcut]').forEach(button => {
       button.addEventListener('click', () => {
         setFactoryPurchaseComponent(button.dataset.purchaseShortcut);
-        setGameTab('purchase');
+        setGameTab('purchase', {
+          opener: button,
+          pushWorkspaceHistory: true,
+          focusDialog: true,
+        });
         renderFactoryPurchases();
       });
     });
@@ -3118,6 +3276,7 @@ function renderFactoryOperations() {
     });
   }
   bindFactoryDepartmentDetail(elements.factoryOperations.querySelector('[data-factory-department-detail]'));
+  syncStudentWorkspaceUi();
   elements.factoryOperations.querySelectorAll('[data-decision-option]').forEach(button => {
     button.addEventListener('click', () => {
       sendAction('resolve-decision-round', {
@@ -3892,26 +4051,13 @@ function renderStatistics() {
   `;
 }
 
-function marketChartHistory(fallback = {}) {
+function marketChartHistory() {
   const source = (state.room?.market || []).filter(Boolean).slice(-10);
-  if (source.length) {
-    return source.map((entry, index) => ({
-      day: Number(entry.day ?? index + 1),
-      demand: Number(entry.demand || 0),
-      totalSales: Number(entry.totalSales || 0),
-      avgPrice: Number(entry.avgPrice || fallback.avgPrice || 0),
-    }));
-  }
-
-  const pattern = [0.86, 0.93, 0.9, 1.02, 0.98, 1.08, 1.04, 1.16, 1.11, 1.22];
-  const baseDemand = Number(fallback.demand || state.room?.factoryScenario?.baseDemandMax || 1200);
-  const basePrice = Number(fallback.avgPrice || state.player?.factory?.saleOffer?.price || state.player?.price || state.room?.factoryScenario?.priceRange?.max || 18000);
-  const baseSales = Number(fallback.totalSales || Math.round(baseDemand * 0.68));
-  return pattern.map((multiplier, index) => ({
-    day: index + 1,
-    demand: Math.max(0, Math.round(baseDemand * multiplier)),
-    totalSales: Math.max(0, Math.round(baseSales * (0.82 + index * 0.035))),
-    avgPrice: Math.max(0, Math.round(basePrice * (0.9 + multiplier * 0.12))),
+  return source.map((entry, index) => ({
+    day: Number(entry.day ?? index + 1),
+    demand: Number(entry.demand || 0),
+    totalSales: Number(entry.totalSales || 0),
+    avgPrice: Number(entry.avgPrice || 0),
   }));
 }
 
@@ -3941,6 +4087,7 @@ function chartPolyline(values, width = 640, height = 230, pad = 24) {
 }
 
 function miniChart(values, tone = '') {
+  if (values.length < 2) return '<div class="exchange-mini-placeholder">Тренд появится после следующего хода</div>';
   return `<svg class="exchange-mini-chart ${tone}" viewBox="0 0 180 62" aria-hidden="true">
     <polyline points="${chartPolyline(values, 180, 62, 8)}" />
   </svg>`;
@@ -4195,14 +4342,27 @@ function bindFactoryMarketSaleControls() {
 }
 
 function renderExchangeDashboard(history, options = {}) {
+  const analyticsMode = options.mode === 'learning' ? 'learning' : 'advanced';
+  if (!history.length) {
+    return `
+      <section class="exchange-dashboard exchange-empty" data-market-history-state="empty" data-analytics-mode="${analyticsMode}">
+        <div class="exchange-empty-icon">${gameIcon('market')}</div>
+        <div>
+          <span class="factory-node-label">Истории пока нет</span>
+          <h3>${escapeHtml(options.title || 'Рынок ещё не рассчитан')}</h3>
+          <p>Завершите первый общий ход. После расчёта здесь появятся только фактические цена, спрос и продажи.</p>
+        </div>
+      </section>`;
+  }
   const priceValues = history.map(entry => Number(entry.avgPrice || 0));
   const demandValues = history.map(entry => Number(entry.demand || 0));
   const salesValues = history.map(entry => Number(entry.totalSales || 0));
   const latest = history[history.length - 1] || { avgPrice: 0, demand: 0, totalSales: 0 };
   const previous = history[history.length - 2] || latest;
-  const priceDelta = Number(latest.avgPrice || 0) - Number(previous.avgPrice || 0);
-  const demandDelta = Number(latest.demand || 0) - Number(previous.demand || 0);
-  const salesDelta = Number(latest.totalSales || 0) - Number(previous.totalSales || 0);
+  const hasTrend = history.length >= 2;
+  const priceDelta = hasTrend ? Number(latest.avgPrice || 0) - Number(previous.avgPrice || 0) : null;
+  const demandDelta = hasTrend ? Number(latest.demand || 0) - Number(previous.demand || 0) : null;
+  const salesDelta = hasTrend ? Number(latest.totalSales || 0) - Number(previous.totalSales || 0) : null;
   const chartWidth = 640;
   const chartHeight = 230;
   const pad = 24;
@@ -4238,9 +4398,25 @@ function renderExchangeDashboard(history, options = {}) {
   }).join('');
   const demandLine = chartPolyline(demandValues, chartWidth, chartHeight, pad);
   const salesLine = chartPolyline(salesValues, chartWidth, chartHeight, pad);
+  const priceLine = chartPolyline(priceValues, chartWidth, chartHeight, pad);
+
+  if (!hasTrend) {
+    return `
+      <section class="exchange-dashboard exchange-single" data-market-history-state="single" data-analytics-mode="${analyticsMode}">
+        <div class="exchange-head">
+          <div><span class="factory-node-label">Первый результат</span><h3>${escapeHtml(options.title || 'Рынок рассчитан один раз')}</h3></div>
+          <div class="exchange-live"><span class="team-dot green"></span> ФАКТ</div>
+        </div>
+        <div class="exchange-single-value"><span>Цена рынка</span><strong>${money(latest.avgPrice)}</strong><small>Ход ${latest.day || 1} · тренд появится после следующего расчёта</small></div>
+        <div class="exchange-mini-grid exchange-kpi-only">
+          <article><span>Спрос</span><strong>${compactMarketNumber(latest.demand)} ед.</strong><small>фактический спрос</small></article>
+          <article><span>Продано</span><strong>${compactMarketNumber(latest.totalSales)} ед.</strong><small>фактические продажи</small></article>
+        </div>
+      </section>`;
+  }
 
   return `
-    <section class="exchange-dashboard">
+    <section class="exchange-dashboard" data-market-history-state="trend" data-analytics-mode="${analyticsMode}">
       <div class="exchange-head">
         <div>
           <span class="factory-node-label">Рыночный терминал</span>
@@ -4256,39 +4432,34 @@ function renderExchangeDashboard(history, options = {}) {
             <line x1="24" y1="138" x2="616" y2="138" />
             <line x1="24" y1="184" x2="616" y2="184" />
           </g>
-          <g class="exchange-volume">${volumeBars}</g>
-          <g class="exchange-candles">${candles}</g>
-          <polyline class="exchange-line demand" points="${demandLine}" />
-          <polyline class="exchange-line sales" points="${salesLine}" />
+          ${analyticsMode === 'advanced' ? `<g class="exchange-volume">${volumeBars}</g><g class="exchange-candles">${candles}</g><polyline class="exchange-line demand" points="${demandLine}" /><polyline class="exchange-line sales" points="${salesLine}" />` : `<polyline class="exchange-line price" points="${priceLine}" />`}
         </svg>
         <div class="exchange-axis">
           <span>${t('day')} ${history[0]?.day || 1}</span>
           <span>${t('day')} ${latest.day || history.length}</span>
         </div>
       </div>
-      <div class="exchange-legend">
-        <span><i class="legend-candle"></i>Цена</span>
-        <span><i class="legend-demand"></i>Спрос</span>
-        <span><i class="legend-sales"></i>Продажи</span>
-      </div>
+      <div class="exchange-legend">${analyticsMode === 'advanced'
+        ? '<span><i class="legend-candle"></i>Цена</span><span><i class="legend-demand"></i>Спрос</span><span><i class="legend-sales"></i>Продажи</span>'
+        : '<span><i class="legend-price"></i>Фактическая цена рынка</span>'}</div>
       <div class="exchange-mini-grid">
         <article>
           <span>Цена рынка</span>
           <strong>${money(latest.avgPrice)}</strong>
           <small class="${priceDelta >= 0 ? 'positive' : 'negative'}">${priceDelta >= 0 ? '+' : ''}${money(priceDelta)}</small>
-          ${miniChart(priceValues, priceDelta >= 0 ? 'positive' : 'negative')}
+          ${analyticsMode === 'advanced' ? miniChart(priceValues, priceDelta >= 0 ? 'positive' : 'negative') : ''}
         </article>
         <article>
           <span>Спрос</span>
           <strong>${compactMarketNumber(latest.demand)} ед.</strong>
           <small class="${demandDelta >= 0 ? 'positive' : 'negative'}">${demandDelta >= 0 ? '+' : ''}${compactMarketNumber(demandDelta)}</small>
-          ${miniChart(demandValues, demandDelta >= 0 ? 'positive' : 'negative')}
+          ${analyticsMode === 'advanced' ? miniChart(demandValues, demandDelta >= 0 ? 'positive' : 'negative') : ''}
         </article>
         <article>
           <span>Объем продаж</span>
           <strong>${compactMarketNumber(latest.totalSales)} ед.</strong>
           <small class="${salesDelta >= 0 ? 'positive' : 'negative'}">${salesDelta >= 0 ? '+' : ''}${compactMarketNumber(salesDelta)}</small>
-          ${miniChart(salesValues, salesDelta >= 0 ? 'positive' : 'negative')}
+          ${analyticsMode === 'advanced' ? miniChart(salesValues, salesDelta >= 0 ? 'positive' : 'negative') : ''}
         </article>
       </div>
     </section>`;
@@ -4330,7 +4501,7 @@ function renderTeacherMarketOverview() {
       <small>${escapeHtml(hint)}</small>
     </article>`).join('');
   const marketVisual = marketHistory.length
-    ? renderExchangeDashboard(marketHistory, { title: `${room.scenarioLabel || 'Рынок класса'}: цена, спрос, продажи` })
+      ? renderExchangeDashboard(marketHistory, { title: `${room.scenarioLabel || 'Рынок класса'}: цена, спрос, продажи`, mode: 'advanced' })
     : `
       <section class="teacher-market-empty" data-market-state="waiting">
         <svg class="game-ui-icon" aria-hidden="true"><use href="/assets/game-icons.svg#icon-market"></use></svg>
@@ -4431,11 +4602,7 @@ function renderMarket() {
   if (isFactoryRoom()) {
     const scenario = state.room.factoryScenario;
     const latest = state.room?.market?.[state.room.market.length - 1];
-    const chartHistory = marketChartHistory({
-      demand: latest?.demand || scenario.baseDemandMax || 1180,
-      totalSales: latest?.totalSales || 0,
-      avgPrice: latest?.avgPrice || state.player.factory.saleOffer.price || scenario.priceRange?.max || 18450,
-    });
+    const chartHistory = marketChartHistory();
     const overviewItems = latest
       ? [
           [t('market_overview_demand'), `${latest.demand} ${t('factory_units')}`],
@@ -4459,7 +4626,7 @@ function renderMarket() {
     elements.marketOverview.innerHTML = `
       ${renderMarketReplayPanel()}
       <div class="market-chart-column">
-          ${renderExchangeDashboard(chartHistory, { title: `${scenario.label}: цена, спрос, объем` })}
+          ${renderExchangeDashboard(chartHistory, { title: `${scenario.label}: цена, спрос, объем`, mode: state.settings.analyticsMode })}
           <div class="market-terminal-kpis">${kpiMarkup}</div>
       </div>`;
     elements.marketOverview.querySelector('[data-market-replay-export]')?.addEventListener('click', exportMarketReplayReport);
@@ -4491,15 +4658,13 @@ function renderMarket() {
   if (!latest) {
     elements.marketOverview.innerHTML = renderExchangeDashboard(marketChartHistory(), {
       title: 'Индекс рынка: цена, спрос, продажи',
+      mode: state.settings.analyticsMode,
     });
     elements.marketOverview.insertAdjacentHTML('beforeend', `<div class="market-item">${t('no_market_data')}</div>`);
   } else {
-    elements.marketOverview.innerHTML = renderExchangeDashboard(marketChartHistory({
-      demand: latest.demand,
-      totalSales: latest.totalSales,
-      avgPrice: latest.avgPrice,
-    }), {
+    elements.marketOverview.innerHTML = renderExchangeDashboard(marketChartHistory(), {
       title: `${localizedScenarioLabel()}: цена, спрос, продажи`,
+      mode: state.settings.analyticsMode,
     });
     [[t('demand'), `${latest.demand} pcs`], [t('avg_price'), money(latest.avgPrice)], [t('sales'), `${latest.totalSales} pcs`], [t('scenario_label'), localizedScenarioLabel()], [t('day_limit_title'), `${state.room.settings.dayLimit}`]].forEach(([title, value]) => {
       const node = document.createElement('article');
@@ -5909,6 +6074,7 @@ function saveSettings() {
   state.settings.performanceMode = normalizePerformanceMode(elements.performanceModeSelect?.value || 'auto');
   state.settings.refreshCadence = normalizeRefreshCadence(elements.refreshCadenceSelect?.value || 'auto');
   state.settings.animationMode = normalizeAnimationMode(elements.animationModeSelect?.value || 'auto');
+  state.settings.analyticsMode = normalizeAnalyticsMode(elements.analyticsModeSelect?.value || 'learning');
   localStorage.setItem('bizArenaLanguage', state.settings.language);
   localStorage.setItem('bizArenaFontSize', state.settings.fontSize);
   localStorage.setItem('bizArenaBackground', state.settings.background);
@@ -5916,6 +6082,7 @@ function saveSettings() {
   localStorage.setItem('bizArenaPerformanceMode', state.settings.performanceMode);
   localStorage.setItem('bizArenaRefreshCadence', state.settings.refreshCadence);
   localStorage.setItem('bizArenaAnimationMode', state.settings.animationMode);
+  localStorage.setItem('bizArenaAnalyticsMode', state.settings.analyticsMode);
   resetRenderCache();
   applyTranslations();
   applyBackgroundTheme();
@@ -5938,7 +6105,17 @@ elements.homeLinks.forEach(button => button.addEventListener('click', () => {
   showScreen('main-menu-screen', { addToHistory: false });
 }));
 elements.backButtons.forEach(button => button.addEventListener('click', goBack));
-elements.gameTabs.forEach(button => button.addEventListener('click', () => setGameTab(button.dataset.gameTab)));
+elements.gameTabs.forEach(button => button.addEventListener('click', () => {
+  if (button.dataset.gameTab === 'operations' && studentWorkspaceDialog()) {
+    dismissStudentWorkspace();
+    return;
+  }
+  setGameTab(button.dataset.gameTab, {
+    opener: button,
+    pushWorkspaceHistory: true,
+    focusDialog: true,
+  });
+}));
 elements.gameNextActionChip?.addEventListener('click', activateGameNextAction);
 elements.gameCopyStudentLink?.addEventListener('click', async () => {
   try {
@@ -6093,6 +6270,24 @@ elements.tutorialBackButton?.addEventListener('click', () => showPreviousTutoria
 elements.tutorialNextButton.addEventListener('click', () => advanceTutorialStep());
 document.addEventListener('click', handleTutorialClick, true);
 document.addEventListener('keydown', handleTutorialKeydown);
+document.addEventListener('click', event => {
+  if (event.target.closest('[data-student-workspace-close]')) dismissStudentWorkspace();
+});
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape' && studentWorkspaceDialog()) {
+    event.preventDefault();
+    dismissStudentWorkspace();
+    return;
+  }
+  trapStudentWorkspaceFocus(event);
+});
+elements.studentWorkspaceBackdrop?.addEventListener('click', event => {
+  if (event.target === elements.studentWorkspaceBackdrop) dismissStudentWorkspace();
+});
+elements.studentWorkspaceBackdrop?.addEventListener('wheel', event => event.preventDefault(), { passive: false });
+window.addEventListener('popstate', () => {
+  if (studentWorkspaceDialog()) dismissStudentWorkspace({ fromHistory: true });
+});
 window.addEventListener('resize', renderTutorialOverlay);
 window.addEventListener('scroll', refreshTutorialGeometry, true);
 document.addEventListener('visibilitychange', () => {
@@ -6112,6 +6307,7 @@ function bootstrap() {
   if (elements.performanceModeSelect) elements.performanceModeSelect.value = state.settings.performanceMode;
   if (elements.refreshCadenceSelect) elements.refreshCadenceSelect.value = state.settings.refreshCadence;
   if (elements.animationModeSelect) elements.animationModeSelect.value = state.settings.animationMode;
+  if (elements.analyticsModeSelect) elements.analyticsModeSelect.value = state.settings.analyticsMode;
   elements.createScenarioSelect.innerHTML = createOptionMarkup(factoryScenarioCatalog(), 'motorcycles');
   elements.createScenarioSelect.value = 'motorcycles';
   setCreateDifficulty('easy');
