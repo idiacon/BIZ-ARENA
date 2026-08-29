@@ -46,7 +46,7 @@ function createFactorySummaryHelpers({
           ? `${factory.workers.length} сотрудников на линии.`
           : 'Без сотрудников сборка будет заблокирована.',
         action: 'Нанять сотрудника',
-        tab: 'competitors',
+        tab: 'operations',
         department: 'workforce',
       },
       {
@@ -122,43 +122,73 @@ function createFactorySummaryHelpers({
       : priceGapPct > 12 || expectedUnits < quantity
         ? 'medium'
         : 'low';
-    const decisionStudentText = saleRisk === 'high'
-      ? 'Высокий риск: заявка может не продаться. Снизьте цену или проверьте, есть ли готовый товар.'
-      : saleRisk === 'medium'
-        ? 'Средний риск: часть товара может остаться на складе. Лучше приблизиться к рыночной цене.'
-        : 'Заявка выглядит конкурентно: цена близка к рынку, шанс продажи высокий.';
+    const reasonKey = quantity === 0
+      ? 'no_offer'
+      : stock <= 0
+        ? 'no_stock'
+        : priceGapPct > 12
+          ? 'price_above_market'
+          : expectedUnits < quantity
+            ? 'demand_limit'
+            : 'competitive';
+    const decisionCopy = {
+      no_offer: {
+        title: 'Выставьте заявку',
+        message: 'Сейчас компания не участвует в продаже.',
+        studentText: 'Укажите объём и цену, чтобы товар появился на рынке.',
+        metric: 'Нет заявки',
+      },
+      no_stock: {
+        title: 'Сначала соберите товар',
+        message: 'В заявке есть объём, но на складе нет готовой продукции.',
+        studentText: 'Перейдите к сборке, затем вернитесь к продаже.',
+        metric: 'Нет товара',
+      },
+      price_above_market: {
+        title: 'Снизьте цену',
+        message: `Ваша цена выше рынка на ${Math.max(priceGapPct, 0)}%.`,
+        studentText: `Ориентир — около ${formatRub(recommendedPrice)} за единицу.`,
+        metric: `${expectedUnits} из ${quantity} ед.`,
+      },
+      demand_limit: {
+        title: 'Скорректируйте объём',
+        message: `Спрос может принять ${expectedUnits} из ${quantity} ед.`,
+        studentText: 'Уменьшите объём заявки или пересмотрите цену.',
+        metric: `${expectedUnits} из ${quantity} ед.`,
+      },
+      competitive: {
+        title: 'Заявка готова',
+        message: 'Цена близка к рынку, а объём покрывается спросом.',
+        studentText: 'Можно завершать ход или ещё раз проверить запас.',
+        metric: `${expectedUnits} из ${quantity} ед.`,
+      },
+    }[reasonKey];
     const hints = [];
 
     hints.push({
       kind: 'decision',
-      tone: saleRisk === 'high' ? 'danger' : saleRisk === 'medium' ? 'warn' : 'ok',
-      title: 'Биржевой совет',
-      message: decisionStudentText,
-      studentText: decisionStudentText,
-      metric: `${expectedUnits}/${quantity || 0} ед.`,
+      tone: ['no_offer', 'no_stock'].includes(reasonKey)
+        ? 'warn'
+        : saleRisk === 'high' ? 'danger' : saleRisk === 'medium' ? 'warn' : 'ok',
+      title: decisionCopy.title,
+      message: decisionCopy.message,
+      studentText: decisionCopy.studentText,
+      metric: decisionCopy.metric,
       bestPrice: Math.round(bestClearedPrice),
       recommendedPrice,
       currentPrice: Math.round(price),
       expectedUnits,
       saleRisk,
-      reasonKey: quantity === 0
-        ? 'no_offer'
-        : stock <= 0
-          ? 'no_stock'
-          : priceGapPct > 12
-            ? 'price_above_market'
-            : expectedUnits < quantity
-              ? 'demand_limit'
-              : 'competitive',
+      reasonKey,
     });
 
     if (stock > 0 && quantity === 0) {
       hints.push({
-        tone: 'danger',
-        title: 'Продажа не выйдет',
-        message: `На складе ${stock} ед., но заявки нет. Следующий ход принесёт только расходы.`,
-        studentText: 'У вас есть готовый товар, но он не продаётся без заявки. Выставьте количество и цену.',
-        metric: '0 ед. в книге',
+        tone: 'warn',
+        title: 'Товар ждёт заявки',
+        message: `На складе готово ${stock} ед., но они не выставлены на продажу.`,
+        studentText: 'Укажите объём и цену до завершения хода.',
+        metric: `${stock} ед. на складе`,
       });
     }
     if (quantity > stock) {
@@ -185,7 +215,7 @@ function createFactorySummaryHelpers({
         title: 'Конкурентная цена',
         message: 'Заявка рядом с лучшей рыночной ценой и должна пройти раньше дорогих предложений.',
         studentText: 'Цена близка к рынку. Теперь важно иметь достаточно товара на складе.',
-        metric: 'bid-ready',
+        metric: 'Готово',
       });
     }
     hints.push({

@@ -1,0 +1,755 @@
+/*
+ * BIZ-ARENA Studio v3
+ * Final visual direction layer. It intentionally loads after the role and
+ * runtime styles so the product keeps its existing DOM and role contracts.
+ */
+
+:root {
+  --studio-canvas: #050a12;
+  --studio-canvas-blue: #071425;
+  --studio-panel: #0b1626;
+  --studio-panel-raised: #101e32;
+  --studio-panel-quiet: #081220;
+  --studio-line: rgba(145, 178, 222, 0.16);
+  --studio-line-strong: rgba(145, 178, 222, 0.28);
+  --studio-ink: #f7f9fd;
+  --studio-muted: #a8bad2;
+  --studio-brand: #7482ff;
+  --studio-brand-strong: #8b96ff;
+  --studio-cyan: #42ddd4;
+  --studio-amber: #ffc24d;
+  --studio-success: #45df8d;
+  --studio-danger: #ff6686;
+  --studio-radius-xs: 6px;
+  --studio-radius-sm: 10px;
+  --studio-radius-md: 14px;
+  --studio-radius-lg: 18px;
+  --studio-shadow-panel: 0 4px 8px rgba(0, 0, 0, 0.22);
+  --studio-shadow-focus: 0 0 0 3px rgba(116, 130, 255, 0.22);
+
+  --surface-canvas: var(--studio-canvas);
+  --surface-panel: var(--studio-panel);
+  --surface-panel-soft: var(--studio-panel-raised);
+  --surface-panel-raised: #102038;
+  --surface-field: var(--studio-panel-quiet);
+  --text-primary: var(--studio-ink);
+  --text-secondary: var(--studio-muted);
+  --line-subtle: var(--studio-line);
+  --line-strong: var(--studio-line-strong);
+  --control-primary: var(--studio-brand);
+  --control-primary-hover: var(--studio-brand-strong);
+  --status-info: var(--studio-cyan);
+  --status-success: var(--studio-success);
+  --status-warning: var(--studio-amber);
+  --status-danger: var(--studio-danger);
+  --radius-control: var(--studio-radius-sm);
+  --radius-panel: var(--studio-radius-md);
+  --layout-gap: 12px;
+  --panel-shadow: var(--studio-shadow-panel);
+}
+
+html {
+  background: var(--studio-canvas);
+}
+
+body[data-visual-system="studio-v3"] {
+  background:
+    radial-gradient(circle at 10% -12%, rgba(44, 88, 160, 0.25), transparent 34rem),
+    radial-gradient(circle at 92% 12%, rgba(66, 221, 212, 0.075), transparent 30rem),
+    linear-gradient(180deg, var(--studio-canvas-blue), var(--studio-canvas) 34rem);
+}
+
+body[data-visual-system="studio-v3"]::before {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(139, 164, 198, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(139, 164, 198, 0.025) 1px, transparent 1px);
+  background-size: 48px 48px;
+  content: "";
+  mask-image: linear-gradient(to bottom, black, transparent 78%);
+}
+
+body[data-visual-system="studio-v3"] .shell {
+  width: min(1600px, 100%);
+  padding: clamp(10px, 1.1vw, 18px);
+}
+
+@media (min-width: 901px) {
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .shell {
+    width: 100%;
+    max-width: none;
+    padding: 8px 8px 8px calc(var(--layout-nav-standard) + 16px);
+  }
+}
+
+@media (max-width: 900px) {
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .shell {
+    width: 100%;
+    max-width: none;
+    padding: 8px;
+  }
+}
+
+body[data-visual-system="studio-v3"] h1,
+body[data-visual-system="studio-v3"] h2,
+body[data-visual-system="studio-v3"] h3 {
+  color: var(--studio-ink);
+  font-family: var(--font-interface);
+  text-wrap: balance;
+}
+
+body[data-visual-system="studio-v3"] h2 {
+  letter-spacing: -0.018em;
+}
+
+body[data-visual-system="studio-v3"] p,
+body[data-visual-system="studio-v3"] small,
+body[data-visual-system="studio-v3"] .muted {
+  text-wrap: pretty;
+}
+
+body[data-visual-system="studio-v3"] button,
+body[data-visual-system="studio-v3"] input,
+body[data-visual-system="studio-v3"] select,
+body[data-visual-system="studio-v3"] textarea,
+body[data-visual-system="studio-v3"] summary {
+  border-radius: var(--studio-radius-sm);
+}
+
+body[data-visual-system="studio-v3"] button {
+  min-height: 42px;
+  border-color: transparent;
+  background: var(--studio-brand);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.13);
+  transition:
+    background-color var(--motion-fast) var(--motion-ease-out),
+    border-color var(--motion-fast) var(--motion-ease-out),
+    color var(--motion-fast) var(--motion-ease-out),
+    box-shadow var(--motion-fast) var(--motion-ease-out),
+    transform var(--motion-fast) var(--motion-ease-out);
+}
+
+body[data-visual-system="studio-v3"] button:hover:not(:disabled) {
+  background: var(--studio-brand-strong);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    0 8px 22px rgba(63, 76, 180, 0.2);
+  transform: translateY(-1px);
+}
+
+body[data-visual-system="studio-v3"] button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+body[data-visual-system="studio-v3"] button.ghost,
+body[data-visual-system="studio-v3"] .top-button {
+  border-color: var(--studio-line);
+  background: rgba(12, 25, 43, 0.76);
+  color: var(--studio-ink);
+  box-shadow: none;
+}
+
+body[data-visual-system="studio-v3"] button.ghost:hover:not(:disabled),
+body[data-visual-system="studio-v3"] .top-button:hover:not(:disabled) {
+  border-color: var(--studio-line-strong);
+  background: var(--studio-panel-raised);
+  box-shadow: none;
+}
+
+body[data-visual-system="studio-v3"] button:focus-visible,
+body[data-visual-system="studio-v3"] a:focus-visible,
+body[data-visual-system="studio-v3"] summary:focus-visible,
+body[data-visual-system="studio-v3"] input:focus-visible,
+body[data-visual-system="studio-v3"] select:focus-visible,
+body[data-visual-system="studio-v3"] textarea:focus-visible,
+body[data-visual-system="studio-v3"] [role="button"]:focus-visible {
+  outline: 2px solid #a8b1ff;
+  outline-offset: 3px;
+  box-shadow: var(--studio-shadow-focus);
+}
+
+body[data-visual-system="studio-v3"] input,
+body[data-visual-system="studio-v3"] select,
+body[data-visual-system="studio-v3"] textarea {
+  min-height: 42px;
+  border-color: var(--studio-line);
+  background: rgba(5, 13, 24, 0.84);
+}
+
+body[data-visual-system="studio-v3"] input:hover,
+body[data-visual-system="studio-v3"] select:hover,
+body[data-visual-system="studio-v3"] textarea:hover {
+  border-color: var(--studio-line-strong);
+}
+
+/* Shared panels: depth comes from tone and spacing, not a border around every row. */
+body[data-visual-system="studio-v3"] .panel,
+body[data-visual-system="studio-v3"] .screen-panel,
+body[data-visual-system="studio-v3"] .teacher-dashboard-card,
+body[data-visual-system="studio-v3"] .teacher-cockpit-card,
+body[data-visual-system="studio-v3"] .student-route-panel,
+body[data-visual-system="studio-v3"] .factory-map-shell {
+  border-color: var(--studio-line);
+  border-radius: var(--studio-radius-md);
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, 0.018), transparent 42%),
+    rgba(10, 22, 38, 0.92);
+  box-shadow: var(--studio-shadow-panel);
+}
+
+body[data-visual-system="studio-v3"] .panel-header {
+  gap: 18px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(145, 178, 222, 0.11);
+}
+
+body[data-visual-system="studio-v3"] .panel-header h2 {
+  margin-bottom: 2px;
+}
+
+body[data-visual-system="studio-v3"] .factory-node-label,
+body[data-visual-system="studio-v3"] .role-entry-kicker,
+body[data-visual-system="studio-v3"] [class*="-eyebrow"] {
+  color: var(--studio-cyan);
+  letter-spacing: 0.075em;
+}
+
+body[data-visual-system="studio-v3"] .status,
+body[data-visual-system="studio-v3"] [class*="-status"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Brand and navigation. */
+body[data-visual-system="studio-v3"] .app-sidebar {
+  border: 1px solid var(--studio-line);
+  border-radius: var(--studio-radius-md);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(116, 130, 255, 0.12), transparent 13rem),
+    rgba(5, 12, 23, 0.96);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.24);
+}
+
+body[data-visual-system="studio-v3"] .app-sidebar-brand {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-visual-system="studio-v3"] .app-sidebar-brand:hover {
+  background: rgba(116, 130, 255, 0.08);
+  box-shadow: none;
+  transform: none;
+}
+
+body[data-visual-system="studio-v3"] .app-sidebar-link {
+  position: relative;
+  overflow: hidden;
+  border-color: transparent;
+  border-radius: var(--studio-radius-sm);
+  background: transparent;
+  box-shadow: none;
+}
+
+body[data-visual-system="studio-v3"] .app-sidebar-link:hover {
+  border-color: rgba(145, 178, 222, 0.12);
+  background: rgba(145, 178, 222, 0.075);
+  box-shadow: none;
+  transform: none;
+}
+
+body[data-visual-system="studio-v3"] .app-sidebar-link.active {
+  border-color: rgba(116, 130, 255, 0.5);
+  background: linear-gradient(90deg, rgba(116, 130, 255, 0.24), rgba(116, 130, 255, 0.1));
+  color: var(--studio-ink);
+}
+
+body[data-visual-system="studio-v3"] .app-sidebar-link.active::before {
+  position: absolute;
+  inset: 9px auto 9px 0;
+  width: 3px;
+  border-radius: 99px;
+  background: var(--role-navigation-accent, var(--studio-cyan));
+  box-shadow: 0 0 16px currentColor;
+  content: "";
+}
+
+/* Entry and server start: editorial, direct, and recognisably BIZ-ARENA. */
+body[data-visual-system="studio-v3"] .role-entry-shell,
+body[data-visual-system="studio-v3"] #server-home-screen .teacher-start-shell {
+  border: 0;
+  border-radius: var(--studio-radius-lg);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.34);
+}
+
+body[data-visual-system="studio-v3"] .role-entry-shell::before,
+body[data-visual-system="studio-v3"] #server-home-screen .teacher-start-shell::before {
+  background:
+    linear-gradient(90deg, rgba(5, 10, 18, 0.96), rgba(5, 10, 18, 0.72) 58%, rgba(5, 10, 18, 0.88)),
+    radial-gradient(circle at 70% 30%, rgba(66, 221, 212, 0.08), transparent 34rem);
+}
+
+body[data-visual-system="studio-v3"] .role-entry-heading h1,
+body[data-visual-system="studio-v3"] #server-home-screen .teacher-start-main h2 {
+  max-width: 820px;
+  font-size: 4.4rem;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+}
+
+body[data-visual-system="studio-v3"] .role-entry-option {
+  min-height: 176px;
+  border: 1px solid var(--studio-line);
+  border-top: 1px solid var(--studio-line-strong);
+  border-radius: var(--studio-radius-md);
+  background: rgba(9, 20, 35, 0.88);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.18);
+}
+
+body[data-visual-system="studio-v3"] .role-entry-option::after {
+  position: absolute;
+  right: 20px;
+  bottom: 0;
+  left: 20px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--role-accent), transparent);
+  opacity: 0.7;
+  content: "";
+}
+
+body[data-visual-system="studio-v3"] .role-entry-option:hover {
+  border-color: color-mix(in srgb, var(--role-accent) 52%, transparent);
+  background: var(--studio-panel-raised);
+}
+
+/* Classroom HUD. */
+body[data-visual-system="studio-v3"] .game-cockpit-shell {
+  gap: var(--layout-gap);
+}
+
+body[data-visual-system="studio-v3"] .game-control-panel,
+body[data-visual-system="studio-v3"] .game-hud-panel {
+  padding: 10px;
+}
+
+body[data-visual-system="studio-v3"] .game-topbar {
+  gap: 8px;
+}
+
+body[data-visual-system="studio-v3"] .game-topbar-chip {
+  min-height: 72px;
+  border-color: rgba(145, 178, 222, 0.14);
+  border-radius: var(--studio-radius-sm);
+  background: rgba(6, 16, 29, 0.7);
+}
+
+body[data-visual-system="studio-v3"] .game-topbar-chip:hover {
+  border-color: rgba(145, 178, 222, 0.24);
+}
+
+body[data-visual-system="studio-v3"] .game-next-action-chip {
+  border: 1px solid rgba(116, 130, 255, 0.25);
+  border-radius: var(--studio-radius-sm);
+  background:
+    linear-gradient(90deg, rgba(116, 130, 255, 0.16), rgba(66, 221, 212, 0.045)),
+    rgba(7, 17, 30, 0.92);
+  box-shadow: none;
+}
+
+body[data-visual-system="studio-v3"] .game-next-action-chip:hover {
+  border-color: rgba(116, 130, 255, 0.44);
+  background:
+    linear-gradient(90deg, rgba(116, 130, 255, 0.22), rgba(66, 221, 212, 0.07)),
+    rgba(7, 17, 30, 0.96);
+  box-shadow: none;
+}
+
+/* Teacher: cyan command layer, restrained alerts, unmistakable match controls. */
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] {
+  --role-accent: var(--studio-cyan);
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-operations-center {
+  grid-template-columns: minmax(248px, 0.5fr) minmax(470px, 1.08fr) minmax(292px, 0.6fr);
+  gap: 12px;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-workspace-side {
+  position: static;
+  max-height: none;
+  overflow: visible;
+  overscroll-behavior: auto;
+  scrollbar-gutter: auto;
+  padding-right: 0;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-cockpit-card,
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-workspace-main > *,
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-workspace-side > * {
+  border-color: rgba(145, 178, 222, 0.15);
+  border-radius: var(--studio-radius-md);
+  background: rgba(9, 20, 35, 0.86);
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-cockpit-card {
+  border-top: 2px solid rgba(66, 221, 212, 0.58);
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-cockpit-actions .primary-teacher-action,
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .command-action-primary {
+  border-color: transparent;
+  background: var(--studio-brand);
+  color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-cockpit-actions .danger-button,
+body[data-visual-system="studio-v3"] .finish-room {
+  border-color: rgba(255, 102, 134, 0.52);
+  background: rgba(255, 102, 134, 0.07);
+  color: #ff7995;
+  box-shadow: none;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-cockpit-actions .danger-button:hover:not(:disabled),
+body[data-visual-system="studio-v3"] .finish-room:hover:not(:disabled) {
+  background: rgba(255, 102, 134, 0.14);
+  box-shadow: none;
+}
+
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-issue-list article,
+body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-now-list button {
+  border-color: rgba(145, 178, 222, 0.12);
+  border-radius: var(--studio-radius-sm);
+  background: rgba(5, 15, 27, 0.62);
+  box-shadow: none;
+}
+
+/* Student: one dominant action, quieter support data, less nested chrome. */
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] {
+  --role-accent: var(--studio-brand);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-panel,
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-panel-v2 {
+  border-color: rgba(116, 130, 255, 0.32);
+  border-top: 2px solid rgba(116, 130, 255, 0.7);
+  background:
+    radial-gradient(circle at 92% 0%, rgba(116, 130, 255, 0.13), transparent 18rem),
+    rgba(9, 20, 35, 0.94);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-main {
+  border-color: rgba(145, 178, 222, 0.13);
+  border-radius: var(--studio-radius-md);
+  background: rgba(6, 15, 28, 0.66);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-primary-next-action,
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .tutorial-card[data-first-turn-card] button:not(.ghost) {
+  border: 0;
+  background: linear-gradient(100deg, #6877f4, #817af1);
+  color: #fff;
+  box-shadow: 0 14px 30px rgba(68, 74, 180, 0.25);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-primary-next-action:hover:not(:disabled) {
+  background: linear-gradient(100deg, #7887ff, #9189ff);
+  box-shadow: 0 16px 34px rgba(68, 74, 180, 0.32);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-status-card,
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-task-list article,
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .live-metric-card {
+  border-color: rgba(145, 178, 222, 0.12);
+  border-radius: var(--studio-radius-sm);
+  background: rgba(5, 15, 27, 0.58);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .factory-map-shell {
+  overflow: clip;
+  border-color: rgba(66, 221, 212, 0.17);
+  background:
+    radial-gradient(circle at 50% 20%, rgba(66, 221, 212, 0.075), transparent 30rem),
+    rgba(7, 17, 29, 0.94);
+}
+
+/* Lobby and results get their own focal hierarchy. */
+body[data-screen="lobby-screen"][data-visual-system="studio-v3"] .lobby-brief-panel {
+  border-top: 2px solid rgba(66, 221, 212, 0.52);
+}
+
+body[data-screen="lobby-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-lobby-command-card,
+body[data-screen="lobby-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-lobby-card {
+  border-color: rgba(145, 178, 222, 0.17);
+  border-radius: var(--studio-radius-md);
+  background:
+    linear-gradient(135deg, rgba(116, 130, 255, 0.08), transparent 42%),
+    rgba(9, 20, 35, 0.9);
+}
+
+body[data-screen="lobby-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] [data-preflight-action="start-match"] {
+  background: var(--studio-brand);
+  box-shadow: 0 14px 30px rgba(68, 74, 180, 0.24);
+}
+
+body[data-screen="results-screen"][data-visual-system="studio-v3"] #results-overview {
+  border-top: 2px solid rgba(255, 194, 77, 0.58);
+  border-radius: var(--studio-radius-md);
+  background:
+    radial-gradient(circle at 82% 0%, rgba(255, 194, 77, 0.09), transparent 24rem),
+    rgba(8, 18, 32, 0.88);
+}
+
+/* Tablet: preserve information, reduce competition between columns. */
+@media (max-width: 1280px) {
+  body[data-visual-system="studio-v3"] .shell {
+    padding: 12px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-operations-center {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-operations-center > .teacher-cockpit-card,
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-workspace-main,
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-workspace-side {
+    grid-column: 1;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-workspace-side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  body[data-visual-system="studio-v3"] .role-entry-heading h1,
+  body[data-visual-system="studio-v3"] #server-home-screen .teacher-start-main h2 {
+    font-size: 3.35rem;
+  }
+}
+
+/* Mobile cockpit: compact navigation and HUD, then the role's primary work. */
+@media (max-width: 720px) {
+  :root {
+    --layout-gap: 8px;
+    --studio-shadow-panel: 0 3px 7px rgba(0, 0, 0, 0.2);
+  }
+
+  body[data-visual-system="studio-v3"]::before {
+    background-size: 32px 32px;
+    opacity: 0.5;
+  }
+
+  body[data-visual-system="studio-v3"] .shell {
+    padding: 8px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"][data-first-turn-tutorial-mode="navigation"] .game-next-action-chip,
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"][data-first-turn-tutorial-mode="navigation"] [data-first-turn-next] {
+    display: none;
+  }
+
+  body[data-visual-system="studio-v3"] .panel,
+  body[data-visual-system="studio-v3"] .screen-panel,
+  body[data-visual-system="studio-v3"] .teacher-dashboard-card,
+  body[data-visual-system="studio-v3"] .teacher-cockpit-card,
+  body[data-visual-system="studio-v3"] .student-route-panel,
+  body[data-visual-system="studio-v3"] .factory-map-shell {
+    border-radius: 12px;
+  }
+
+  body[data-visual-system="studio-v3"] .app-sidebar {
+    gap: 8px;
+    padding: 10px;
+    border-radius: 14px;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-brand {
+    width: fit-content;
+    min-height: 44px;
+    grid-template-columns: 38px auto;
+    gap: 8px;
+    padding: 4px 8px 4px 2px;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-brand .brand-mark {
+    width: 38px;
+    height: 38px;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-brand strong {
+    font-size: 1.05rem;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-brand small,
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-version {
+    display: none;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-nav {
+    gap: 6px;
+    padding-bottom: 4px;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .game-role-nav {
+    grid-auto-columns: minmax(94px, 0.92fr);
+    gap: 6px;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-link {
+    min-height: 52px;
+    grid-template-columns: 18px minmax(0, 1fr);
+    gap: 7px;
+    padding: 8px 10px;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-link > strong {
+    font-size: 0.72rem;
+    white-space: nowrap;
+  }
+
+  body[data-screen="game-screen"][data-visual-system="studio-v3"] .app-sidebar-link > small {
+    display: none;
+  }
+
+  body[data-visual-system="studio-v3"] .game-control-panel,
+  body[data-visual-system="studio-v3"] .game-hud-panel {
+    padding: 8px;
+  }
+
+  body[data-visual-system="studio-v3"] .game-topbar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  body[data-visual-system="studio-v3"] .game-topbar-chip {
+    min-height: 76px;
+    padding: 10px;
+  }
+
+  body[data-visual-system="studio-v3"] .game-topbar-chip strong {
+    font-size: 0.94rem;
+  }
+
+  body[data-visual-system="studio-v3"] .game-topbar-chip small,
+  body[data-visual-system="studio-v3"] .game-chip-label {
+    font-size: 0.72rem;
+  }
+
+  body[data-visual-system="studio-v3"] .game-student-link-chip {
+    grid-column: 1 / -1;
+    min-height: 78px;
+  }
+
+  body[data-visual-system="studio-v3"] .game-student-link-chip img {
+    width: 48px;
+    height: 48px;
+  }
+
+  body[data-visual-system="studio-v3"] .game-profile-avatar {
+    width: 38px;
+    height: 38px;
+  }
+
+  body[data-visual-system="studio-v3"] .game-next-action-chip,
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .game-next-action-chip {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 5px;
+    min-height: 0;
+    padding: 12px;
+    text-align: left;
+  }
+
+  body[data-visual-system="studio-v3"] .game-next-action-chip > span,
+  body[data-visual-system="studio-v3"] .game-next-action-chip > small,
+  body[data-visual-system="studio-v3"] .game-next-action-chip > strong {
+    min-width: 0;
+    text-align: left;
+  }
+
+  body[data-visual-system="studio-v3"] .game-next-action-chip > strong {
+    font-size: 1rem;
+    line-height: 1.25;
+  }
+
+  body[data-visual-system="studio-v3"] .game-next-action-chip > small:last-child {
+    justify-self: start;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-workspace-main {
+    order: 0;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-workspace-side {
+    order: 1;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"][data-visual-system="studio-v3"] .teacher-operations-center > .teacher-cockpit-card {
+    order: 2;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .game-panel > .panel-header h2 {
+    font-size: 1.65rem;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-panel,
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-panel-v2 {
+    gap: 10px;
+    padding: 12px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-main {
+    gap: 10px;
+    padding: 14px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-main h3 {
+    font-size: 1.45rem;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-main p,
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-route-detail-title {
+    font-size: 0.92rem;
+    line-height: 1.48;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-primary-next-action {
+    min-height: 48px;
+    padding: 12px 14px;
+    font-size: 0.98rem;
+  }
+
+  body[data-screen="lobby-screen"][data-visual-system="studio-v3"] .lobby-brief-panel .panel-header {
+    align-items: flex-start;
+  }
+
+  body[data-screen="lobby-screen"][data-visual-system="studio-v3"] .lobby-brief-panel .inline-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  body[data-visual-system="studio-v3"] .role-entry-heading h1,
+  body[data-visual-system="studio-v3"] #server-home-screen .teacher-start-main h2 {
+    font-size: 2.35rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body[data-visual-system="studio-v3"] *,
+  body[data-visual-system="studio-v3"] *::before,
+  body[data-visual-system="studio-v3"] *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  body[data-visual-system="studio-v3"] button:hover:not(:disabled),
+  body[data-visual-system="studio-v3"] .role-entry-option:hover {
+    transform: none;
+  }
+}

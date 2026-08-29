@@ -16,6 +16,7 @@ const directories = ['public', 'server', 'deploy/vps'];
 const scriptFiles = ['scripts/admin-storage.js', 'scripts/smoke-vps-profile.js', 'scripts/smoke-durable-cloud-profile.js', 'scripts/smoke-cloud-classroom.js'];
 const docFiles = [
   'docs/vps-cloud-classroom-runbook.md',
+  'docs/deployment-runbook.md',
   'docs/cloud-hosting-runbook.md',
   'docs/teacher-cloud-classroom-handoff.md',
 ];
@@ -99,6 +100,7 @@ curl -fsS http://YOUR-PUBLIC-IP/api/meta
 \`\`\`
 
 See \`docs/vps-cloud-classroom-runbook.md\` for the full runbook.
+See \`docs/deployment-runbook.md\` when the browser frontend will be hosted on Vercel.
 `;
 
 fs.writeFileSync(path.join(packageDir, 'README-vps.md'), readme, 'utf8');
@@ -126,6 +128,9 @@ const manifest = {
     'BIZ_ARENA_SQLITE_PATH=/var/lib/bizarena/biz-arena.sqlite',
     'BIZ_ARENA_PUBLIC_URL=http://YOUR-PUBLIC-IP',
     'BIZ_ARENA_ALLOW_REGISTRATION=false',
+  ],
+  optionalEnv: [
+    'BIZ_ARENA_CORS_ORIGINS=https://YOUR-PROJECT.vercel.app',
   ],
 };
 

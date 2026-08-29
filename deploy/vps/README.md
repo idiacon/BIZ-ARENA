@@ -15,6 +15,7 @@ BIZ_ARENA_STORAGE=sqlite
 BIZ_ARENA_DATA_DIR=/var/lib/bizarena
 BIZ_ARENA_SQLITE_PATH=/var/lib/bizarena/biz-arena.sqlite
 BIZ_ARENA_PUBLIC_URL=https://YOUR-DOMAIN.example
+BIZ_ARENA_CORS_ORIGINS=
 BIZ_ARENA_ALLOW_REGISTRATION=true
 ```
 
@@ -39,6 +40,19 @@ sudo bash deploy/vps/install-vps.sh http://YOUR-PUBLIC-IP
 ```
 
 The script installs runtime packages when possible, copies the app to `/opt/bizarena`, writes `/etc/bizarena/bizarena.env`, installs the systemd service, configures nginx, and opens the local firewall when `ufw` or `firewalld` is active.
+
+## Optional Vercel Frontend
+
+Keep Node.js, WebSocket, and SQLite on this VPS. To serve only the browser UI from Vercel, allow the exact frontend origin before running the installer:
+
+```bash
+sudo BIZ_ARENA_CORS_ORIGINS=https://YOUR-PROJECT.vercel.app \
+  bash deploy/vps/install-vps.sh https://api.YOUR-DOMAIN.example
+```
+
+For several explicit frontend domains, separate origins with commas and no spaces. Wildcards are intentionally not accepted.
+
+See `docs/deployment-runbook.md` for the complete VPS + Vercel sequence.
 
 ## Health Checks
 

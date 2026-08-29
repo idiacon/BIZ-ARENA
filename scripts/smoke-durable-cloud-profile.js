@@ -12,6 +12,7 @@ const PROFILE_SLUG = PROFILE_LABEL.toLowerCase().replace(/[^a-z0-9]+/g, '-').rep
 const DATA_DIR = process.env.BIZ_ARENA_DATA_DIR || fs.mkdtempSync(path.join(os.tmpdir(), `biz-arena-${PROFILE_SLUG}-smoke-`));
 const SQLITE_PATH = process.env.BIZ_ARENA_SQLITE_PATH || path.join(DATA_DIR, 'biz-arena.sqlite');
 const SHOULD_CLEAN_DATA_DIR = !process.env.BIZ_ARENA_DATA_DIR;
+const FRONTEND_ORIGIN = 'https://biz-arena-smoke.vercel.app';
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -29,6 +30,7 @@ function profileEnv(allowRegistration) {
     BIZ_ARENA_DATA_DIR: DATA_DIR,
     BIZ_ARENA_SQLITE_PATH: SQLITE_PATH,
     BIZ_ARENA_PUBLIC_URL: BASE_URL,
+    BIZ_ARENA_CORS_ORIGINS: FRONTEND_ORIGIN,
     BIZ_ARENA_ALLOW_REGISTRATION: allowRegistration ? 'true' : 'false',
   };
 }
@@ -181,6 +183,30 @@ async function main() {
     if (health.headers.get('cache-control') !== 'no-store' || health.headers.get('x-content-type-options') !== 'nosniff') {
       throw new Error(`${PROFILE_LABEL} API security headers are incomplete.`);
     }
+    const allowedPreflight = await fetch(`${BASE_URL}/api/health`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: FRONTEND_ORIGIN,
+        'access-control-request-method': 'GET',
+        'access-control-request-headers': 'authorization',
+      },
+    });
+    if (
+      allowedPreflight.status !== 204
+      || allowedPreflight.headers.get('access-control-allow-origin') !== FRONTEND_ORIGIN
+    ) {
+      throw new Error(`${PROFILE_LABEL} frontend CORS preflight failed.`);
+    }
+    const rejectedPreflight = await fetch(`${BASE_URL}/api/health`, {
+      method: 'OPTIONS',
+      headers: {
+        origin: 'https://untrusted.example',
+        'access-control-request-method': 'GET',
+      },
+    });
+    if (rejectedPreflight.status !== 403) {
+      throw new Error(`${PROFILE_LABEL} accepted an untrusted frontend origin.`);
+    }
 
     const anonymousAccount = await getJson('/api/account?userName=CloudProbe');
     if (anonymousAccount.status !== 404) {
@@ -226,7 +252,10 @@ async function main() {
     if (realtimeTicket.status !== 201 || !realtimeTicket.json.ticket) {
       throw new Error(`Realtime ticket failed: ${realtimeTicket.status} ${JSON.stringify(realtimeTicket.json)}`);
     }
-    ws = new WebSocket(`ws://127.0.0.1:${PORT}/ws?ticket=${encodeURIComponent(realtimeTicket.json.ticket)}`);
+    ws = new WebSocket(
+      `ws://127.0.0.1:${PORT}/ws?ticket=${encodeURIComponent(realtimeTicket.json.ticket)}`,
+      { origin: FRONTEND_ORIGIN },
+    );
     await waitForWsEvent(ws, 'connected');
     const roomUpdated = waitForWsEvent(ws, 'room-updated');
     const ready = await postJson('/api/action', {
@@ -296,6 +325,7 @@ async function main() {
       registrationLocked: true,
       anonymousAccountLookupClosed: true,
       securityHeaders: true,
+      externalFrontendCors: true,
       restoredRoom: roomCode,
       restoredStudentSession: true,
       websocketInvalidation: true,

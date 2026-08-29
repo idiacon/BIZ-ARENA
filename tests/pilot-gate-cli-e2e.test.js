@@ -60,7 +60,7 @@ function reviewedAttestation(stage, run) {
     reviewerRole: 'release-reviewer',
     consentStatus: 'recorded',
     accessOwner: 'release-manager',
-    retentionDeadline: '2026-08-12',
+    retentionDeadline: '2099-12-31',
     deletionProcedure: 'delete-reviewed-evidence',
     reviewedAttestation: true,
     thresholdsAccepted: true,

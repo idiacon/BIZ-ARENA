@@ -27,7 +27,7 @@ Object.assign(translations.ru, {
   about_delivery_body: 'Комплект включает desktop-сборку, браузерный LAN-режим, презентацию, пояснительную записку и сценарий показа.',
   menu_join_game: 'Войти в аудиторию',
   companies_room: 'Участники комнаты',
-  by_networth: 'По simulation score и капиталу',
+  by_networth: 'По баллу симуляции и капиталу',
   game_control_center: 'Центр управления занятием',
   competitors_title: 'Персонал',
   competitors_hint: 'Штат линии, пригодность и кандидаты для найма.',
@@ -331,6 +331,7 @@ const CLOUD_REFRESH_INTERVAL_MS = 8000;
 const CLIENT_LITE_REFRESH_INTERVAL_MS = 12000;
 const HIDDEN_REFRESH_INTERVAL_MS = 20000;
 const TUTORIAL_COMPLETED_KEY = 'bizArenaTutorialCompleted';
+const FIRST_TURN_TUTORIAL_STORAGE_PREFIX = 'bizArenaFirstTurnTutorial';
 const ROOM_MANAGED_SCREENS = ['lobby-screen', 'game-screen', 'results-screen'];
 const ROOM_AUTO_ENTRY_SCREENS = ['create-room-screen', 'join-room-screen', 'main-menu-screen'];
 const PERFORMANCE_MODES = ['auto', 'full', 'standard', 'lite'];
@@ -411,8 +412,12 @@ const state = {
   tutorial: {
     active: false,
     stepIndex: 0,
+    reviewIndex: null,
     steps: [],
     completed: localStorage.getItem(TUTORIAL_COMPLETED_KEY) === '1',
+    autoStarted: false,
+    lastAnnouncedStep: '',
+    startedDay: 0,
   },
   factorySaleDraft: null,
   supplierPurchaseDrafts: {},
@@ -596,13 +601,17 @@ const elements = {
   exportResults: document.querySelector('#export-results'),
   leaveAfterResults: document.querySelector('#leave-after-results'),
   tutorialOverlay: document.querySelector('#tutorial-overlay'),
+  tutorialCard: document.querySelector('#tutorial-overlay .tutorial-card'),
   tutorialFocusRing: document.querySelector('#tutorial-focus-ring'),
+  tutorialArrow: document.querySelector('#tutorial-arrow'),
+  tutorialArrowPath: document.querySelector('#tutorial-arrow-path'),
   tutorialStepChip: document.querySelector('#tutorial-step-chip'),
   tutorialProgressBar: document.querySelector('#tutorial-progress-bar'),
   tutorialRoute: document.querySelector('#tutorial-route'),
   tutorialTitle: document.querySelector('#tutorial-title'),
   tutorialText: document.querySelector('#tutorial-text'),
   tutorialHint: document.querySelector('#tutorial-hint'),
+  tutorialBackButton: document.querySelector('#tutorial-back-button'),
   tutorialSkipButton: document.querySelector('#tutorial-skip-button'),
   tutorialNextButton: document.querySelector('#tutorial-next-button'),
   toastStack: document.querySelector('#toast-stack'),
@@ -712,320 +721,8 @@ function localizedDifficultyLabel(room = state.room) {
   return translated && translated !== translatedKey ? translated : (room?.difficultyLabel || currentDifficultyConfig().label || '—');
 }
 
-function tutorialUiCopy() {
-  const copy = {
-    ru: {
-      activeHint: 'Нажмите подсвеченный элемент. Остальной интерфейс временно заблокирован, чтобы не сбить сценарий.',
-      confirmHint: 'Подтвердите шаг кнопкой в карточке AI-куратора.',
-      postTitle: 'Базовый цикл уже пройден',
-      postBody: 'На этой карте вы повторяете тот же ритм: Склад -> Персонал -> Сборка -> Маркетинг -> Завершить ход.',
-      postMeta: 'Если нужно, обучение можно запустить заново прямо из заводского экрана.',
-      postReplay: 'Повторить обучение',
-    },
-    en: {
-      activeHint: 'Click the highlighted element. The rest of the interface is temporarily locked so the route stays clear.',
-      confirmHint: 'Confirm the step with the AI curator card button.',
-      postTitle: 'The base cycle is already complete',
-      postBody: 'Use the same rhythm on this map: Warehouse -> People -> Assembly -> Marketing -> Finish turn.',
-      postMeta: 'If needed, you can launch the tutorial again directly from the plant screen.',
-      postReplay: 'Replay tutorial',
-    },
-    tt: {
-      activeHint: 'Яктыртылган элементка басыгыз. Калган интерфейс вакытлыча ябыла.',
-      confirmHint: 'Адымны AI-куратор карточкасындагы төймә белән раслагыз.',
-      postTitle: 'Төп цикл инде узылды',
-      postBody: 'Бу картада шул ук тәртип кабатлана: Warehouse -> People -> Assembly -> Marketing -> Finish turn.',
-      postMeta: 'Кирәк булса, tutorial-ны завод экраныннан яңадан башлап була.',
-      postReplay: 'Tutorial-ны кабатлау',
-    },
-  };
-  return copy[state.settings.language] || copy.ru;
-}
-
-function setTutorialCompleted(completed) {
-  state.tutorial.completed = Boolean(completed);
-  if (state.tutorial.completed) localStorage.setItem(TUTORIAL_COMPLETED_KEY, '1');
-  else localStorage.removeItem(TUTORIAL_COMPLETED_KEY);
-}
-
 function safeFilePart(value, fallback = 'demo') {
   return String(value || fallback).replace(/[^\w.-]+/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || fallback;
-}
-
-function tutorialIsActive() {
-  return Boolean(state.tutorial.active);
-}
-
-function tutorialShouldRender() {
-  return tutorialIsActive() && state.currentScreen === 'game-screen';
-}
-
-function currentTutorialStep() {
-  return tutorialIsActive() ? state.tutorial.steps[state.tutorial.stepIndex] || null : null;
-}
-
-function buildTutorialSteps() {
-  const phaseByStep = ['warehouse', 'warehouse', 'warehouse', 'workers', 'workers', 'assembly', 'assembly', 'assembly', 'market', 'market', 'market', 'turn', 'done'];
-  const tutorialLocalized = {
-    ru: [
-      ['Шаг 1 из 12', 'Открой склад', 'Нажми на зону "Склад закупок". Здесь видно, какие детали нужны производству.'],
-      ['Шаг 2 из 12', 'Открой закупку', 'Перейди на вкладку "Закупка". Здесь лежат общие лоты поставщиков для всех команд.'],
-      ['Шаг 3 из 12', 'Купи лот', 'Купи один лот у поставщика. После покупки этот завод исчезнет у всех игроков комнаты.'],
-      ['Шаг 4 из 12', 'Открой персонал', 'Перейди на вкладку "Персонал". Здесь нанимается команда на линию.'],
-      ['Шаг 5 из 12', 'Найми сотрудника', 'Нажми кнопку найма у кандидата. Рабочие поднимут мощность и производительность фабрики.'],
-      ['Шаг 6 из 12', 'Вернись на завод', 'Теперь вернись на вкладку "Завод", чтобы собрать готовый товар.'],
-      ['Шаг 7 из 12', 'Открой сборку', 'Перейди в сборочный цех. Здесь предприятие собирает товар из купленных деталей.'],
-      ['Шаг 8 из 12', 'Собери товар', 'Нажми "Собрать 1 единицу". Так ты запустишь первый производственный цикл этого хода.'],
-      ['Шаг 9 из 12', 'Открой маркетинг', 'Перейди на вкладку "Маркетинг". Там находится биржевой график и терминал продажи.'],
-      ['Шаг 10 из 12', 'Проверь книгу заявок', 'Посмотри на правую панель "Продажа": здесь задаются цена, объем и видна очередь заявок.'],
-      ['Шаг 11 из 12', 'Выстави продажу', 'Нажми "Выставить". В этом сценарии важно не только собрать товар, но и отправить его на рынок.'],
-      ['Шаг 12 из 12', 'Заверши ход', 'Теперь нажми "Завершить ход" в терминале продажи. Ход будет пересчитан, и ты увидишь результат решений.'],
-      ['Обучение завершено', 'Можно играть самому', 'Ты прошёл базовый цикл игры: закупка, найм, производство, заявка на продажу и завершение хода. Дальше можно экспериментировать самостоятельно.', 'Закрыть обучение'],
-    ],
-    en: [
-      ['Step 1 of 12', 'Open the warehouse', 'Click Warehouse. This is where the plant checks the parts needed by production.'],
-      ['Step 2 of 12', 'Open purchasing', 'Move to Purchasing. Supplier lots are shared by all teams in the room.'],
-      ['Step 3 of 12', 'Buy a lot', 'Buy one supplier lot. After purchase, that supplier offer disappears for every player.'],
-      ['Step 4 of 12', 'Open people', 'Move to People. This is where the line crew is hired.'],
-      ['Step 5 of 12', 'Hire one worker', 'Press a candidate hire button. Workers increase factory capacity and throughput.'],
-      ['Step 6 of 12', 'Return to plant', 'Go back to the Plant tab to assemble finished goods.'],
-      ['Step 7 of 12', 'Open assembly', 'Move to Assembly. This is where the plant builds goods from purchased parts.'],
-      ['Step 8 of 12', 'Assemble goods', 'Press Assemble 1. This starts the first production cycle for this turn.'],
-      ['Step 9 of 12', 'Open marketing', 'Move to Marketing. The market chart and sale terminal live there.'],
-      ['Step 10 of 12', 'Read the order book', 'Look at the Sale panel: price, volume, and the order queue are handled here.'],
-      ['Step 11 of 12', 'Submit a sale', 'Press List sale. In this scenario you must not only build goods, but also send them to the market.'],
-      ['Step 12 of 12', 'Finish the turn', 'Now press Finish turn inside the sale terminal. The game will resolve the turn and show your result.'],
-      ['Tutorial complete', 'You can play solo now', 'You completed the basic loop: buy parts, hire, produce, list a sale, and finish the turn. Now you can experiment on your own.', 'Close tutorial'],
-    ],
-    tt: [
-      ['1/12 адым', 'Складны ач', 'Warehouse зонасына бас. Монда җитештерүгә кирәкле детальләр күренә.'],
-      ['2/12 адым', 'Закупканы ач', 'Purchasing вкладкасына күч. Поставщик лотлары бөтен команда өчен уртак.'],
-      ['3/12 адым', 'Лот сатып ал', 'Бер поставщик лотын ал. Аннан соң ул тәкъдим бөтен уенчыларда юкка чыга.'],
-      ['4/12 адым', 'People ач', 'Монда линия командасы яллана.'],
-      ['5/12 адым', 'Эшче ялла', 'Кандидат янындагы яллау төймәсенә бас. Эшчеләр фабрика куәтен күтәрә.'],
-      ['6/12 адым', 'Заводка кайт', 'Әзер товар җыю өчен Plant вкладкасына кире кайт.'],
-      ['7/12 адым', 'Assembly ач', 'Монда предприятие алынган детальләрдән товар җыя.'],
-      ['8/12 адым', 'Бер товар җый', 'Assemble 1 бас. Шулай беренче җитештерү циклы башлана.'],
-      ['9/12 адым', 'Marketing ач', 'Монда базар графигы һәм сату терминалы урнашкан.'],
-      ['10/12 адым', 'Заявкалар китабын кара', 'Sale панелендә бәя, күләм һәм заявкалар чираты күренә.'],
-      ['11/12 адым', 'Сату куй', 'Сату төймәсенә бас. Товарны базарга чыгару да кирәк.'],
-      ['12/12 адым', 'Йөрешне тәмамла', 'Сату терминалында Finish turn бас. Йөреш исәпләнә һәм нәтиҗә күренә.'],
-      ['Өйрәтү тәмам', 'Үзең уйный аласың', 'Син төп циклны үттең: закупка, яллау, җитештерү, сату заявкасы һәм йөрешне тәмамлау.', 'Өйрәтүне ябу'],
-    ],
-  };
-  const localized = tutorialLocalized[state.settings.language] || tutorialLocalized.ru;
-  const selectors = [
-    '[data-factory-node="warehouse"]',
-    '[data-game-tab="purchase"]',
-    '[data-supplier-offer]',
-    '[data-game-tab="competitors"]',
-    '[data-personnel-hire]',
-    '[data-game-tab="operations"]',
-    '[data-factory-node="assembly"]',
-    '[data-factory-action="assemble-product"][data-assemble-value="1"]',
-    '[data-game-tab="market"]',
-    '.market-trade-desk',
-    '[data-market-sale-action="submit"]',
-    '[data-market-turn-action]',
-  ];
-  return localized.map((step, index) => ({
-    chip: step[0],
-    title: step[1],
-    text: step[2],
-    phase: phaseByStep[index] || 'done',
-    ...(selectors[index] ? { selector: selectors[index] } : { actionLabel: step[3] }),
-    ...(index === 9 ? {
-      prepare: () => {
-        const quantityInput = document.querySelector('#market-sale-quantity');
-        if (!quantityInput) return;
-        const max = Number(quantityInput.max || 0);
-        if (max >= 1 && Number(quantityInput.value || 0) < 1) quantityInput.value = '1';
-      },
-    } : {}),
-  }));
-}
-
-function renderTutorialRoute(activePhase) {
-  if (!elements.tutorialRoute) return;
-  const route = [
-    ['warehouse', 'Склад'],
-    ['workers', 'Работники'],
-    ['assembly', 'Сборка'],
-    ['market', 'Продажа'],
-    ['turn', 'Ход'],
-  ];
-  const activeIndex = Math.max(0, route.findIndex(([key]) => key === activePhase));
-  elements.tutorialRoute.innerHTML = route.map(([key, label], index) => {
-    const stateClass = index < activeIndex ? 'done' : index === activeIndex ? 'active' : '';
-    return `<span class="${stateClass}"><i>${index + 1}</i>${escapeHtml(label)}</span>`;
-  }).join('');
-}
-
-function isTutorialTurnTarget(target) {
-  return Boolean(target?.matches?.('[data-turn-action], [data-market-turn-action]'));
-}
-
-function clearTutorialTarget() {
-
-  document.querySelectorAll('.tutorial-target').forEach(node => node.classList.remove('tutorial-target', 'tutorial-target-final'));
-  document.querySelectorAll('.tutorial-target-dock').forEach(node => node.classList.remove('tutorial-target-dock'));
-}
-
-function setTutorialFocus(target) {
-  clearTutorialTarget();
-  if (!elements.tutorialFocusRing) return;
-  if (!target) {
-    elements.tutorialFocusRing.classList.add('hidden');
-    elements.tutorialFocusRing.removeAttribute('style');
-    return;
-  }
-
-  target.classList.add('tutorial-target');
-  if (isTutorialTurnTarget(target)) {
-    target.classList.add('tutorial-target-final');
-    target.closest('.turn-control-dock, .market-trade-desk')?.classList.add('tutorial-target-dock');
-  }
-  target.scrollIntoView({ block: 'nearest', inline: 'nearest' });
-  const rect = target.getBoundingClientRect();
-  const padding = isTutorialTurnTarget(target) ? 14 : 10;
-  const left = Math.max(rect.left - padding, 8);
-  const top = Math.max(rect.top - padding, 8);
-  const right = Math.min(rect.right + padding, window.innerWidth - 8);
-  const bottom = Math.min(rect.bottom + padding, window.innerHeight - 8);
-
-  elements.tutorialFocusRing.classList.remove('hidden');
-  elements.tutorialFocusRing.style.left = `${left}px`;
-  elements.tutorialFocusRing.style.top = `${top}px`;
-  elements.tutorialFocusRing.style.width = `${Math.max(right - left, 48)}px`;
-  elements.tutorialFocusRing.style.height = `${Math.max(bottom - top, 48)}px`;
-}
-
-function getTutorialCardPlacement(target) {
-  if (!target || window.innerWidth <= 720) return 'bottom-left';
-  if (isTutorialTurnTarget(target)) return 'dock-top';
-  const rect = target.getBoundingClientRect();
-  const inBottomHalf = rect.top > window.innerHeight * 0.5;
-  const inLeftHalf = rect.left < window.innerWidth * 0.5;
-  if (inBottomHalf && inLeftHalf) return 'top-right';
-  if (inBottomHalf) return 'top-left';
-  if (inLeftHalf) return 'bottom-right';
-  return 'bottom-left';
-}
-
-function renderTutorialOverlay() {
-  if (!elements.tutorialOverlay) return;
-  const tutorialCopy = tutorialUiCopy();
-  if (!tutorialShouldRender()) {
-    elements.tutorialOverlay.classList.add('hidden');
-    delete elements.tutorialOverlay.dataset.cardPlacement;
-    delete elements.tutorialOverlay.dataset.stepMode;
-    setTutorialFocus(null);
-    return;
-  }
-
-  const step = currentTutorialStep();
-  if (!step) {
-    stopTutorial({ completed: true });
-    return;
-  }
-
-  elements.tutorialOverlay.classList.remove('hidden');
-  if (elements.tutorialProgressBar) {
-    const totalSteps = Math.max(state.tutorial.steps.length, 1);
-    const progress = ((state.tutorial.stepIndex + 1) / totalSteps) * 100;
-    elements.tutorialProgressBar.style.width = `${Math.max(8, Math.min(progress, 100))}%`;
-  }
-  elements.tutorialStepChip.textContent = step.chip || 'Обучение';
-  elements.tutorialTitle.textContent = step.title || 'Обучение';
-  elements.tutorialText.textContent = step.text || '';
-  renderTutorialRoute(step.phase);
-  if (elements.tutorialHint) {
-    elements.tutorialHint.textContent = step.selector ? tutorialCopy.activeHint : tutorialCopy.confirmHint;
-  }
-  if (step.actionLabel) {
-    elements.tutorialNextButton.textContent = step.actionLabel;
-    elements.tutorialNextButton.classList.remove('hidden');
-  } else {
-    elements.tutorialNextButton.classList.add('hidden');
-  }
-
-  if (typeof step.prepare === 'function') step.prepare();
-  const target = step.selector ? document.querySelector(step.selector) : null;
-  elements.tutorialOverlay.dataset.cardPlacement = getTutorialCardPlacement(target);
-  elements.tutorialOverlay.dataset.stepMode = isTutorialTurnTarget(target) ? 'turn-action' : step.selector ? 'target' : 'confirm';
-  setTutorialFocus(target);
-}
-
-function startTutorial() {
-  if (!isFactoryRoom()) {
-    setStatus('Обучение доступно в учебном заводском матче.', false);
-    return;
-  }
-  state.tutorial = {
-    active: true,
-    stepIndex: 0,
-    steps: buildTutorialSteps(),
-  };
-  setGameTab('operations');
-  renderTutorialOverlay();
-}
-
-function stopTutorial({ completed = false } = {}) {
-  state.tutorial = {
-    active: false,
-    stepIndex: 0,
-    steps: [],
-  };
-  if (completed) setTutorialCompleted(true);
-  if (completed && state.room) {
-    setIntelFeedback('success', 'Обучение завершено. Теперь можно играть самостоятельно.');
-    renderIntel();
-  }
-  clearTutorialTarget();
-  if (elements.tutorialOverlay) elements.tutorialOverlay.classList.add('hidden');
-  if (elements.tutorialOverlay) {
-    delete elements.tutorialOverlay.dataset.cardPlacement;
-    delete elements.tutorialOverlay.dataset.stepMode;
-  }
-  setTutorialFocus(null);
-}
-
-function advanceTutorialStep() {
-  if (!tutorialIsActive()) return;
-  const nextIndex = state.tutorial.stepIndex + 1;
-  if (nextIndex >= state.tutorial.steps.length) {
-    stopTutorial({ completed: true });
-    return;
-  }
-  state.tutorial.stepIndex = nextIndex;
-  renderTutorialOverlay();
-}
-
-function handleTutorialClick(event) {
-  if (!tutorialShouldRender()) return;
-
-  const control = event.target.closest('[data-tutorial-control]');
-  if (control) return;
-
-  const step = currentTutorialStep();
-  if (!step) return;
-  if (!step.selector) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    return;
-  }
-
-  const target = document.querySelector(step.selector);
-  const allowed = target && (target === event.target || target.contains(event.target));
-  if (!allowed) {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    return;
-  }
-
-  window.setTimeout(() => {
-    if (tutorialIsActive() && currentTutorialStep() === step) advanceTutorialStep();
-  }, 0);
 }
 
 function queueSignature(queue = []) {
@@ -1172,6 +869,7 @@ function hydrateStateFromPayload(data) {
   renderRoomState();
   updateTurnTimer();
   syncScreenWithRoom();
+  maybeStartFirstTurnTutorial();
   renderTutorialOverlay();
 }
 
@@ -1422,7 +1120,7 @@ function renderGameTopbar() {
   const room = state.room;
   const player = state.player;
   const roomCode = room?.code || state.roomCode || '';
-  const displayCode = roomCode ? (String(roomCode).startsWith('ROOM-') ? roomCode : `ROOM-${roomCode}`) : 'ROOM----';
+  const displayCode = roomCode || '-----';
   const maxPlayers = room?.settings?.maxPlayers || room?.maxPlayers || 0;
   const joined = room?.humanCount || room?.playerCount || 0;
   const dayLimit = Number(room?.settings?.dayLimit || 30);
@@ -1459,12 +1157,15 @@ function renderGameTopbar() {
   const studentTopbarLabel = primaryStep ? studentRouteDisplayLabel(primaryStep) : 'Следующий шаг';
 
   if (elements.gameRoomCodeTopbar) elements.gameRoomCodeTopbar.textContent = displayCode;
-  if (elements.gameRoomMetaTopbar) elements.gameRoomMetaTopbar.textContent = room?.name || localizedScenarioLabel() || 'Комната не выбрана';
+  if (elements.gameRoomMetaTopbar) {
+    const roomName = room?.name || localizedScenarioLabel();
+    elements.gameRoomMetaTopbar.textContent = roomName ? `Название: ${roomName}` : 'Комната не выбрана';
+  }
   if (elements.gameServerStatusTopbar) elements.gameServerStatusTopbar.textContent = statusLabel;
   elements.gameServerStatusTopbar?.closest('.game-server-chip')?.setAttribute('data-status', statusTone);
   elements.gameRoomCodeTopbar?.closest('.game-room-chip')?.setAttribute('data-status', room ? 'online' : 'offline');
   if (elements.gameServerMetaTopbar) {
-    const realtime = state.realtimeConnected ? 'WebSocket' : 'HTTP fallback';
+    const realtime = state.realtimeConnected ? 'онлайн' : 'резервный канал';
     elements.gameServerMetaTopbar.textContent = `${statusMeta} • ${realtime}`;
   }
   if (elements.gameStudentLinkChip) elements.gameStudentLinkChip.dataset.viewerRole = isTeacher ? 'teacher' : 'student';
@@ -1480,7 +1181,7 @@ function renderGameTopbar() {
       : `Деньги ${money(player?.money || 0)} · ${room?.status === 'running' ? 'ход открыт' : 'ожидание старта'}`;
   }
   if (elements.gameStudentQr) {
-    elements.gameStudentQr.src = `/api/qr?data=${encodeURIComponent(studentUrl)}`;
+    elements.gameStudentQr.src = window.BizArenaRuntime.resolveHttpUrl(`/api/qr?data=${encodeURIComponent(studentUrl)}`);
     elements.gameStudentQr.hidden = !studentUrl || !isTeacher;
   }
   if (elements.gameCopyStudentLink) {
@@ -1666,8 +1367,7 @@ function persistTeacherSession(token = '') {
   else localStorage.removeItem('bizArenaTeacherSessionToken');
 }
 function cloudPublicBase() {
-  const meta = state.runtimeMeta || {};
-  return String(meta.publicUrl || meta.localUrls?.[0] || window.location.origin).replace(/\/+$/, '');
+  return window.BizArenaRuntime.publicAppBaseUrl(state.runtimeMeta || {});
 }
 function cloudStudentUrl(roomCode = '') {
   return `${cloudPublicBase()}/client${roomCode ? `?roomCode=${encodeURIComponent(roomCode)}` : ''}`;
@@ -2038,6 +1738,7 @@ function showScreen(screenId, { addToHistory = true } = {}) {
   if (screenId === 'game-screen' && !wasGameScreen) setGameTab(defaultGameTabForViewer());
   renderNavigationState();
   renderTurnControlDock();
+  maybeStartFirstTurnTutorial();
   renderTutorialOverlay();
 }
 
@@ -2078,10 +1779,10 @@ function createOptionMarkup(items, selectedValue) {
 function factoryScenarioCatalog() {
   return [
     { key: 'motorcycles', label: t('scenario_motorcycles_label'), product: t('scenario_motorcycles_product'), demand: '7-14', price: '4 800-9 000 RUB', complexity: t('profile_balanced'), note: t('scenario_motorcycles_note'), lesson: ['Закупка полного комплекта', 'Сборка и заявка', 'Цена против конкурентов'] },
-    { key: 'drones', label: t('scenario_drones_label'), product: t('scenario_drones_product'), demand: '10-18', price: '2 400-5 200 RUB', complexity: t('profile_component_dense'), note: t('scenario_drones_note'), lesson: ['Много компонентов', 'Дефицит батарей', 'Качество и цена'] },
-    { key: 'smartphones', label: t('scenario_smartphones_label'), product: t('scenario_smartphones_product'), demand: '14-24', price: '1 600-3 600 RUB', complexity: t('profile_fast_market'), note: t('scenario_smartphones_note'), lesson: ['Быстрый рынок', 'Малые партии', 'Частые продажи'] },
-    { key: 'ev_scooters', label: t('scenario_ev_scooters_label'), product: t('scenario_ev_scooters_product'), demand: '9-16', price: '2 600-5 600 RUB', complexity: t('profile_battery_risk'), note: t('scenario_ev_scooters_note'), lesson: ['Риск батарей', 'Себестоимость', 'Запас компонентов'] },
-    { key: 'appliances', label: t('scenario_appliances_label'), product: t('scenario_appliances_product'), demand: '12-20', price: '1 400-3 000 RUB', complexity: t('profile_steady_margin'), note: t('scenario_appliances_note'), lesson: ['Спокойный рынок', 'Низкая маржа', 'Контроль расходов'] },
+    { key: 'drones', label: t('scenario_drones_label'), product: t('scenario_drones_product'), demand: '10-18', price: '3 200-7 000 RUB', complexity: t('profile_component_dense'), note: t('scenario_drones_note'), lesson: ['Много компонентов', 'Дефицит батарей', 'Качество и цена'] },
+    { key: 'smartphones', label: t('scenario_smartphones_label'), product: t('scenario_smartphones_product'), demand: '14-24', price: '2 400-5 200 RUB', complexity: t('profile_fast_market'), note: t('scenario_smartphones_note'), lesson: ['Быстрый рынок', 'Малые партии', 'Частые продажи'] },
+    { key: 'ev_scooters', label: t('scenario_ev_scooters_label'), product: t('scenario_ev_scooters_product'), demand: '9-16', price: '3 200-6 800 RUB', complexity: t('profile_battery_risk'), note: t('scenario_ev_scooters_note'), lesson: ['Риск батарей', 'Себестоимость', 'Запас компонентов'] },
+    { key: 'appliances', label: t('scenario_appliances_label'), product: t('scenario_appliances_product'), demand: '12-20', price: '1 800-3 800 RUB', complexity: t('profile_steady_margin'), note: t('scenario_appliances_note'), lesson: ['Спокойный рынок', 'Низкая маржа', 'Контроль расходов'] },
   ];
 }
 
@@ -2278,10 +1979,12 @@ function renderRoomOverview() {
   const readySummary = `${t('ready_count')}: ${state.room.readyCount}/${state.room.humanCount}`;
   const hostPlayer = state.room.players.find(player => player.isHost) || null;
   const studentLink = gameStudentClientUrl();
-  const studentQrSrc = studentLink ? `/api/qr?data=${encodeURIComponent(studentLink)}` : '';
+  const studentQrSrc = studentLink
+    ? window.BizArenaRuntime.resolveHttpUrl(`/api/qr?data=${encodeURIComponent(studentLink)}`)
+    : '';
   const turnMinutes = Math.round(Number(state.room.settings?.turnDurationMs || state.room.turnDurationMs || 1800000) / 60000);
   const scenarioKey = state.room.settings?.scenarioKey || state.room.scenarioKey || '';
-  const difficultyLabel = state.room.difficultyLabel || currentDifficultyConfig().label;
+  const difficultyLabel = localizedDifficultyLabel(state.room);
   const lobbyStatusTone = state.room.allReady && state.room.humanCount > 0 ? 'ok' : 'warn';
   const speedControls = canHostControl && state.room.status !== 'finished' && state.room.tickMode !== 'manual'
     ? `<div class="button-pair host-controls speed-controls">
@@ -2711,14 +2414,12 @@ function renderMarketReplayMetric({ icon, value, label, tone = '' }) {
     </article>`;
 }
 
-function renderStudentMarketStat({ icon, label, value }) {
+function renderStudentMarketStat({ icon, label, value, ariaLabel = label }) {
   return `
-    <article class="student-market-stat">
+    <article class="student-market-stat" aria-label="${escapeHtml(`${ariaLabel}: ${value}`)}">
       <span class="student-market-stat-icon">${gameIcon(icon)}</span>
-      <div>
-        <small>${escapeHtml(label)}</small>
-        <b>${escapeHtml(String(value))}</b>
-      </div>
+      <small>${escapeHtml(label)}</small>
+      <b>${escapeHtml(String(value))}</b>
     </article>`;
 }
 
@@ -2731,10 +2432,10 @@ function renderMarketHints(hints = [], options = {}) {
       <div class="depth-head market-hints-head">
         <span class="market-hints-head-icon">${gameIcon('market')}</span>
         <div>
-          <span>Подсказки рынка</span>
-          <small>Что поменять в цене, заявке или запасе</small>
+          <span>Рекомендации</span>
+          <small>Как повысить шанс продажи</small>
         </div>
-        <strong>Risk</strong>
+        <strong>Статус</strong>
       </div>
       ${hints.map(hint => {
         if (hint.kind === 'decision') {
@@ -2744,13 +2445,13 @@ function renderMarketHints(hints = [], options = {}) {
               <div class="market-hint-copy">
                 <strong>${escapeHtml(hint.title || '')}</strong>
                 <small>${escapeHtml(hint.message || '')}</small>
-                ${hint.studentText ? `<p>${escapeHtml(hint.studentText)}</p>` : ''}
+                ${hint.studentText && hint.studentText !== hint.message ? `<p>${escapeHtml(hint.studentText)}</p>` : ''}
                 <div class="market-decision-grid">
-                  <span><b>${money(hint.bestPrice || 0)}</b><small>лучшая цена</small></span>
-                  <span><b>${money(hint.currentPrice || 0)}</b><small>моя цена</small></span>
-                  <span><b>${money(hint.recommendedPrice || hint.bestPrice || 0)}</b><small>рекомендованная цена</small></span>
-                  <span><b>${Number(hint.expectedUnits || 0)}</b><small>ожидаемые продажи</small></span>
-                  <span><b>${escapeHtml(riskLabels[hint.saleRisk] || hint.saleRisk || '—')}</b><small>риск не продать</small></span>
+                  <span><b>${money(hint.bestPrice || 0)}</b><small>цена рынка</small></span>
+                  <span><b>${money(hint.currentPrice || 0)}</b><small>ваша цена</small></span>
+                  <span><b>${money(hint.recommendedPrice || hint.bestPrice || 0)}</b><small>ориентир</small></span>
+                  <span><b>${Number(hint.expectedUnits || 0)}</b><small>прогноз продаж</small></span>
+                  <span><b>${escapeHtml(riskLabels[hint.saleRisk] || hint.saleRisk || '—')}</b><small>риск остатка</small></span>
                 </div>
               </div>
               <span class="market-hint-badge">${escapeHtml(hint.metric || '')}</span>
@@ -2762,7 +2463,7 @@ function renderMarketHints(hints = [], options = {}) {
             <div class="market-hint-copy">
               <strong>${escapeHtml(hint.title || '')}</strong>
               <small>${escapeHtml(hint.message || '')}</small>
-              ${hint.studentText ? `<p>${escapeHtml(hint.studentText)}</p>` : ''}
+              ${hint.studentText && hint.studentText !== hint.message ? `<p>${escapeHtml(hint.studentText)}</p>` : ''}
             </div>
             <span class="market-hint-badge">${escapeHtml(hint.metric || '')}</span>
           </article>`;
@@ -4544,7 +4245,7 @@ function renderExchangeDashboard(history, options = {}) {
           <span class="factory-node-label">Рыночный терминал</span>
           <h3>${escapeHtml(options.title || 'Индекс спроса и цены')}</h3>
         </div>
-        <div class="exchange-live"><span class="team-dot green"></span> LIVE</div>
+        <div class="exchange-live"><span class="team-dot green"></span> АКТИВНО</div>
       </div>
       <div class="exchange-main-chart">
         <svg class="exchange-chart" viewBox="0 0 ${chartWidth} ${chartHeight}" aria-label="График цены, спроса и продаж">
@@ -5361,7 +5062,7 @@ function renderResultsMarketReplayCard(replay) {
     <article class="market-item results-wide results-market-replay-card">
       <div class="market-replay-head">
         <div>
-          <span class="factory-node-label">Replay рынка</span>
+          <span class="factory-node-label">Разбор рынка</span>
           <strong>${escapeHtml(replay.turnReview?.title || 'Разбор последнего рыночного хода')}</strong>
           <small>${escapeHtml(replay.turnReview?.nextBestAction || replay.turnReview?.summary || 'Короткая основа для отчета: что выставили, что купил рынок и что менять дальше.')}</small>
         </div>
@@ -5409,7 +5110,7 @@ function renderTeacherResultsMarketReplayCard(summary) {
     <article class="market-item results-wide teacher-results-market">
       <div class="teacher-results-section-head">
         <div>
-          <span class="factory-node-label">Replay рынка</span>
+          <span class="factory-node-label">Разбор рынка</span>
           <strong>Как рынок закрыл последний ход</strong>
           <small>${latest ? `Спрос, исполнение заявок и остаток спроса за ход ${state.room?.day || '-'}.` : 'Рыночные данные появятся после первого завершённого хода.'}</small>
         </div>
@@ -5465,7 +5166,7 @@ function renderTeacherResultsOverview(summary, classroomReportPack) {
     </article>
     <section class="teacher-results-kpis results-wide" aria-label="Итоги класса">
       <article><span>Команды</span><strong>${teams.length}</strong><small>завершили занятие</small></article>
-      <article><span>Средний балл</span><strong>${averageScore}</strong><small>simulation score</small></article>
+      <article><span>Средний индекс</span><strong>${averageScore}</strong><small>балл симуляции</small></article>
       <article><span>Продано</span><strong>${totalSales}</strong><small>единиц за матч</small></article>
       <article class="${riskTeams ? 'warning' : 'positive'}"><span>Плюсовой ход</span><strong>${profitableTeams}/${teams.length || 0}</strong><small>высокий риск: ${riskTeams}</small></article>
     </section>
@@ -5541,13 +5242,13 @@ function buildClassroomReportPack(summary) {
     nextLessonFocus,
     evidence: [
       { key: 'leaderboard', label: 'Команды', value: `${teams.length} завершили матч`, icon: 'reports' },
-      { key: 'score', label: 'Средний балл', value: String(averageScore), icon: 'goal' },
+      { key: 'score', label: 'Средний индекс', value: String(averageScore), icon: 'goal' },
       { key: 'market', label: 'Продажи класса', value: `${totalSales} ед.`, icon: 'market' },
       { key: 'risk', label: 'Высокий риск', value: `${riskTeams} команд`, icon: riskTeams ? 'alert' : 'check' },
     ],
     teacherActions: [
       'Показать топ-3 и объяснить, за счет чего сформировался результат.',
-      'Открыть Replay рынка и разобрать спрос, цену, продажи и остаток.',
+      'Открыть разбор рынка и обсудить спрос, цену, продажи и остаток.',
       'Задать классу вопросы из блока обсуждения.',
       'Экспортировать JSON-отчет как доказательство занятия.',
     ],
@@ -6386,9 +6087,11 @@ elements.leaveGameButton.addEventListener('click', () => sendAction('leave-room'
 elements.playAgain.addEventListener('click', () => sendAction('reset-room'));
 elements.exportResults.addEventListener('click', exportResultsReport);
 elements.leaveAfterResults.addEventListener('click', () => sendAction('leave-room'));
-elements.tutorialSkipButton.addEventListener('click', () => stopTutorial());
+elements.tutorialSkipButton.addEventListener('click', () => stopTutorial({ dismissed: true }));
+elements.tutorialBackButton?.addEventListener('click', () => showPreviousTutorialStep());
 elements.tutorialNextButton.addEventListener('click', () => advanceTutorialStep());
 document.addEventListener('click', handleTutorialClick, true);
+document.addEventListener('keydown', handleTutorialKeydown);
 window.addEventListener('resize', renderTutorialOverlay);
 window.addEventListener('scroll', renderTutorialOverlay, true);
 document.addEventListener('visibilitychange', () => {

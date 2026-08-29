@@ -3,13 +3,15 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const { browserErrors, evaluate, installPlayerSession, launchBrowser, navigate, sleep, waitFor, waitForHttp } = require('./lib/cdp-browser');
 
 const ROOT = path.resolve(__dirname, '..');
 const PORT = Number(process.env.BIZ_ARENA_E2E_PORT || 3420);
 const DESKTOP_VIEWPORTS = [
   { width: 1000, height: 760 },
+  { width: 1180, height: 800 },
+  { width: 1181, height: 800 },
   { width: 1440, height: 900 },
   { width: 1920, height: 1080 },
   { width: 2560, height: 1440 },
@@ -55,7 +57,39 @@ function getJson(url, sessionToken = '') {
   });
 }
 
-function stop(child) { try { child?.kill(); } catch {} }
+const STOP_EDGE_PROFILE_PROCESSES = `& {
+  param([string]$profilePath)
+  for ($attempt = 0; $attempt -lt 6; $attempt += 1) {
+    $targets = @(Get-CimInstance Win32_Process | Where-Object {
+      $_.Name -eq 'msedge.exe' -and $_.CommandLine -and $_.CommandLine.Contains($profilePath)
+    })
+    if ($targets.Count -eq 0) { break }
+    $targets | ForEach-Object {
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Milliseconds 250
+  }
+}`;
+
+function stop(child, profileDir = '') {
+  try {
+    if (child?.pid && process.platform === 'win32') {
+      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+    } else if (child?.pid) {
+      child.kill();
+    }
+  } catch {}
+
+  if (process.platform === 'win32' && profileDir) {
+    try {
+      spawnSync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', STOP_EDGE_PROFILE_PROCESSES, profileDir],
+        { stdio: 'ignore', windowsHide: true },
+      );
+    } catch {}
+  }
+}
 function remove(dir) { try { fs.rmSync(dir, { recursive: true, force: true }); } catch {} }
 
 async function openScreen(cdp, screenId) {
@@ -121,6 +155,49 @@ async function assertNoHorizontalOverflow(cdp, label) {
   assert.equal(result.ok, true, `${label} has horizontal overflow: ${JSON.stringify(result)}`);
 }
 
+async function assertVisibleSidebarLabelsFit(cdp, label) {
+  const result = await evaluate(cdp, `(() => {
+    const sidebar = document.querySelector('.app-sidebar');
+    if (!sidebar) return { ok: false, reason: 'missing-sidebar', offenders: [] };
+    const offenders = [...sidebar.querySelectorAll('.app-sidebar-link > strong')]
+      .filter(node => {
+        const style = getComputedStyle(node);
+        const rect = node.getBoundingClientRect();
+        return style.display !== 'none'
+          && style.visibility !== 'hidden'
+          && Number(style.opacity || 1) > 0.05
+          && rect.width > 0
+          && rect.height > 0;
+      })
+      .map(node => {
+        const link = node.closest('.app-sidebar-link');
+        const nodeRect = node.getBoundingClientRect();
+        const linkRect = link.getBoundingClientRect();
+        const range = document.createRange();
+        range.selectNodeContents(node);
+        const textRect = range.getBoundingClientRect();
+        const leftLimit = linkRect.left + 1;
+        const rightLimit = linkRect.right - 1;
+        const clipped = node.scrollWidth > node.clientWidth + 1
+          || textRect.left < leftLimit - 1
+          || textRect.right > rightLimit + 1;
+        return {
+          text: String(node.textContent || '').trim(),
+          clipped,
+          nodeWidth: Math.round(nodeRect.width),
+          scrollWidth: node.scrollWidth,
+          textLeft: Math.round(textRect.left),
+          textRight: Math.round(textRect.right),
+          linkLeft: Math.round(linkRect.left),
+          linkRight: Math.round(linkRect.right),
+        };
+      })
+      .filter(entry => entry.clipped);
+    return { ok: offenders.length === 0, offenders };
+  })()`);
+  assert.equal(result.ok, true, `${label} clips sidebar labels: ${JSON.stringify(result)}`);
+}
+
 async function assertResponsiveMatrix(cdp, label, viewports = DESKTOP_VIEWPORTS) {
   for (const viewport of viewports) {
     await cdp.send('Emulation.setDeviceMetricsOverride', {
@@ -131,6 +208,7 @@ async function assertResponsiveMatrix(cdp, label, viewports = DESKTOP_VIEWPORTS)
     await sleep(250);
     await assertReadableVisibleText(cdp, `${label} ${viewport.width}x${viewport.height}`);
     await assertNoHorizontalOverflow(cdp, `${label} ${viewport.width}x${viewport.height}`);
+    await assertVisibleSidebarLabelsFit(cdp, `${label} ${viewport.width}x${viewport.height}`);
   }
 }
 
@@ -208,11 +286,61 @@ async function studentPerformanceSnapshot(cdp, url, mode) {
       return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
     };
     const scene = document.querySelector('.student-factory-scene');
-    const floor = document.querySelector('.student-factory-scene-floor');
+    const map = document.querySelector('.student-factory-map');
     const node = document.querySelector('.student-factory-node');
+    const sceneRect = scene.getBoundingClientRect();
+    const sceneHeadRect = scene.querySelector('.student-factory-scene-head')?.getBoundingClientRect();
     const sceneStyle = getComputedStyle(scene);
-    const floorStyle = getComputedStyle(floor);
     const nodeStyle = getComputedStyle(node);
+    const zoneAlignment = [...document.querySelectorAll('.student-factory-map-node')].map(mapNode => {
+      const station = mapNode.dataset.sceneStation;
+      const shadow = mapNode.querySelector('.student-factory-building-shadow');
+      const zone = document.querySelector('.student-factory-map-zone.zone-' + station);
+      const shadowRect = shadow?.getBoundingClientRect();
+      const zoneRect = zone?.getBoundingClientRect();
+      if (!shadowRect?.width || !zoneRect?.width) return null;
+      const shadowCenterX = shadowRect.left + shadowRect.width / 2;
+      const shadowCenterY = shadowRect.top + shadowRect.height / 2;
+      const zoneCenterX = zoneRect.left + zoneRect.width / 2;
+      const zoneCenterY = zoneRect.top + zoneRect.height / 2;
+      return {
+        station,
+        error: Math.round(Math.hypot(shadowCenterX - zoneCenterX, shadowCenterY - zoneCenterY)),
+      };
+    }).filter(Boolean);
+    const mapAnchors = [...document.querySelectorAll('.student-factory-map-node')].map(mapNode => ({
+      station: mapNode.dataset.sceneStation,
+      x: Number(mapNode.dataset.mapX),
+      y: Number(mapNode.dataset.mapY),
+    }));
+    const anchorByStation = new Map(mapAnchors.map(anchor => [anchor.station, anchor]));
+    const purchaseAnchor = anchorByStation.get('purchase');
+    const workforceAnchor = anchorByStation.get('workforce');
+    const assemblyAnchor = anchorByStation.get('assembly');
+    const marketAnchor = anchorByStation.get('market');
+    const sequenceLayoutOk = Boolean(
+      purchaseAnchor
+      && workforceAnchor
+      && assemblyAnchor
+      && marketAnchor
+      && purchaseAnchor.x < workforceAnchor.x
+      && purchaseAnchor.y > workforceAnchor.y
+      && assemblyAnchor.x > workforceAnchor.x
+      && assemblyAnchor.y < marketAnchor.y
+      && marketAnchor.x > workforceAnchor.x
+      && marketAnchor.y > purchaseAnchor.y
+    );
+    const buildingBounds = [...document.querySelectorAll('.student-factory-map-node')].map(mapNode => {
+      const rect = mapNode.querySelector('.student-factory-map-building')?.getBoundingClientRect();
+      return rect ? {
+        station: mapNode.dataset.sceneStation,
+        headerGap: Math.round(rect.top - (sceneHeadRect?.bottom || sceneRect.top)),
+        insideScene: rect.left >= sceneRect.left - 2
+          && rect.right <= sceneRect.right + 2
+          && rect.top >= sceneRect.top - 2
+          && rect.bottom <= sceneRect.bottom + 2,
+      } : null;
+    }).filter(Boolean);
     return {
       mode: document.documentElement.dataset.performanceMode,
       animationMode: document.documentElement.dataset.animationMode,
@@ -221,12 +349,46 @@ async function studentPerformanceSnapshot(cdp, url, mode) {
         visibleButtons: [...document.querySelectorAll('#game-screen.active button')].filter(isVisible).length,
         routeSteps: document.querySelectorAll('.student-route-panel [data-student-route-step]').length,
         sceneNodes: document.querySelectorAll('.student-factory-scene .student-factory-node').length,
+        mapRoutes: document.querySelectorAll('.student-factory-map .student-factory-map-route-segment').length,
+        mapMarkers: document.querySelectorAll('.student-factory-map [data-factory-map-marker]').length,
+        roadSegments: document.querySelectorAll('.student-factory-map [data-factory-road]').length,
+        buildingTypes: [...document.querySelectorAll('.student-factory-map [data-factory-building]')]
+          .map(node => node.dataset.factoryBuilding),
       },
       scene: {
+        presentation: scene.dataset.scenePresentation,
+        version: scene.dataset.sceneVersion,
+        activeStation: document.querySelector('.student-factory-map-node.active')?.dataset.sceneStation || '',
+        guidanceStates: [...document.querySelectorAll('.student-factory-map-node')]
+          .map(mapNode => ({
+            station: mapNode.dataset.sceneStation,
+            guidanceState: mapNode.dataset.factoryGuidanceState || '',
+          })),
+        activityStates: [...document.querySelectorAll('.student-factory-map-node')]
+          .map(mapNode => ({
+            station: mapNode.dataset.sceneStation,
+            activityState: mapNode.dataset.factoryActivity || '',
+          })),
+        environmentTypes: [...document.querySelectorAll('.student-factory-map [data-factory-environment]')]
+          .map(node => node.dataset.factoryEnvironment),
+        motionArtifacts: [...document.querySelectorAll('.student-factory-map [data-factory-motion]')]
+          .map(node => ({
+            motion: node.dataset.factoryMotion,
+            animationName: getComputedStyle(node).animationName,
+          })),
+        routeFocusStates: [...document.querySelectorAll('.student-factory-map-route-segment')]
+          .map(route => route.dataset.mapRouteState || ''),
+        inspectorStation: document.querySelector('[data-factory-map-inspector]')?.dataset.factoryMapInspector || '',
+        inspectorCount: document.querySelectorAll('[data-factory-map-inspector]').length,
+        persistentLabelCount: document.querySelectorAll('.student-factory-map-label').length,
+        zoneAlignment,
+        maximumZoneAnchorError: Math.max(0, ...zoneAlignment.map(entry => entry.error)),
+        buildingBounds,
+        minimumBuildingHeaderGap: Math.min(...buildingBounds.map(entry => entry.headerGap)),
+        mapAnchors,
+        sequenceLayoutOk,
         backgroundImage: sceneStyle.backgroundImage,
         afterDisplay: getComputedStyle(scene, '::after').display,
-        floorDisplay: floorStyle.display,
-        floorShadow: floorStyle.boxShadow,
         nodeShadow: nodeStyle.boxShadow,
         nodeTransform: nodeStyle.transform,
       },
@@ -308,13 +470,73 @@ async function main() {
     await openScreen(studentBrowser.cdp, 'game-screen');
     await evaluate(studentBrowser.cdp, 'document.querySelector("[data-game-tab=operations]")?.click()');
     await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector(".student-route-panel .student-primary-next-action"))', 'student first turn');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnActive === "true"', 'student interactive tutorial auto-start');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnStep'), 'workforce');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnStage'), '2');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll("#tutorial-route [data-first-turn-progress-step]").length'), 5);
+    assert.equal(await evaluate(studentBrowser.cdp, 'Boolean(document.querySelector("[data-first-turn-target=workforce]"))'), true);
+    await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector("#tutorial-arrow-path")?.getAttribute("d"))', 'student tutorial arrow');
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      mobile: true,
+      deviceScaleFactor: 1,
+    });
+    await evaluate(studentBrowser.cdp, 'renderTutorialOverlay()');
+    await sleep(300);
+    const mobileTutorialLayout = await evaluate(studentBrowser.cdp, `(() => {
+      const card = document.querySelector('[data-first-turn-card]');
+      const target = document.querySelector('[data-first-turn-target]');
+      const route = document.querySelector('#tutorial-route');
+      const arrow = document.querySelector('[data-first-turn-arrow]');
+      const cardRect = card?.getBoundingClientRect();
+      const targetRect = target?.getBoundingClientRect();
+      return {
+        ok: Boolean(cardRect && targetRect)
+          && targetRect.bottom <= cardRect.top - 8
+          && cardRect.left >= 8
+          && cardRect.right <= window.innerWidth - 8
+          && cardRect.bottom <= window.innerHeight - 8
+          && route.scrollWidth <= route.clientWidth + 1
+          && getComputedStyle(arrow).display === 'none',
+        cardTop: Math.round(cardRect?.top || 0),
+        targetBottom: Math.round(targetRect?.bottom || 0),
+        routeClientWidth: route?.clientWidth || 0,
+        routeScrollWidth: route?.scrollWidth || 0,
+      };
+    })()`);
+    assert.equal(mobileTutorialLayout.ok, true, `Mobile tutorial obscures its target: ${JSON.stringify(mobileTutorialLayout)}`);
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 900,
+      mobile: false,
+      deviceScaleFactor: 1,
+    });
+    await evaluate(studentBrowser.cdp, 'renderTutorialOverlay()');
+    await sleep(250);
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll(".student-route-panel .student-primary-next-action").length'), 1);
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel")?.dataset.studentFlowContract'), 'first-turn-v2');
     assert.equal(await evaluate(studentBrowser.cdp, 'Boolean(document.querySelector(".student-route-panel")?.dataset.studentPrimaryStep)'), true);
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel")?.dataset.studentGuidedFocus'), 'first-turn');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel .student-primary-next-action")?.textContent.trim()'), 'Открыть Команду — нанять сотрудника');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel .student-primary-next-action")?.dataset.studentRouteTab'), 'operations');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel .student-primary-next-action")?.dataset.studentRouteDepartment'), 'workforce');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll(".student-route-panel .student-command-kpis-disclosure:not([open])").length'), 1);
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel .student-command-kpis-disclosure summary > span")?.textContent.trim()'), 'Показатели предприятия');
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll(".student-route-panel [data-student-route-step]").length'), 5);
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelectorAll(".student-route-panel .student-market-disclosure").length'), 1);
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel .student-market-disclosure")?.open'), false);
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel .student-market-disclosure > summary strong")?.textContent.trim()'), 'Рынок и рекомендации');
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector("[data-game-tab=teacher]") === null || getComputedStyle(document.querySelector("[data-game-tab=teacher]")).display === "none"'), true);
     assert.deepEqual(await visibleSidebarGameTabs(studentBrowser.cdp), ['overview', 'purchase', 'operations', 'market', 'competitors', 'events']);
     assert.equal(await legacyGameTabStripAbsent(studentBrowser.cdp), true);
+    await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel .student-primary-next-action")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("[data-factory-department-detail]")?.dataset.factoryDepartmentDetail === "workforce"', 'student workforce CTA');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnTargetMode === "action"', 'student tutorial workforce action');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector("[data-first-turn-target=workforce]")?.matches("[data-factory-action=hire-worker]")'), true);
+    await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-skip-button")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.classList.contains("hidden")', 'student tutorial skip');
+    assert.equal(await evaluate(studentBrowser.cdp, 'Object.entries(localStorage).some(([key, value]) => key.startsWith("bizArenaFirstTurnTutorial:") && value === "skipped")'), true);
     await assertReadableVisibleText(studentBrowser.cdp, 'student first turn desktop');
     await assertNoHorizontalOverflow(studentBrowser.cdp, 'student first turn desktop');
 
@@ -325,17 +547,56 @@ async function main() {
     assert.deepEqual(standardProfile.controls, fullProfile.controls);
     assert.deepEqual(liteProfile.controls, fullProfile.controls);
     assert.equal(fullProfile.mode, 'full');
+    assert.equal(fullProfile.scene.presentation, 'isometric-map');
+    assert.equal(fullProfile.scene.version, 'v8-live-stage');
+    assert.equal(fullProfile.scene.activeStation, 'workforce');
+    assert.deepEqual(fullProfile.scene.guidanceStates, [
+      { station: 'purchase', guidanceState: 'complete' },
+      { station: 'workforce', guidanceState: 'current' },
+      { station: 'assembly', guidanceState: 'waiting' },
+      { station: 'market', guidanceState: 'waiting' },
+    ]);
+    assert.deepEqual(fullProfile.scene.activityStates, [
+      { station: 'purchase', activityState: 'stocked' },
+      { station: 'workforce', activityState: 'empty' },
+      { station: 'assembly', activityState: 'idle' },
+      { station: 'market', activityState: 'empty' },
+    ]);
+    assert.deepEqual(fullProfile.scene.environmentTypes, [
+      'parking',
+      'utilities',
+      'safety-markings',
+      'loading-yard',
+      'service-vehicle',
+    ]);
+    assert.deepEqual(fullProfile.scene.motionArtifacts, [
+      { motion: 'service-vehicle', animationName: 'studentFactoryServiceShuttle' },
+      { motion: 'route-flow', animationName: 'studentFactoryRouteFlow' },
+    ]);
+    assert.deepEqual(fullProfile.scene.routeFocusStates, ['complete', 'current', 'next']);
+    assert.equal(fullProfile.scene.inspectorStation, 'workforce');
+    assert.equal(fullProfile.scene.inspectorCount, 1);
+    assert.equal(fullProfile.scene.persistentLabelCount, 0);
+    assert.equal(fullProfile.controls.mapRoutes, 3);
+    assert.equal(fullProfile.controls.mapMarkers, 4);
+    assert.equal(fullProfile.controls.roadSegments, 6);
+    assert.equal(fullProfile.scene.zoneAlignment.length, 4);
+    assert.ok(fullProfile.scene.maximumZoneAnchorError <= 28, JSON.stringify(fullProfile.scene.zoneAlignment));
+    assert.equal(fullProfile.scene.buildingBounds.length, 4);
+    assert.ok(fullProfile.scene.minimumBuildingHeaderGap >= 8, JSON.stringify(fullProfile.scene.buildingBounds));
+    assert.equal(fullProfile.scene.buildingBounds.every(entry => entry.insideScene), true, JSON.stringify(fullProfile.scene.buildingBounds));
+    assert.deepEqual(fullProfile.scene.mapAnchors.map(anchor => anchor.station), ['purchase', 'workforce', 'assembly', 'market']);
+    assert.equal(fullProfile.scene.sequenceLayoutOk, true);
+    assert.deepEqual(fullProfile.controls.buildingTypes, ['purchase', 'workforce', 'assembly', 'market']);
     assert.notEqual(fullProfile.scene.backgroundImage, 'none');
-    assert.notEqual(fullProfile.scene.floorDisplay, 'none');
     assert.equal(standardProfile.mode, 'standard');
+    assert.equal(standardProfile.scene.presentation, 'isometric-map');
     assert.notEqual(standardProfile.scene.backgroundImage, 'none');
-    assert.notEqual(standardProfile.scene.floorDisplay, 'none');
-    assert.equal(standardProfile.scene.afterDisplay, 'none');
-    assert.equal(standardProfile.scene.floorShadow, 'none');
     assert.equal(liteProfile.mode, 'lite');
     assert.equal(liteProfile.animationMode, 'off');
+    assert.equal(liteProfile.scene.presentation, 'isometric-map');
     assert.equal(liteProfile.scene.backgroundImage, 'none');
-    assert.equal(liteProfile.scene.floorDisplay, 'none');
+    assert.deepEqual(liteProfile.scene.motionArtifacts.map(artifact => artifact.animationName), ['none', 'none']);
     assert.equal(liteProfile.scene.nodeShadow, 'none');
     assert.equal(liteProfile.scene.nodeTransform, 'none');
     await assertNoHorizontalOverflow(studentBrowser.cdp, 'student Lite profile desktop');
@@ -358,6 +619,18 @@ async function main() {
     assert.deepEqual(await evaluate(studentBrowser.cdp, '({ playerId: localStorage.bizArenaPlayerId, sessionToken: localStorage.bizArenaSessionToken })'), studentSessionBeforeRefresh);
     assert.equal(await evaluate(studentBrowser.cdp, 'document.documentElement.dataset.performanceMode === "lite"'), true);
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".student-route-panel .student-primary-next-action")?.textContent.trim()'), studentNextAction);
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.classList.contains("hidden")'), true);
+    assert.equal(await evaluate(studentBrowser.cdp, 'Object.entries(localStorage).some(([key, value]) => key.startsWith("bizArenaFirstTurnTutorial:") && value === "skipped")'), true);
+    await evaluate(studentBrowser.cdp, 'startTutorial()');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnStep === "workforce"', 'student tutorial manual replay');
+    if (await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnTargetMode === "navigation"')) {
+      await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-next-button")?.click()');
+    }
+    await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnTargetMode === "action"', 'student tutorial real action target');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-first-turn-target=workforce]")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnStep === "assembly"', 'student tutorial follows server progress');
+    assert.equal(await evaluate(studentBrowser.cdp, 'state.player?.turnGuide?.primaryKey'), 'assembly');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-skip-button")?.click()');
     const teacherStateAfterRefresh = await getJson(
       `http://127.0.0.1:${PORT}/api/state?view=full&playerId=${encodeURIComponent(teacher.playerId)}`,
       teacher.sessionToken
@@ -426,6 +699,7 @@ async function main() {
       teacherResultsExport: true,
       studentLobby: true,
       studentFirstTurn: true,
+      studentInteractiveTutorial: true,
       studentReconnect: true,
       studentResultsRole: true,
       studentResultsExport: true,
@@ -434,7 +708,9 @@ async function main() {
     }, null, 2));
   } finally {
     teacherBrowser?.cdp.close(); studentBrowser?.cdp.close();
-    stop(teacherBrowser?.process); stop(studentBrowser?.process); stop(server);
+    stop(teacherBrowser?.process, teacherProfile);
+    stop(studentBrowser?.process, studentProfile);
+    stop(server);
     await sleep(250);
     remove(teacherProfile); remove(studentProfile); remove(dataDir);
   }

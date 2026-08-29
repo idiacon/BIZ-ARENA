@@ -250,7 +250,7 @@ function renderCrisisCards(eventCatalog, selectedEventKey, controls) {
       <div class="crisis-card-head">
         <span class="crisis-card-head-icon">${gameIcon('crisis')}</span>
         <div>
-          <span class="factory-node-label">Crisis Cards</span>
+          <span class="factory-node-label">Учебные ситуации</span>
           <strong>Учебный кризис для обсуждения</strong>
           <small>Карточка запускает существующее событие игры и дает преподавателю готовый вопрос для класса.</small>
         </div>
@@ -541,15 +541,24 @@ function renderTeacherClassReadiness(room, readiness = {}, helpQueue = []) {
     { label: 'Риск банкротства', value: rows.filter(row => row.debtRisk).length, tone: 'danger' },
   ];
   const startGateInfo = teacherStartGateInfo(room);
-  const statusTone = room?.status === 'running' && helpQueue.length ? 'warn'
+  const statusTone = room?.status === 'paused' ? 'warn'
+    : room?.status === 'running' && helpQueue.length ? 'warn'
     : room?.status === 'lobby' && !startGateInfo.canStart ? startGateInfo.tone
     : 'ok';
   const statusTitle = room?.status === 'lobby'
     ? startGateInfo.title
-    : room?.status === 'running' && helpQueue.length ? 'Нужна помощь командам' : 'Матч идет штатно';
+    : room?.status === 'paused'
+      ? 'Матч на паузе'
+      : room?.status === 'running' && helpQueue.length
+        ? 'Нужна помощь командам'
+        : 'Матч идет штатно';
   const statusHint = room?.status === 'lobby'
     ? startGateInfo.body
-    : helpQueue.length ? `Первый блокер: ${helpQueue[0]?.userName || 'команда'}` : 'Следите за первым ходом и готовностью.';
+    : room?.status === 'paused'
+      ? 'Обсудите ситуацию с группой или продолжите матч.'
+      : helpQueue.length
+        ? `Первый блокер: ${helpQueue[0]?.userName || 'команда'}`
+        : 'Следите за первым ходом и готовностью.';
   return `
     <div class="teacher-class-cockpit" data-uiux-slice="teacher-class-readiness">
       <div class="teacher-readiness-mini">
@@ -656,7 +665,7 @@ function renderTeacherNowCard(readiness = {}, helpQueue = []) {
     { label: 'Команды без сотрудников', value: rows.filter(row => row.noWorkers).length, tone: 'warn', icon: 'teams', hint: 'сборка будет заблокирована' },
     { label: 'Застрявшие команды', value: helpQueue.length || readiness.blocked || 0, tone: 'warn', icon: 'alert', hint: 'нужна подсказка' },
     { label: 'Риск банкротства', value: rows.filter(row => row.debtRisk).length, tone: 'danger', icon: 'alert', hint: 'долг или кассовый разрыв' },
-    { label: 'Следующая Crisis Card', value: state.room?.activeEvent ? 0 : 1, tone: 'ok', icon: 'crisis', hint: state.room?.activeEvent ? 'событие уже активно' : 'готова к запуску' },
+    { label: 'Следующая учебная ситуация', value: state.room?.activeEvent ? 0 : 1, tone: 'ok', icon: 'crisis', hint: state.room?.activeEvent ? 'ситуация уже активна' : 'готова к запуску' },
   ];
   return `
     <article class="market-item teacher-compact-card teacher-now-card">
@@ -862,7 +871,7 @@ function renderTeacherCockpit({ readiness, helpQueue }) {
   const activeCrisisCard = crisisCardForEventKey(room.activeEvent?.key);
   const activeCrisisMarkup = activeCrisisCard ? `
     <div class="teacher-cockpit-crisis">
-      <span class="factory-node-label">Активная Crisis Card</span>
+      <span class="factory-node-label">Активная учебная ситуация</span>
       <strong>${escapeHtml(activeCrisisCard.title)}</strong>
       <small>${escapeHtml(activeCrisisCard.question)}</small>
     </div>
@@ -1194,9 +1203,9 @@ function renderTeacherPanel() {
       <aside class="teacher-workspace-side" data-ui-slot="role-action-rail" aria-label="Инструменты преподавателя">
         ${teacherControlMarkup}
         ${teacherNowMarkup}
-        <details class="teacher-crisis-drawer" open>
+        <details class="teacher-crisis-drawer">
           <summary>
-            <span>Crisis Cards</span>
+            <span>Учебные ситуации</span>
             <small>учебные сценарии для обсуждения</small>
           </summary>
           <div class="teacher-crisis-drawer-body">

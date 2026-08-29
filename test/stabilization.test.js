@@ -1500,6 +1500,8 @@ test('game feel: turn guide combines purchase, personnel, assembly, market, and 
   });
   bizArena.handleBusinessAction(room, host, { action: 'assemble-product', value: 1 });
   summary = bizArena.playerSummary(room, host, host.id);
+  assert.equal(summary.turnGuide.primaryKey, 'market');
+  assert.equal(summary.turnGuide.target.tab, 'market');
   bizArena.handleBusinessAction(room, host, {
     action: 'set-sale-offer',
     value: { price: summary.price, quantity: 1 },
@@ -1521,7 +1523,8 @@ test('factory scenario: drones exposes scenario metadata and component portfolio
   assert.equal(summary.factoryScenario.productLabel, 'Дроны');
   assert.equal(summary.factoryScenario.baseDemandMin, 10);
   assert.equal(summary.factoryScenario.baseDemandMax, 18);
-  assert.equal(summary.factoryScenario.upkeep, 5500);
+  // Ребаланс 08/2026: upkeep снижен для играбельности, зарплатная полка — salaryBand
+  assert.equal(summary.factoryScenario.upkeep, 2500);
   assert.deepEqual(
     summary.factoryScenario.components.map(component => component.key),
     ['motors', 'batteries', 'controllers', 'cameras', 'frames']
@@ -1959,7 +1962,7 @@ test('UI smoke: create-room difficulty, visual presets, and single game navigati
   assert.match(appJs, /function iconButtonLabel/);
   assert.match(appJs, /function teacherHostActionIcon/);
   assert.match(appJs, /function crisisCardIcon/);
-  assert.match(appJs, /Crisis Cards/);
+  assert.match(appJs, /Учебные ситуации/);
   assert.match(appJs, /Резкий всплеск спроса/);
   assert.match(appJs, /Срыв поставок/);
   assert.match(appJs, /Давление зарплат/);
@@ -2476,11 +2479,77 @@ test('UI contract: game navigation and classroom HUD occupy stable desktop shell
   assert.match(styles, /data-player-role="student"\] \.game-student-link-chip[\s\S]*display: none/);
 });
 
+test('UI contract: first-turn coach follows server progress with a non-modal spotlight and five real actions', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const appJs = fs.readFileSync(path.join(publicRoot, 'app.js'), 'utf8');
+  const tutorialUi = fs.readFileSync(path.join(publicRoot, 'ui', 'tutorial-ui.js'), 'utf8');
+  const indexHtml = fs.readFileSync(path.join(publicRoot, 'index.html'), 'utf8');
+  const studentStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'student.css'), 'utf8');
+  const buildTutorialSteps = sourceFunctionBlock(tutorialUi, 'buildTutorialSteps');
+  const renderTutorialOverlay = sourceFunctionBlock(tutorialUi, 'renderTutorialOverlay');
+  const renderTutorialRoute = sourceFunctionBlock(tutorialUi, 'renderTutorialRoute');
+  const setTutorialFocus = sourceFunctionBlock(tutorialUi, 'setTutorialFocus');
+  const announceTutorialStep = sourceFunctionBlock(tutorialUi, 'announceTutorialStep');
+  const advanceTutorialStep = sourceFunctionBlock(tutorialUi, 'advanceTutorialStep');
+  const maybeStartFirstTurnTutorial = sourceFunctionBlock(tutorialUi, 'maybeStartFirstTurnTutorial');
+  const startTutorial = sourceFunctionBlock(tutorialUi, 'startTutorial');
+  const stopTutorial = sourceFunctionBlock(tutorialUi, 'stopTutorial');
+  const handleTutorialClick = sourceFunctionBlock(tutorialUi, 'handleTutorialClick');
+
+  ['purchase', 'workforce', 'assembly', 'market', 'finish'].forEach(stepKey => {
+    assert.match(buildTutorialSteps, new RegExp(`key: '${stepKey}'`));
+  });
+  assert.equal((buildTutorialSteps.match(/key: '/g) || []).length, 5);
+  assert.match(buildTutorialSteps, /data-supplier-offer/);
+  assert.match(buildTutorialSteps, /data-factory-action="hire-worker"/);
+  assert.match(buildTutorialSteps, /data-factory-action="assemble-product"/);
+  assert.match(buildTutorialSteps, /data-market-sale-action="submit"/);
+  assert.match(buildTutorialSteps, /data-market-turn-action="next-turn"/);
+
+  assert.match(renderTutorialOverlay, /syncTutorialStepFromGuide\(\)/);
+  assert.match(renderTutorialOverlay, /dataset\.firstTurnStep/);
+  assert.match(renderTutorialOverlay, /dataset\.firstTurnTargetMode/);
+  assert.match(renderTutorialOverlay, /setTutorialFocus\(resolution\.target, step\.key\)/);
+  assert.match(renderTutorialRoute, /aria-label=/);
+  assert.match(renderTutorialRoute, /aria-current="step"/);
+  assert.match(setTutorialFocus, /mobileCardRect/);
+  assert.match(setTutorialFocus, /rect\.bottom > visibleBottom/);
+  assert.match(setTutorialFocus, /window\.scrollBy/);
+  assert.match(announceTutorialStep, /\['action', 'prepare'\]\.includes\(mode\)/);
+  assert.match(announceTutorialStep, /target\.focus\(\{ preventScroll: true \}\)/);
+  assert.match(advanceTutorialStep, /if \(!step \|\| step\.key === 'finish'\) return;/);
+  assert.doesNotMatch(advanceTutorialStep, /step\.key === 'finish'[\s\S]*stopTutorial\(\{ completed: true \}\)/);
+  assert.match(maybeStartFirstTurnTutorial, /Number\(state\.room\?\.day \|\| 0\) !== 1/);
+  assert.match(maybeStartFirstTurnTutorial, /isTeacherViewer\(\)/);
+  assert.match(maybeStartFirstTurnTutorial, /state\.player\?\.turnGuide\?\.steps/);
+  assert.match(startTutorial, /isTeacherViewer\(\)/);
+  assert.match(stopTutorial, /persistFirstTurnTutorialDisposition\('skipped'\)/);
+  assert.match(stopTutorial, /persistFirstTurnTutorialDisposition\('completed'\)/);
+  assert.doesNotMatch(handleTutorialClick, /preventDefault|stopImmediatePropagation/);
+
+  assert.match(indexHtml, /id="tutorial-overlay"[^>]*data-first-turn-tutorial[^>]*role="region"/);
+  assert.match(indexHtml, /src="\/ui\/tutorial-ui\.js"/);
+  assert.ok(indexHtml.indexOf('src="/ui/tutorial-ui.js"') < indexHtml.indexOf('src="/app.js"'));
+  assert.match(appJs, /maybeStartFirstTurnTutorial\(\)/);
+  assert.match(indexHtml, /id="tutorial-arrow"[^>]*data-first-turn-arrow/);
+  assert.match(indexHtml, /id="tutorial-arrow-path"[^>]*data-first-turn-arrow-path/);
+  assert.match(indexHtml, /id="tutorial-back-button"[^>]*data-first-turn-back/);
+  assert.match(indexHtml, /id="tutorial-skip-button"[^>]*data-first-turn-skip/);
+  assert.match(studentStyles, /tutorial-overlay\[data-first-turn-tutorial\][\s\S]*pointer-events: none/);
+  assert.match(studentStyles, /tutorial-card\[data-first-turn-card\][\s\S]*pointer-events: auto/);
+  assert.match(studentStyles, /button:focus-visible/);
+  assert.match(studentStyles, /grid-template-columns: repeat\(5, minmax\(0, 1fr\)\)/);
+  assert.match(studentStyles, /@media \(max-width: 720px\)/);
+  assert.match(studentStyles, /@media \(prefers-reduced-motion: reduce\)/);
+});
+
 test('UI contract: teacher operations center separates class workspace from authoritative action rail', () => {
   const publicRoot = path.join(__dirname, '..', 'public');
   const teacherUi = fs.readFileSync(path.join(publicRoot, 'ui', 'teacher-ui.js'), 'utf8');
   const teacherStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'teacher.css'), 'utf8');
+  const runtimeStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'runtime.css'), 'utf8');
   const renderTeacherPanel = sourceFunctionBlock(teacherUi, 'renderTeacherPanel');
+  const renderTeacherClassReadiness = sourceFunctionBlock(teacherUi, 'renderTeacherClassReadiness');
 
   assert.match(renderTeacherPanel, /teacher-operations-center/);
   assert.match(renderTeacherPanel, /class="teacher-workspace-main" data-ui-slot="primary-workspace"/);
@@ -2490,6 +2559,49 @@ test('UI contract: teacher operations center separates class workspace from auth
   assert.doesNotMatch(renderTeacherPanel, /data-admin-action/);
   assert.match(teacherStyles, /\.teacher-operations-center[\s\S]*grid-template-columns:[^;]*minmax\(250px,[^;]*minmax\(0, 1fr\)[^;]*minmax\(280px/);
   assert.match(teacherStyles, /\.teacher-workspace-side[\s\S]*position: sticky/);
+  assert.match(renderTeacherClassReadiness, /room\?\.status === 'paused'/);
+  assert.match(renderTeacherClassReadiness, /Матч на паузе/);
+  assert.match(renderTeacherClassReadiness, /Обсудите ситуацию с группой или продолжите матч/);
+  assert.match(runtimeStyles, /@media \(min-width: 901px\) and \(max-width: 1180px\)[\s\S]*body\[data-screen="game-screen"\]\[data-player-role="teacher"\] \.game-topbar[\s\S]*grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(runtimeStyles, /@media \(min-width: 901px\) and \(max-width: 1180px\)[\s\S]*body\[data-screen="game-screen"\]\[data-player-role="teacher"\] \.teacher-workspace-main[\s\S]*order: 0/);
+});
+
+test('Studio V3 polish keeps one teacher scroll surface, one mobile tutorial CTA, and Russian classroom copy', () => {
+  const root = path.join(__dirname, '..');
+  const publicRoot = path.join(root, 'public');
+  const appJs = fs.readFileSync(path.join(publicRoot, 'app.js'), 'utf8');
+  const tutorialUi = fs.readFileSync(path.join(publicRoot, 'ui', 'tutorial-ui.js'), 'utf8');
+  const teacherUi = fs.readFileSync(path.join(publicRoot, 'ui', 'teacher-ui.js'), 'utf8');
+  const studioStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'studio.css'), 'utf8');
+  const serverJs = fs.readFileSync(path.join(root, 'server.js'), 'utf8');
+
+  assert.match(studioStyles, /data-player-role="teacher"[^\n]*\.teacher-workspace-side[\s\S]*position: static[\s\S]*max-height: none[\s\S]*overflow: visible/);
+  assert.match(tutorialUi, /document\.body\.dataset\.firstTurnTutorialMode = resolution\.mode/);
+  assert.match(studioStyles, /data-first-turn-tutorial-mode="navigation"[^\n]*\.game-next-action-chip[\s\S]*display: none/);
+  assert.match(studioStyles, /data-first-turn-tutorial-mode="navigation"[^\n]*\[data-first-turn-next\][\s\S]*display: none/);
+  assert.match(appJs, /резервный канал/);
+  assert.match(appJs, /Название: \$\{roomName\}/);
+  assert.doesNotMatch(appJs, /HTTP fallback|simulation score|Replay рынка/);
+  assert.doesNotMatch(teacherUi, /Crisis Cards|\bLIVE\b/);
+  assert.match(serverJs, /Финансовый результат хода/);
+  assert.match(serverJs, /Расчётная маржа на единицу/);
+  assert.doesNotMatch(serverJs, /Заработано за последний ход|hint: 'simulation score'/);
+});
+
+test('UI contract: student entry and settings use focused, non-duplicated workspaces', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const indexHtml = fs.readFileSync(path.join(publicRoot, 'index.html'), 'utf8');
+  const styles = fs.readFileSync(path.join(publicRoot, 'styles.css'), 'utf8');
+  const joinScreen = indexHtml.slice(indexHtml.indexOf('id="join-room-screen"'), indexHtml.indexOf('id="profile-screen"'));
+  const settingsScreen = indexHtml.slice(indexHtml.indexOf('id="settings-screen"'), indexHtml.indexOf('id="about-screen"'));
+
+  assert.ok(joinScreen.indexOf('id="room-code"') < joinScreen.indexOf('id="join-user-name"'), 'room code is the first student entry field');
+  assert.match(settingsScreen, /<h2>Настройки<\/h2>/);
+  assert.doesNotMatch(settingsScreen, /3\. НАСТРОЙКИ • О ПРОЕКТЕ • РЕЗУЛЬТАТЫ/);
+  assert.match(styles, /\.student-entry-shell\s*{[\s\S]*max-width: 1180px/);
+  assert.match(styles, /\.settings-workspace\s*{[\s\S]*grid-template-columns: minmax\(0, 1fr\) minmax\(260px, 320px\)/);
+  assert.match(styles, /\.settings-console-grid\s*{[\s\S]*grid-template-columns: minmax\(0, 1\.35fr\) minmax\(260px, 0\.65fr\)/);
+  assert.match(styles, /#settings-screen \.settings-result-panel\s*{[\s\S]*display: none/);
 });
 
 test('UI contract: student tycoon workspace keeps live factory hotspots and never emits teacher-only turn actions', () => {
@@ -2498,34 +2610,75 @@ test('UI contract: student tycoon workspace keeps live factory hotspots and neve
   const studentStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'student.css'), 'utf8');
   const renderStudentCommandPanel = sourceFunctionBlock(studentUi, 'renderStudentCommandPanel');
   const renderStudentCommandSupport = sourceFunctionBlock(studentUi, 'renderStudentCommandSupport');
+  const renderStudentTaskStack = sourceFunctionBlock(studentUi, 'renderStudentTaskStack');
+  const studentRoutePrimaryActionLabel = sourceFunctionBlock(studentUi, 'studentRoutePrimaryActionLabel');
+  const renderStudentFactoryBuilding = sourceFunctionBlock(studentUi, 'renderStudentFactoryBuilding');
   const renderStudentFactoryScene = sourceFunctionBlock(studentUi, 'renderStudentFactoryScene');
   const renderStudentRoutePanel = sourceFunctionBlock(studentUi, 'renderStudentRoutePanel');
 
   assert.match(renderStudentCommandPanel, /student-tycoon-console[^>]*data-ui-slot="primary-workspace"/);
   assert.match(renderStudentCommandSupport, /data-ui-slot="role-action-rail"/);
-  assert.match(renderStudentFactoryScene, /data-student-factory-scene="live"[^>]*data-scene-presentation="2\.5d"/);
+  assert.match(renderStudentCommandSupport, /student-market-disclosure/);
+  assert.match(renderStudentCommandSupport, /const marketOpen = \['market', 'sale'\]\.includes\(activeKey\)/);
+  assert.match(renderStudentCommandSupport, /\$\{marketOpen \? 'open' : ''\}/);
+  assert.match(renderStudentCommandSupport, /Рынок и рекомендации/);
+  assert.match(renderStudentTaskStack, /<details class="student-task-stack" data-student-plan-disclosure>/);
+  assert.match(renderStudentTaskStack, /<summary>/);
+  assert.doesNotMatch(renderStudentTaskStack, /<details class="student-task-stack"[^>]*\sopen/);
+  assert.match(renderStudentTaskStack, /Текущий шаг:/);
+  assert.match(studentRoutePrimaryActionLabel, /Открыть Команду — нанять сотрудника/);
+  assert.match(studentRoutePrimaryActionLabel, /Открыть Склад — купить детали/);
+  assert.match(studentRoutePrimaryActionLabel, /Открыть Отгрузку — выставить заявку/);
+  assert.match(renderStudentFactoryScene, /data-student-factory-scene="live"[^>]*data-scene-presentation="isometric-map"/);
   ['purchase', 'workforce', 'assembly', 'market'].forEach(station => {
     assert.match(renderStudentFactoryScene, new RegExp(`key: '${station}'`));
+    assert.match(renderStudentFactoryBuilding, new RegExp(`data-factory-building="${station}"`));
   });
+  assert.match(renderStudentFactoryScene, /renderStudentFactoryBuilding\(station\.key, sceneState\)/);
+  assert.match(renderStudentFactoryScene, /const sceneState = \{/);
+  assert.match(renderStudentFactoryScene, /data-scene-version="v8-live-stage"/);
+  assert.match(renderStudentFactoryScene, /data-factory-guidance-state=/);
+  assert.match(renderStudentFactoryScene, /data-factory-activity=/);
+  assert.match(renderStudentFactoryScene, /data-map-route-state=/);
+  assert.equal((renderStudentFactoryScene.match(/data-factory-environment="/g) || []).length, 5);
+  assert.match(renderStudentFactoryScene, /data-factory-motion="service-vehicle"/);
+  assert.match(renderStudentFactoryScene, /data-factory-motion="route-flow"/);
+  assert.match(renderStudentFactoryScene, /data-map-anchor="zone-center"/);
+  assert.equal((renderStudentFactoryScene.match(/data-factory-road="/g) || []).length, 6);
+  assert.match(renderStudentFactoryScene, /data-factory-map-marker=/);
+  assert.match(renderStudentFactoryScene, /data-factory-map-inspector=/);
+  assert.doesNotMatch(renderStudentFactoryScene, /student-factory-map-label/);
   assert.match(renderStudentRoutePanel, /target\.action === 'next-turn'[\s\S]*targetTab = 'events'/);
   assert.doesNotMatch(renderStudentRoutePanel, /data-student-route-action="\$\{escapeHtml\(target\.action\)/);
   assert.match(studentStyles, /\.student-tycoon-console[\s\S]*\.student-command-stage[\s\S]*grid-template-columns:[^;]*minmax\(0, 1fr\)[^;]*minmax\(280px/);
   assert.match(studentStyles, /data-performance-mode="full"[\s\S]*\.student-factory-scene[\s\S]*min-height:/);
+  assert.match(studentStyles, /--student-map-safe-top: 42px/);
+  assert.match(studentStyles, /--student-map-building-width: clamp\(188px, 13vw, 232px\)/);
+  assert.match(studentStyles, /data-game-tab="operations"[\s\S]*role-action-rail[\s\S]*max-height: none[\s\S]*overflow: visible/);
+  assert.match(studentStyles, /role-action-rail[\s\S]*\.student-task-list[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(studentStyles, /\.student-market-disclosure > summary[\s\S]*grid-template-columns: 30px minmax\(0, 1fr\) 18px/);
+  assert.match(studentStyles, /\.student-market-disclosure > summary:focus-visible/);
+  assert.match(studentStyles, /\.student-market-disclosure\[open\] \.student-market-quick-hints[\s\S]*max-height: none[\s\S]*overflow: visible/);
+  assert.match(studentStyles, /\.student-factory-map-inspector/);
+  assert.match(studentStyles, /@keyframes studentFactoryRouteFlow/);
+  assert.match(studentStyles, /@keyframes studentFactoryServiceShuttle/);
+  assert.match(studentStyles, /prefers-reduced-motion: reduce[\s\S]*data-factory-motion/);
 });
 
-test('UI performance contract: Full and Standard load bounded factory scene assets while Lite stays image-free', () => {
+test('UI performance contract: the factory map uses CSS and SVG while Lite keeps a flat 2D fallback', () => {
   const publicRoot = path.join(__dirname, '..', 'public');
-  const fullAsset = path.join(publicRoot, 'assets', 'factory-blueprint-full.jpg');
-  const standardAsset = path.join(publicRoot, 'assets', 'factory-blueprint-standard.jpg');
-  const styles = readPublicStyles();
+  const studentStyles = fs.readFileSync(path.join(publicRoot, 'styles', 'student.css'), 'utf8');
 
-  assert.ok(fs.existsSync(fullAsset), 'Full factory scene asset must be packaged');
-  assert.ok(fs.existsSync(standardAsset), 'Standard factory scene asset must be packaged');
-  assert.ok(fs.statSync(fullAsset).size <= 1.5 * 1024 * 1024, 'Full factory scene asset exceeds 1.5 MB');
-  assert.ok(fs.statSync(standardAsset).size <= 700 * 1024, 'Standard factory scene asset exceeds 700 KB');
-  assert.match(styles, /data-performance-mode="full"[\s\S]*factory-blueprint-full\.jpg/);
-  assert.match(styles, /data-performance-mode="standard"[\s\S]*factory-blueprint-standard\.jpg/);
-  assert.match(styles, /data-performance-mode="lite"[\s\S]*\.student-factory-scene[\s\S]*background: var\(--surface-raised\)/);
+  assert.match(studentStyles, /data-scene-presentation="isometric-map"/);
+  assert.match(studentStyles, /\.student-factory-map-floor/);
+  assert.match(studentStyles, /\.student-factory-road-surface/);
+  assert.match(studentStyles, /\.student-factory-road-centerline/);
+  assert.match(studentStyles, /\.student-factory-map-node[\s\S]*left: var\(--map-x\)[\s\S]*top: var\(--map-y\)/);
+  assert.match(studentStyles, /\.student-factory-building-face\.face-top/);
+  assert.match(studentStyles, /\.student-factory-building-truck/);
+  assert.doesNotMatch(studentStyles, /factory-blueprint-(full|standard)\.jpg/);
+  assert.match(studentStyles, /data-performance-mode="lite"[\s\S]*\.student-factory-map-floor[\s\S]*display: none/);
+  assert.match(studentStyles, /data-performance-mode="lite"[\s\S]*\.student-factory-map-node[\s\S]*box-shadow: none/);
 });
 
 test('UI QA contract: dual-role screenshot runner covers all student performance profiles and browser errors', () => {
@@ -2535,8 +2688,25 @@ test('UI QA contract: dual-role screenshot runner covers all student performance
   assert.match(captureScript, /async function setPerformanceMode\(cdp, mode\)/);
   assert.match(captureScript, /student game \$\{mode\} \$\{viewport\.width\}px/);
   assert.match(captureScript, /student-game-full-1440x900\.png/);
+  assert.match(captureScript, /student-factory-map-v8-1440x900\.png/);
   assert.match(captureScript, /student-game-standard-1440x900\.png/);
   assert.match(captureScript, /student-game-lite-1000x760\.png/);
+  assert.match(captureScript, /async function collectStudentMarketStatAudit/);
+  assert.match(captureScript, /student market stats full 1440px/);
+  assert.match(captureScript, /async function collectStudentMarketDisclosureAudit/);
+  assert.match(captureScript, /student market disclosure full 1440px/);
+  assert.match(captureScript, /data-factory-map-marker/);
+  assert.match(captureScript, /data-factory-map-inspector/);
+  assert.match(captureScript, /roadSegments === 6/);
+  assert.match(captureScript, /maximumZoneAnchorError <= 28/);
+  assert.match(captureScript, /minimumBuildingHeaderGap >= 8/);
+  assert.match(captureScript, /buildingSceneOverflows\.length === 0/);
+  assert.match(captureScript, /sequenceLayoutOk/);
+  assert.match(captureScript, /environmentTypes/);
+  assert.match(captureScript, /motionArtifacts/);
+  assert.match(captureScript, /guidanceStates/);
+  assert.match(captureScript, /activityStates/);
+  assert.match(captureScript, /persistentLabelCount === 0/);
   assert.match(captureScript, /browserErrors/);
   assert.match(captureScript, /browserErrors\.length === 0/);
 });
@@ -2601,7 +2771,9 @@ test('UI accessibility contract: screenshot runner checks focus order, reduced m
   assert.match(captureScript, /async function collectStudentSceneAudit\(cdp\)/);
   assert.match(captureScript, /hotspotOverlaps/);
   assert.match(captureScript, /minimumHotspotSize/);
-  assert.match(captureScript, /sceneAssetDecoded/);
+  assert.match(captureScript, /presentation === 'isometric-map'/);
+  assert.match(captureScript, /routeSegments === hotspots\.length - 1/);
+  assert.match(captureScript, /new Set\(buildingTypes\)\.size === hotspots\.length/);
   assert.match(captureScript, /async function collectTeacherWorkspaceAudit\(cdp\)/);
   assert.match(captureScript, /dataAreaRatio/);
   assert.match(captureScript, /accessibility/);
@@ -2709,7 +2881,7 @@ test('UI performance contract: profiles scale runtime cost without removing clas
   assert.match(indexHtml, /Full · 16 ГБ/);
   assert.match(indexHtml, /Standard · 8 ГБ/);
   assert.match(indexHtml, /Lite · 6 ГБ/);
-  assert.match(styles, /html\[data-performance-mode="standard"\] \.student-factory-scene-floor/);
+  assert.match(styles, /\.student-factory-map-route-segment/);
   assert.match(styles, /html\[data-performance-mode="standard"\] \.exchange-mini-chart polyline/);
   assert.match(styles, /html\[data-performance-mode="lite"\] body \*/);
 });
@@ -2755,6 +2927,7 @@ test('frontend architecture: role modules load before bootstrap and own their re
   const indexHtml = fs.readFileSync(path.join(publicRoot, 'index.html'), 'utf8');
   const appCore = fs.readFileSync(path.join(publicRoot, 'app.js'), 'utf8');
   const roleContracts = fs.readFileSync(path.join(publicRoot, 'ui', 'role-contracts.js'), 'utf8');
+  const tutorialUi = fs.readFileSync(path.join(publicRoot, 'ui', 'tutorial-ui.js'), 'utf8');
   const serverAdminUi = fs.readFileSync(path.join(publicRoot, 'ui', 'server-admin-ui.js'), 'utf8');
   const studentUi = fs.readFileSync(path.join(publicRoot, 'ui', 'student-ui.js'), 'utf8');
   const teacherUi = fs.readFileSync(path.join(publicRoot, 'ui', 'teacher-ui.js'), 'utf8');
@@ -2762,6 +2935,7 @@ test('frontend architecture: role modules load before bootstrap and own their re
   const scriptOrder = [
     '/ui/role-contracts.js',
     '/app-runtime.js',
+    '/ui/tutorial-ui.js',
     '/app.js',
     '/ui/server-admin-ui.js',
     '/ui/student-ui.js',
@@ -2787,6 +2961,7 @@ test('frontend architecture: role modules load before bootstrap and own their re
   const declarations = new Map();
   for (const [file, source] of [
     ['app.js', appCore],
+    ['tutorial-ui.js', tutorialUi],
     ['server-admin-ui.js', serverAdminUi],
     ['student-ui.js', studentUi],
     ['teacher-ui.js', teacherUi],
@@ -2968,6 +3143,34 @@ test('UI contract: market side rail is rendered from live game state', () => {
   assert.match(captureScript, /factory market rail contract/);
 });
 
+test('UI contract: student market rail uses actionable Russian microcopy', () => {
+  const appJs = readPublicAppSources();
+  const styles = readPublicStyles();
+  const renderMarketHints = sourceFunctionBlock(appJs, 'renderMarketHints');
+  const renderStudentMarketPulse = sourceFunctionBlock(appJs, 'renderStudentMarketPulse');
+  const renderStudentCommandSupport = sourceFunctionBlock(appJs, 'renderStudentCommandSupport');
+
+  assert.match(renderMarketHints, /Рекомендации/);
+  assert.match(renderMarketHints, /Как повысить шанс продажи/);
+  assert.match(renderMarketHints, /Статус/);
+  assert.doesNotMatch(renderMarketHints, />Risk</);
+  assert.match(renderMarketHints, /hint\.studentText !== hint\.message/);
+  assert.match(renderStudentMarketPulse, /ед\. на этот ход/);
+  assert.match(renderStudentMarketPulse, /label: 'Заявка', ariaLabel: 'Объём заявки'/);
+  assert.match(renderStudentMarketPulse, /label: 'Цена', ariaLabel: 'Ваша цена'/);
+  assert.match(renderStudentMarketPulse, /label: 'Рынок', ariaLabel: 'Цена рынка'/);
+  assert.match(renderStudentCommandSupport, /Понадобятся на шаге 4/);
+  assert.match(renderStudentCommandSupport, /Сейчас: выставьте заявку/);
+  assert.match(renderStudentCommandSupport, /data-market-context=/);
+
+  const renderStudentMarketStat = sourceFunctionBlock(appJs, 'renderStudentMarketStat');
+  assert.match(renderStudentMarketStat, /aria-label=/);
+  assert.match(renderStudentMarketStat, /ariaLabel = label/);
+  assert.doesNotMatch(renderStudentMarketStat, /<div>/);
+  assert.match(styles, /\.student-mini-stats b[\s\S]*grid-column: 1 \/ -1/);
+  assert.match(styles, /\.student-mini-stats b[\s\S]*font-variant-numeric: tabular-nums/);
+});
+
 test('UI contract: teacher market and events use classroom state instead of player controls', () => {
   const appJs = readPublicAppSources();
   const styles = readPublicStyles();
@@ -3018,7 +3221,8 @@ test('UI contract: teacher guidance and mobile controls follow the teacher role'
   assert.match(activateGameNextAction, /elements\.gameNextActionChip\?\.dataset/);
   assert.match(appJs, /teacherHost: overrides\.teacherHost \?\? isServerMode\(\)/);
   assert.match(appJs, /elements\.createForm\.addEventListener\('submit',[\s\S]*createRoom\(\{ teacherHost: true \}\)/);
-  assert.match(appJs, /<details class="teacher-crisis-drawer" open>/);
+  assert.match(appJs, /<details class="teacher-crisis-drawer">/);
+  assert.doesNotMatch(appJs, /<details class="teacher-crisis-drawer" open>/);
   assert.match(styles, /body\[data-screen="game-screen"\]\[data-player-role="teacher"\] \.game-market-rail\s*\{[\s\S]*display: none/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.teacher-workspace-side\s*{[\s\S]*order: 0/);
   assert.match(styles, /@media \(max-width: 900px\)[\s\S]*\.teacher-cockpit-card\s*{[\s\S]*order: 1/);
@@ -3045,7 +3249,7 @@ test('UI contract: student lobby separates readiness from the complete first-tur
   assert.match(styles, /body\[data-screen="lobby-screen"\]\[data-player-role="student"\] \.lobby-roster-panel/);
 });
 
-test('UI contract: full student operations use a live 2.5D factory stage without changing controls across profiles', () => {
+test('UI contract: student operations use a live factory map without changing controls across profiles', () => {
   const appJs = readPublicAppSources();
   const styles = readPublicStyles();
   const renderStudentFactoryScene = sourceFunctionBlock(appJs, 'renderStudentFactoryScene');
@@ -3061,12 +3265,14 @@ test('UI contract: full student operations use a live 2.5D factory stage without
   assert.match(renderStudentFactoryScene, /factory\.finishedGoods/);
   assert.match(renderStudentFactoryScene, /factory\.saleOffer\?\.quantity/);
   assert.match(renderStudentCommandPanel, /renderStudentFactoryScene\(routeItems\)/);
-  assert.match(styles, /factory-blueprint\.png/);
+  assert.match(renderStudentFactoryScene, /student-factory-map-route-segment/);
+  assert.match(renderStudentFactoryScene, /data-factory-map-inspector="\$\{escapeHtml\(activeStation\.key\)\}"/);
+  assert.match(renderStudentFactoryScene, /--map-x:\$\{station\.mapX\}%;--map-y:\$\{station\.mapY\}%/);
   assert.match(styles, /html\[data-performance-mode="full"\] \.student-factory-scene/);
   assert.match(styles, /html\[data-performance-mode="standard"\] \.student-factory-scene/);
   assert.match(styles, /html\[data-performance-mode="lite"\] \.student-factory-node/);
   assert.match(styles, /html\[data-performance-mode="lite"\] \.student-factory-scene[\s\S]*min-height: 0/);
-  assert.match(styles, /html\[data-performance-mode="lite"\] \.student-factory-scene-grid[\s\S]*min-height: 0/);
+  assert.match(styles, /\.student-factory-map[\s\S]*grid-template-columns/);
   assert.match(styles, /html\[data-performance-mode="lite"\] \.student-command-stage[\s\S]*align-items: start/);
   assert.match(styles, /body\[data-screen="game-screen"\]\[data-player-role="student"\]\[data-game-tab="operations"\] \.game-market-rail/);
 });
@@ -3134,6 +3340,9 @@ test('defense capture follows the authenticated client contract', () => {
 
   assert.match(captureScript, /sendAction\('next-turn', undefined, \{ throwOnError: true \}\)/);
   assert.match(captureScript, /refreshState\(\)[\s\S]*room: state\.room[\s\S]*player: state\.player/);
+  assert.match(captureScript, /five-step tutorial overlay/);
+  assert.match(captureScript, /stopTutorial\(\{ completed: true \}\)/);
+  assert.doesNotMatch(captureScript, /tutorial warehouse|tutorial personnel tab|tutorial marketing tab/);
   assert.doesNotMatch(captureScript, /\/api\/state\?playerId=/);
 });
 
@@ -3330,7 +3539,7 @@ test('factory scenario: market surge event raises demand and appears in room sum
 
   assert.equal(room.activeEvent.key, 'factory_demand_surge');
   assert.equal(summary.activeEvent.key, 'factory_demand_surge');
-  assert.equal(latest.baseDemand, 10);
+  assert.equal(latest.baseDemand, 12);
   assert.equal(latest.demandMultiplier, 1.35);
   assert.ok(latest.demand > latest.baseDemand);
 });
@@ -3428,7 +3637,12 @@ test('game feel: turn review appears after next turn and market hints warn about
   host.productStock = 2;
 
   let summary = bizArena.playerSummary(room, host, host.id);
-  assert.ok(summary.marketHints.some(hint => hint.tone === 'danger' && /0/.test(hint.metric)));
+  const noOfferDecision = summary.marketHints.find(hint => hint.kind === 'decision');
+  assert.equal(noOfferDecision.reasonKey, 'no_offer');
+  assert.equal(noOfferDecision.title, 'Выставьте заявку');
+  assert.equal(noOfferDecision.metric, 'Нет заявки');
+  assert.doesNotMatch(noOfferDecision.metric, /\d+\/\d+/);
+  assert.ok(summary.marketHints.some(hint => hint.title === 'Товар ждёт заявки'));
 
   const requestedHighPrice = initialSummary.factory.saleOffer.price * 2;
   bizArena.handleBusinessAction(room, host, {

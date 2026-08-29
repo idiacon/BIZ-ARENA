@@ -2,7 +2,7 @@ const fs = require('fs');
 const http = require('http');
 const os = require('os');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const EDGE_PATH = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
@@ -15,6 +15,7 @@ const OUTPUT_DIR = process.env.BIZ_ARENA_SCREENSHOT_DIR
 
 const DESKTOP = { width: 1440, height: 900, mobile: false, deviceScaleFactor: 1 };
 const MIN_DESKTOP = { width: 1000, height: 760, mobile: false, deviceScaleFactor: 1 };
+const MOBILE = { width: 390, height: 844, mobile: true, deviceScaleFactor: 1 };
 const ULTRAWIDE = { width: 3440, height: 1440, mobile: false, deviceScaleFactor: 1 };
 const QA_VIEWPORTS = [
   MIN_DESKTOP,
@@ -140,6 +141,8 @@ async function launchBrowser({ cdpPort, profileDir, viewport, label }) {
     `--user-data-dir=${profileDir}`,
     `--window-size=${viewport.width},${viewport.height}`,
     '--disable-gpu',
+    '--disable-extensions',
+    '--disable-component-extensions-with-background-pages',
     '--no-first-run',
     '--no-default-browser-check',
     'about:blank',
@@ -345,6 +348,7 @@ async function collectStudentSceneAudit(cdp) {
     if (!workspace || !scene || hotspots.length < 4) return { ok: false, reason: 'missing-scene' };
     const workspaceRect = workspace.getBoundingClientRect();
     const sceneRect = scene.getBoundingClientRect();
+    const sceneHeadRect = scene.querySelector('.student-factory-scene-head')?.getBoundingClientRect();
     const hotspotRects = hotspots.map(node => {
       const rect = node.getBoundingClientRect();
       return {
@@ -368,33 +372,150 @@ async function collectStudentSceneAudit(cdp) {
       }
     }
     const minimumHotspotSize = Math.min(...hotspotRects.flatMap(rect => [rect.width, rect.height]));
-    const backgroundImage = getComputedStyle(scene).backgroundImage || '';
-    const assetMatch = backgroundImage.match(/url\\(["']?([^"')]+)["']?\\)/i);
-    let sceneAssetDecoded = false;
-    let sceneAssetUrl = '';
-    if (assetMatch?.[1]) {
-      sceneAssetUrl = new URL(assetMatch[1], window.location.href).href;
-      const image = new Image();
-      image.src = sceneAssetUrl;
-      try {
-        await image.decode();
-        sceneAssetDecoded = image.naturalWidth > 0 && image.naturalHeight > 0;
-      } catch {
-        sceneAssetDecoded = false;
-      }
-    }
+    const buildingRects = hotspots.map(node => {
+      const rect = node.querySelector('.student-factory-map-building')?.getBoundingClientRect();
+      return rect ? {
+        station: node.dataset.sceneStation,
+        left: rect.left,
+        top: rect.top,
+        right: rect.right,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      } : null;
+    }).filter(Boolean);
+    const buildingHeaderGaps = buildingRects.map(rect => ({
+      station: rect.station,
+      gap: Math.round(rect.top - (sceneHeadRect?.bottom || sceneRect.top)),
+    }));
+    const minimumBuildingHeaderGap = Math.min(...buildingHeaderGaps.map(entry => entry.gap));
+    const buildingSceneOverflows = buildingRects.filter(rect => (
+      rect.left < sceneRect.left - 2
+      || rect.right > sceneRect.right + 2
+      || rect.top < sceneRect.top - 2
+      || rect.bottom > sceneRect.bottom + 2
+    )).map(rect => rect.station);
+    const presentation = scene.dataset.scenePresentation;
+    const sceneVersion = scene.dataset.sceneVersion;
+    const routeSegments = document.querySelectorAll('.student-factory-map .student-factory-map-route-segment').length;
+    const routeFocusStates = [...document.querySelectorAll('.student-factory-map .student-factory-map-route-segment')]
+      .map(route => route.dataset.mapRouteState || '');
+    const markerCount = document.querySelectorAll('.student-factory-map [data-factory-map-marker]').length;
+    const roadSegments = document.querySelectorAll('.student-factory-map [data-factory-road]').length;
+    const buildingTypes = [...document.querySelectorAll('.student-factory-map [data-factory-building]')]
+      .map(node => node.dataset.factoryBuilding);
+    const inspector = document.querySelector('[data-factory-map-inspector]');
+    const inspectorCount = document.querySelectorAll('[data-factory-map-inspector]').length;
+    const persistentLabelCount = document.querySelectorAll('.student-factory-map-label').length;
+    const guidanceStates = hotspots.map(node => ({
+      station: node.dataset.sceneStation,
+      state: node.dataset.factoryGuidanceState || '',
+    }));
+    const activityStates = hotspots.map(node => ({
+      station: node.dataset.sceneStation,
+      state: node.dataset.factoryActivity || '',
+    }));
+    const environmentTypes = [...document.querySelectorAll('.student-factory-map [data-factory-environment]')]
+      .map(node => node.dataset.factoryEnvironment);
+    const motionArtifacts = [...document.querySelectorAll('.student-factory-map [data-factory-motion]')]
+      .map(node => ({
+        motion: node.dataset.factoryMotion,
+        animationName: getComputedStyle(node).animationName,
+      }));
+    const zoneAlignment = hotspots.map(node => {
+      const station = node.dataset.sceneStation;
+      const shadow = node.querySelector('.student-factory-building-shadow');
+      const zone = document.querySelector('.student-factory-map-zone.zone-' + station);
+      const shadowRect = shadow?.getBoundingClientRect();
+      const zoneRect = zone?.getBoundingClientRect();
+      if (!shadowRect?.width || !zoneRect?.width) return null;
+      const shadowCenterX = shadowRect.left + shadowRect.width / 2;
+      const shadowCenterY = shadowRect.top + shadowRect.height / 2;
+      const zoneCenterX = zoneRect.left + zoneRect.width / 2;
+      const zoneCenterY = zoneRect.top + zoneRect.height / 2;
+      return {
+        station,
+        error: Math.round(Math.hypot(shadowCenterX - zoneCenterX, shadowCenterY - zoneCenterY)),
+      };
+    }).filter(Boolean);
+    const maximumZoneAnchorError = Math.max(0, ...zoneAlignment.map(entry => entry.error));
+    const mapAnchors = hotspots.map(node => ({
+      station: node.dataset.sceneStation,
+      x: Number(node.dataset.mapX),
+      y: Number(node.dataset.mapY),
+    }));
+    const anchorByStation = new Map(mapAnchors.map(anchor => [anchor.station, anchor]));
+    const purchaseAnchor = anchorByStation.get('purchase');
+    const workforceAnchor = anchorByStation.get('workforce');
+    const assemblyAnchor = anchorByStation.get('assembly');
+    const marketAnchor = anchorByStation.get('market');
+    const sequenceLayoutOk = Boolean(
+      purchaseAnchor
+      && workforceAnchor
+      && assemblyAnchor
+      && marketAnchor
+      && purchaseAnchor.x < workforceAnchor.x
+      && purchaseAnchor.y > workforceAnchor.y
+      && assemblyAnchor.x > workforceAnchor.x
+      && assemblyAnchor.y < marketAnchor.y
+      && marketAnchor.x > workforceAnchor.x
+      && marketAnchor.y > purchaseAnchor.y
+    );
     const sceneWidthRatio = sceneRect.width / Math.max(1, workspaceRect.width);
     const ok = sceneWidthRatio >= 0.55
       && minimumHotspotSize >= 44
       && hotspotOverlaps.length === 0
-      && sceneAssetDecoded;
+      && presentation === 'isometric-map'
+      && sceneVersion === 'v8-live-stage'
+      && routeSegments === hotspots.length - 1
+      && routeFocusStates.filter(state => state === 'current').length <= 1
+      && routeFocusStates.filter(state => state === 'next').length <= 1
+      && markerCount === hotspots.length
+      && roadSegments === 6
+      && buildingTypes.length === hotspots.length
+      && new Set(buildingTypes).size === hotspots.length
+      && inspectorCount === 1
+      && Boolean(inspector?.dataset.factoryMapInspector)
+      && persistentLabelCount === 0
+      && guidanceStates.length === hotspots.length
+      && guidanceStates.every(entry => ['complete', 'current', 'attention', 'waiting'].includes(entry.state))
+      && activityStates.length === hotspots.length
+      && activityStates.every(entry => Boolean(entry.state))
+      && environmentTypes.join('|') === 'parking|utilities|safety-markings|loading-yard|service-vehicle'
+      && motionArtifacts.length <= 2
+      && new Set(motionArtifacts.map(entry => entry.motion)).size === motionArtifacts.length
+      && zoneAlignment.length === hotspots.length
+      && maximumZoneAnchorError <= 28
+      && buildingRects.length === hotspots.length
+      && minimumBuildingHeaderGap >= 8
+      && buildingSceneOverflows.length === 0
+      && sequenceLayoutOk;
     return {
       ok,
       sceneWidthRatio,
       minimumHotspotSize,
       hotspotOverlaps,
-      sceneAssetDecoded,
-      sceneAssetUrl,
+      presentation,
+      sceneVersion,
+      routeSegments,
+      routeFocusStates,
+      markerCount,
+      roadSegments,
+      buildingTypes,
+      inspectorStation: inspector?.dataset.factoryMapInspector || '',
+      inspectorCount,
+      persistentLabelCount,
+      guidanceStates,
+      activityStates,
+      environmentTypes,
+      motionArtifacts,
+      zoneAlignment,
+      maximumZoneAnchorError,
+      buildingHeaderGaps,
+      minimumBuildingHeaderGap,
+      buildingSceneOverflows,
+      mapAnchors,
+      sequenceLayoutOk,
       hotspotCount: hotspots.length,
     };
   })()`);
@@ -471,6 +592,166 @@ async function collectViewportAudit(cdp, label) {
   })()`);
   if (!result.ok) {
     throw new Error(`${label} failed screenshot audit: ${JSON.stringify(result)}`);
+  }
+  return result;
+}
+
+async function collectFirstTurnTutorialAudit(cdp, label, { expectArrow }) {
+  const result = await evaluate(cdp, `(() => {
+    const overlay = document.querySelector('[data-first-turn-tutorial]:not(.hidden)');
+    const card = overlay?.querySelector('[data-first-turn-card]');
+    const focus = overlay?.querySelector('[data-first-turn-focus]:not(.hidden)');
+    const target = document.querySelector('[data-first-turn-target]');
+    const arrow = overlay?.querySelector('[data-first-turn-arrow]');
+    const arrowPath = overlay?.querySelector('[data-first-turn-arrow-path]');
+    const route = overlay?.querySelector('.tutorial-route');
+    const routeSteps = [...(route?.querySelectorAll('[data-first-turn-progress-step]') || [])];
+    const rect = node => node ? node.getBoundingClientRect() : null;
+    const cardRect = rect(card);
+    const focusRect = rect(focus);
+    const targetRect = rect(target);
+    const overlaps = (first, second) => Boolean(first && second
+      && first.left < second.right
+      && first.right > second.left
+      && first.top < second.bottom
+      && first.bottom > second.top);
+    const insideViewport = value => Boolean(value
+      && value.left >= 7
+      && value.top >= 7
+      && value.right <= window.innerWidth - 7
+      && value.bottom <= window.innerHeight - 7);
+    const focusMatchesTarget = Boolean(focusRect && targetRect
+      && focusRect.left <= targetRect.left + 1
+      && focusRect.top <= targetRect.top + 1
+      && focusRect.right >= targetRect.right - 1
+      && focusRect.bottom >= targetRect.bottom - 1
+      && targetRect.left - focusRect.left <= 20
+      && targetRect.top - focusRect.top <= 20
+      && focusRect.right - targetRect.right <= 20
+      && focusRect.bottom - targetRect.bottom <= 20);
+    const arrowStyle = arrow ? getComputedStyle(arrow) : null;
+    const arrowVisible = Boolean(arrow
+      && arrowPath?.getAttribute('d')
+      && !arrow.classList.contains('hidden')
+      && arrowStyle?.display !== 'none'
+      && arrowStyle?.visibility !== 'hidden');
+    const routeFits = Boolean(route && route.scrollWidth <= route.clientWidth + 1);
+    const pageOverflow = Math.max(
+      document.documentElement.scrollWidth - window.innerWidth,
+      document.body.scrollWidth - window.innerWidth,
+    );
+    const step = overlay?.dataset.firstTurnStep || '';
+    const result = {
+      label: ${JSON.stringify(label)},
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      step,
+      stage: Number(overlay?.dataset.firstTurnStage || 0),
+      targetMode: overlay?.dataset.firstTurnTargetMode || '',
+      routeSteps: routeSteps.length,
+      routeFits,
+      cardInsideViewport: insideViewport(cardRect),
+      targetInsideViewport: insideViewport(targetRect),
+      cardTargetOverlap: overlaps(cardRect, targetRect),
+      focusMatchesTarget,
+      arrowVisible,
+      arrowExpected: ${Boolean(expectArrow)},
+      pageOverflow,
+      cardRect: cardRect && { left: Math.round(cardRect.left), top: Math.round(cardRect.top), right: Math.round(cardRect.right), bottom: Math.round(cardRect.bottom) },
+      targetRect: targetRect && { left: Math.round(targetRect.left), top: Math.round(targetRect.top), right: Math.round(targetRect.right), bottom: Math.round(targetRect.bottom) },
+    };
+    result.ok = Boolean(overlay && card && focus && target)
+      && ['purchase', 'workforce', 'assembly', 'market', 'finish'].includes(step)
+      && result.stage >= 1
+      && result.stage <= 5
+      && result.routeSteps === 5
+      && result.routeFits
+      && result.cardInsideViewport
+      && result.targetInsideViewport
+      && !result.cardTargetOverlap
+      && result.focusMatchesTarget
+      && result.arrowVisible === result.arrowExpected
+      && result.pageOverflow <= 4;
+    return result;
+  })()`);
+  if (!result.ok) {
+    throw new Error(`${label} failed first-turn tutorial audit: ${JSON.stringify(result)}`);
+  }
+  return result;
+}
+
+async function collectStudentMarketStatAudit(cdp, label) {
+  const result = await evaluate(cdp, `(() => {
+    const cards = [...document.querySelectorAll('.student-market-stat')].map(card => {
+      const value = card.querySelector('b');
+      const cardRect = card.getBoundingClientRect();
+      const valueRect = value?.getBoundingClientRect();
+      const outside = valueRect
+        ? Math.max(0, cardRect.left - valueRect.left, valueRect.right - cardRect.right)
+        : Infinity;
+      const clipped = value ? value.scrollWidth > value.clientWidth + 1 : true;
+      return {
+        label: String(card.querySelector('small')?.textContent || '').trim(),
+        value: String(value?.textContent || '').trim(),
+        cardWidth: Math.round(cardRect.width),
+        valueWidth: Math.round(valueRect?.width || 0),
+        valueScrollWidth: value?.scrollWidth || 0,
+        valueClientWidth: value?.clientWidth || 0,
+        outside: Math.round(outside * 10) / 10,
+        clipped,
+        ok: Boolean(valueRect) && outside <= 1 && !clipped,
+      };
+    });
+    return {
+      label: ${JSON.stringify(label)},
+      ok: cards.length === 3 && cards.every(card => card.ok),
+      cards,
+    };
+  })()`);
+  if (!result.ok) {
+    throw new Error(`${label} failed market stat audit: ${JSON.stringify(result)}`);
+  }
+  return result;
+}
+
+async function collectStudentMarketDisclosureAudit(cdp, label) {
+  const result = await evaluate(cdp, `(() => {
+    const disclosure = document.querySelector('.student-market-disclosure');
+    const summary = disclosure?.querySelector(':scope > summary');
+    if (!disclosure || !summary) {
+      return { label: ${JSON.stringify(label)}, ok: false, reason: 'missing disclosure or summary' };
+    }
+    const initiallyOpen = disclosure.open;
+    const summaryRect = summary.getBoundingClientRect();
+    const summaryStyle = getComputedStyle(summary);
+    disclosure.open = true;
+    const hints = disclosure.querySelector('.student-market-quick-hints');
+    const hintsStyle = hints ? getComputedStyle(hints) : null;
+    const hintsOverflowY = hintsStyle?.overflowY || 'none';
+    const hintsNoNestedScroll = !hints || (
+      !['auto', 'scroll'].includes(hintsOverflowY)
+      && hints.scrollHeight <= hints.clientHeight + 1
+    );
+    disclosure.open = initiallyOpen;
+    const result = {
+      label: ${JSON.stringify(label)},
+      initiallyOpen,
+      context: disclosure.dataset.marketContext || '',
+      summaryText: String(summary.innerText || summary.textContent || '').trim(),
+      summaryVisible: summaryStyle.display !== 'none'
+        && summaryStyle.visibility !== 'hidden'
+        && summaryRect.width >= 120
+        && summaryRect.height >= 44,
+      hintsOverflowY,
+      hintsNoNestedScroll,
+    };
+    result.ok = !result.initiallyOpen
+      && result.summaryVisible
+      && result.summaryText.includes('Рынок и рекомендации')
+      && result.hintsNoNestedScroll;
+    return result;
+  })()`);
+  if (!result.ok) {
+    throw new Error(`${label} failed market disclosure audit: ${JSON.stringify(result)}`);
   }
   return result;
 }
@@ -605,12 +886,41 @@ async function openScreen(cdp, screenId) {
   return opened;
 }
 
-function safeKill(child) {
-  if (!child) return;
+const STOP_EDGE_PROFILE_PROCESSES = `& {
+  param([string]$profilePath)
+  for ($attempt = 0; $attempt -lt 6; $attempt += 1) {
+    $targets = @(Get-CimInstance Win32_Process | Where-Object {
+      $_.Name -eq 'msedge.exe' -and $_.CommandLine -and $_.CommandLine.Contains($profilePath)
+    })
+    if ($targets.Count -eq 0) { break }
+    $targets | ForEach-Object {
+      Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+    }
+    Start-Sleep -Milliseconds 250
+  }
+}`;
+
+function safeKill(child, profileDir = '') {
   try {
-    child.kill();
+    if (child?.pid && process.platform === 'win32') {
+      spawnSync('taskkill', ['/PID', String(child.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
+    } else if (child?.pid) {
+      child.kill();
+    }
   } catch {
     // ignore process cleanup races on Windows
+  }
+
+  if (process.platform === 'win32' && profileDir) {
+    try {
+      spawnSync(
+        'powershell.exe',
+        ['-NoProfile', '-NonInteractive', '-Command', STOP_EDGE_PROFILE_PROCESSES, profileDir],
+        { stdio: 'ignore', windowsHide: true },
+      );
+    } catch {
+      // ignore process cleanup races on Windows
+    }
   }
 }
 
@@ -764,11 +1074,44 @@ async function main() {
     await openScreen(studentBrowser.cdp, 'game-screen');
     await waitFor(studentBrowser.cdp, '!!document.querySelector("#game-screen.active")', 'student game');
     await evaluate(studentBrowser.cdp, `document.querySelector('.app-sidebar-nav [data-role-tab="student"][data-game-tab="operations"]')?.click()`);
+    await waitFor(
+      studentBrowser.cdp,
+      'Boolean(document.querySelector("[data-first-turn-tutorial]:not(.hidden) [data-first-turn-card]") && document.querySelector("[data-first-turn-target]"))',
+      'student first-turn tutorial',
+    );
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', DESKTOP);
+    await evaluate(studentBrowser.cdp, 'renderTutorialOverlay()');
+    await sleep(450);
+    const firstTurnTutorialDesktopAudit = await collectFirstTurnTutorialAudit(
+      studentBrowser.cdp,
+      'student first-turn tutorial desktop',
+      { expectArrow: true },
+    );
+    await capture(studentBrowser.cdp, '06b-student-first-turn-tutorial-1440x900.png');
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MOBILE);
+    await evaluate(studentBrowser.cdp, 'renderTutorialOverlay()');
+    await sleep(450);
+    const firstTurnTutorialMobileAudit = await collectFirstTurnTutorialAudit(
+      studentBrowser.cdp,
+      'student first-turn tutorial mobile',
+      { expectArrow: false },
+    );
+    await capture(studentBrowser.cdp, '06c-student-first-turn-tutorial-390x844.png');
+    await evaluate(studentBrowser.cdp, 'stopTutorial({ dismissed: true })');
+    await waitFor(
+      studentBrowser.cdp,
+      'document.querySelector("[data-first-turn-tutorial]")?.classList.contains("hidden")',
+      'student tutorial dismissed after dedicated captures',
+    );
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', DESKTOP);
+    await sleep(350);
     const studentStableRoleDom = await verifyStableRoleDom(studentBrowser.cdp, '.student-tycoon-console', 'student tycoon console');
     const partialFactoryNavigation = await verifyPartialFactoryNavigation(studentBrowser.cdp);
     let studentSceneAudit = null;
     let studentFocusOrderAudit = null;
     let reducedMotionAudit = null;
+    let studentMarketStatAudit = null;
+    let studentMarketDisclosureAudit = null;
     for (const mode of STUDENT_QUALITY_PROFILES) {
       await setPerformanceMode(studentBrowser.cdp, mode);
       for (const viewport of QA_VIEWPORTS) {
@@ -782,7 +1125,10 @@ async function main() {
         studentSceneAudit = await collectStudentSceneAudit(studentBrowser.cdp);
         studentFocusOrderAudit = await collectFocusOrderAudit(studentBrowser.cdp, 'student desktop focus order');
         reducedMotionAudit = await verifyReducedMotion(studentBrowser.cdp);
+        studentMarketStatAudit = await collectStudentMarketStatAudit(studentBrowser.cdp, 'student market stats full 1440px');
+        studentMarketDisclosureAudit = await collectStudentMarketDisclosureAudit(studentBrowser.cdp, 'student market disclosure full 1440px');
         await capture(studentBrowser.cdp, '06-student-game-full-1440x900.png', 'window.scrollTo(0, 0)');
+        await capture(studentBrowser.cdp, '06a-student-factory-map-v8-1440x900.png', scrollBelowSticky('.student-factory-scene'));
         await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', ULTRAWIDE);
         await sleep(350);
         await capture(studentBrowser.cdp, '07-student-game-full-3440x1440.png', 'window.scrollTo(0, 0)');
@@ -971,6 +1317,9 @@ async function main() {
         '04-teacher-cockpit-1000x760.png',
         '05-teacher-cockpit-3440x1440.png',
         '06-student-game-full-1440x900.png',
+        '06a-student-factory-map-v8-1440x900.png',
+        '06b-student-first-turn-tutorial-1440x900.png',
+        '06c-student-first-turn-tutorial-390x844.png',
         '07-student-game-full-3440x1440.png',
         '08-student-game-standard-1440x900.png',
         '09-student-game-lite-1000x760.png',
@@ -1009,6 +1358,12 @@ async function main() {
           student: studentStableRoleDom,
         },
         partialFactoryNavigation,
+        firstTurnTutorial: {
+          desktop: firstTurnTutorialDesktopAudit,
+          mobile: firstTurnTutorialMobileAudit,
+        },
+        studentMarketStatAudit,
+        studentMarketDisclosureAudit,
         stateMatrix,
         accessibility: {
           teacherWorkspace: teacherWorkspaceAudit,
@@ -1049,8 +1404,8 @@ async function main() {
   } finally {
     if (teacherBrowser?.cdp) teacherBrowser.cdp.close();
     if (studentBrowser?.cdp) studentBrowser.cdp.close();
-    safeKill(teacherBrowser?.edge);
-    safeKill(studentBrowser?.edge);
+    safeKill(teacherBrowser?.edge, teacherProfileDir);
+    safeKill(studentBrowser?.edge, studentProfileDir);
     safeKill(server);
     await sleep(900);
     safeRm(dataDir);

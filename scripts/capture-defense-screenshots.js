@@ -338,22 +338,13 @@ async function main() {
     await waitFor('!!document.querySelector("#game-screen.active")', 'demo start');
     await screenshot('03-demo-started.png', 'window.scrollTo(0, 0)');
     await screenshot('03-tutorial-overlay.png', 'startTutorial(); window.scrollTo(0, 0)');
-    await clickSelector('[data-factory-node="warehouse"]', 'tutorial warehouse');
-    await clickSelector('[data-game-tab="purchase"]', 'tutorial purchase tab');
-    await clickSelector('[data-supplier-offer]', 'tutorial buy supplier lot');
-    await clickSelector('[data-game-tab="competitors"]', 'tutorial personnel tab');
-    await clickSelector('[data-personnel-hire]', 'tutorial hire worker');
-    await clickSelector('[data-game-tab="operations"]', 'tutorial operations tab');
-    await clickSelector('[data-factory-node="assembly"]', 'tutorial assembly');
-    await clickSelector('[data-factory-action="assemble-product"][data-assemble-value="1"]', 'tutorial assemble one');
-    await clickSelector('[data-game-tab="market"]', 'tutorial marketing tab');
-    await clickSelector('.market-trade-desk', 'tutorial trade desk');
-    await clickSelector('[data-market-sale-action="submit"]', 'tutorial submit sale');
-    await clickSelector('[data-market-turn-action]', 'tutorial finish turn');
-    await clickSelector('#tutorial-next-button', 'tutorial close');
+    await waitFor(
+      'document.querySelector("#tutorial-overlay")?.dataset.firstTurnActive === "true" && document.querySelectorAll("#tutorial-route [data-first-turn-progress-step]").length === 5',
+      'five-step tutorial overlay',
+    );
+    await evaluate('stopTutorial({ completed: true })');
     await waitFor('!document.querySelector("#tutorial-overlay:not(.hidden)")', 'tutorial completion');
     await screenshot('03-tutorial-complete.png', 'window.scrollTo(0, 0)');
-    await evaluate('stopTutorial()');
     await evaluate('document.querySelector(\'[data-game-tab="operations"]\').click()');
     await waitFor('!!document.querySelector(\'[data-game-panel="operations"]:not(.hidden)\')', 'operations tab restored');
     await screenshot('04-production.png', 'document.querySelector("#factory-operations")?.scrollIntoView({ block: "start" })');

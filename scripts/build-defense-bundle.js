@@ -115,7 +115,8 @@ const optionalArtifacts = [
   `dist/pre-defense-readiness-v${version}.json`,
   `dist/pre-defense-readiness-v${version}.md`,
   'public/assets/logo-concepts.png',
-  'public/assets/biz-arena-logo.svg',
+  'public/assets/biz-arena-icon.png',
+  'public/assets/biz-arena-favicon.png',
 ];
 const presentOptionalArtifacts = [];
 for (const artifact of optionalArtifacts) {

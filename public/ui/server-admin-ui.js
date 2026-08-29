@@ -427,7 +427,7 @@ function serverAdminCurrentInstruction(room) {
   if (room.status === 'running' && firstBlocker) {
     return `Сначала помогите ${firstBlocker.player.companyName}: ${firstBlocker.issues.slice(0, 2).join(', ')}.`;
   }
-  if (room.status === 'running') return 'Класс идет ровно. Можно считать следующий ход или запустить Crisis Card.';
+  if (room.status === 'running') return 'Класс работает стабильно. Можно считать следующий ход или запустить учебную ситуацию.';
   if (room.status === 'paused') return 'Пауза активна: проведите короткий разбор и нажмите “Продолжить”.';
   if (room.status === 'finished') return 'Матч завершен: сравните рейтинг, прибыль, долги и решения лидеров.';
   return 'Проверьте статус комнаты.';
@@ -567,7 +567,7 @@ function renderCloudTeacherCrisisCards(selectedRoom) {
       <div class="crisis-card-head">
         <span class="crisis-card-head-icon">${gameIcon('crisis')}</span>
         <div>
-          <strong>Crisis Cards</strong>
+          <strong>Учебные ситуации</strong>
           <small>${activeEvent ? escapeHtml(activeEvent.title || activeEvent.label || activeEvent.key) : escapeHtml(t('teacher_force_event_hint'))}</small>
         </div>
       </div>
@@ -928,7 +928,7 @@ function renderServerAdminOverview() {
             <div class="crisis-card-head">
               <span class="crisis-card-head-icon">${gameIcon('crisis')}</span>
               <div>
-                <strong>Crisis Cards</strong>
+                <strong>Учебные ситуации</strong>
                 <small>${selectedRoom.activeEvent ? `Активно: ${escapeHtml(selectedRoom.activeEvent.title || selectedRoom.activeEvent.key)}` : 'Запуск через force-event'}</small>
               </div>
             </div>

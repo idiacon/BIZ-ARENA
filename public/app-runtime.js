@@ -1,7 +1,39 @@
 (function exposeBizArenaRuntime(global) {
+  const deploymentConfig = global.BizArenaDeploymentConfig || {};
+
+  function configuredBackendOrigin() {
+    const value = String(deploymentConfig.backendUrl || '').trim();
+    if (!value) return '';
+    try {
+      const url = new URL(value);
+      if (!['http:', 'https:'].includes(url.protocol)) return '';
+      return url.origin;
+    } catch (_error) {
+      return '';
+    }
+  }
+
+  function resolveHttpUrl(url) {
+    const backendOrigin = configuredBackendOrigin();
+    if (!backendOrigin || !String(url).startsWith('/')) return url;
+    return new URL(String(url), backendOrigin).toString();
+  }
+
+  function isExternalBackend() {
+    const backendOrigin = configuredBackendOrigin();
+    return Boolean(backendOrigin && backendOrigin !== String(global.location?.origin || ''));
+  }
+
+  function publicAppBaseUrl(meta = {}) {
+    const value = isExternalBackend()
+      ? global.location?.origin
+      : (meta.publicUrl || meta.localUrls?.[0] || global.location?.origin);
+    return String(value || '').replace(/\/+$/, '');
+  }
+
   function request(url, options = {}, hooks = {}) {
     const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) };
-    return fetch(url, { ...options, headers }).then(async response => {
+    return fetch(resolveHttpUrl(url), { ...options, headers }).then(async response => {
       const raw = await response.json();
       const data = hooks.normalize ? hooks.normalize(raw) : raw;
       if (!response.ok) {
@@ -22,9 +54,11 @@
   }
 
   function websocketUrl(location, params) {
-    const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const backendOrigin = configuredBackendOrigin();
+    const target = backendOrigin ? new URL(backendOrigin) : location;
+    const protocol = target.protocol === 'https:' ? 'wss:' : 'ws:';
     const query = new URLSearchParams(params);
-    return `${protocol}//${location.host}/ws?${query.toString()}`;
+    return `${protocol}//${target.host}/ws?${query.toString()}`;
   }
 
   function createRealtimeController(options = {}) {
@@ -75,5 +109,12 @@
     return { connect, close };
   }
 
-  global.BizArenaRuntime = { request, websocketUrl, createRealtimeController };
+  global.BizArenaRuntime = {
+    request,
+    websocketUrl,
+    createRealtimeController,
+    resolveHttpUrl,
+    isExternalBackend,
+    publicAppBaseUrl,
+  };
 })(window);

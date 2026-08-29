@@ -39,6 +39,55 @@ html[data-performance-mode="full"] {
   body[data-screen="game-screen"] .game-student-link-chip {
     grid-column: 1 / -1;
   }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .game-topbar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .game-topbar-chip {
+    min-height: 54px;
+    padding: 7px 8px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .game-student-link-chip {
+    grid-column: 1 / span 2;
+    grid-row: 2;
+    grid-template-columns: minmax(0, 1fr) 30px 42px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .game-student-link-chip img {
+    width: 42px;
+    height: 42px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .game-time-chip {
+    grid-column: 3;
+    grid-row: 2;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .game-profile-chip {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .game-next-action-chip {
+    min-height: 64px;
+    grid-template-columns: 110px minmax(190px, 0.78fr) minmax(0, 1fr) auto;
+    gap: 10px;
+    padding-block: 8px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-main {
+    order: 0;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-cockpit-card {
+    order: 1;
+  }
+
+  body[data-screen="game-screen"][data-player-role="teacher"] .teacher-workspace-side {
+    order: 2;
+  }
 }
 
 html[data-performance-mode="standard"] {

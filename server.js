@@ -27,6 +27,7 @@ const {
 } = require('./server/game-rules');
 const { createApiRouter } = require('./server/http/routes');
 const { applyResponseSecurityHeaders } = require('./server/http/response-security');
+const { createCorsPolicy } = require('./server/http/cors-policy');
 const { parseRequestUrl } = require('./server/http/request-url');
 const { forwardedClientAddress } = require('./server/http/client-address');
 const { createRoomActionHandler } = require('./server/room/actions');
@@ -54,12 +55,17 @@ const APP_MODE = ['server', 'client', 'unified'].includes(process.env.BIZ_ARENA_
   ? process.env.BIZ_ARENA_APP_MODE
   : 'unified';
 const PUBLIC_URL = String(process.env.BIZ_ARENA_PUBLIC_URL || '').replace(/\/+$/, '');
+const CORS_ALLOWED_ORIGINS = String(process.env.BIZ_ARENA_CORS_ORIGINS || '').trim();
 const ALLOW_REGISTRATION = String(process.env.BIZ_ARENA_ALLOW_REGISTRATION || 'true').toLowerCase() !== 'false';
 const TEACHER_SESSION_TTL_MS = Math.max(
   1,
   Number(process.env.BIZ_ARENA_TEACHER_SESSION_TTL_HOURS || 24 * 7) || 24 * 7
 ) * 60 * 60 * 1000;
 const PUBLIC_DIR = path.join(__dirname, 'public');
+const corsPolicy = createCorsPolicy({
+  allowedOrigins: CORS_ALLOWED_ORIGINS,
+  publicUrl: PUBLIC_URL,
+});
 const DATA_DIR = process.env.BIZ_ARENA_DATA_DIR
   ? path.resolve(process.env.BIZ_ARENA_DATA_DIR)
   : path.join(__dirname, 'data');
@@ -216,14 +222,15 @@ const FACTORY_SCENARIOS = {
     basePrice: 6400,
     baseDemandMin: 7,
     baseDemandMax: 14,
-    upkeep: 7000,
+    upkeep: 3500,
     starterCash: 180000,
     starterInventory: { frames: 3, engines: 3, wheels: 6, electronics: 3 },
+    salaryBand: [38, 88],
     components: {
-      frames: { label: 'Рамы', unitCost: 950, lotSize: 2, recipe: 1 },
-      engines: { label: 'Двигатели', unitCost: 1600, lotSize: 2, recipe: 1 },
-      wheels: { label: 'Колёса', unitCost: 420, lotSize: 4, recipe: 2 },
-      electronics: { label: 'Электроника', unitCost: 600, lotSize: 2, recipe: 1 },
+      frames: { label: 'Рамы', unitCost: 620, lotSize: 2, recipe: 1 },
+      engines: { label: 'Двигатели', unitCost: 1050, lotSize: 2, recipe: 1 },
+      wheels: { label: 'Колёса', unitCost: 280, lotSize: 4, recipe: 2 },
+      electronics: { label: 'Электроника', unitCost: 390, lotSize: 2, recipe: 1 },
     },
     roles: ['Сборщик', 'Механик', 'Техник качества', 'Сменный мастер'],
   },
@@ -232,19 +239,20 @@ const FACTORY_SCENARIOS = {
     productKey: 'drones',
     productLabel: 'Дроны',
     productUnit: 'компл.',
-    priceRange: { min: 2400, max: 5200 },
-    basePrice: 3600,
+    priceRange: { min: 3200, max: 7000 },
+    basePrice: 4800,
     baseDemandMin: 10,
     baseDemandMax: 18,
-    upkeep: 5500,
+    upkeep: 2500,
     starterCash: 170000,
     starterInventory: { motors: 12, batteries: 4, controllers: 4, cameras: 4, frames: 4 },
+    salaryBand: [28, 62],
     components: {
-      motors: { label: 'Моторы', unitCost: 320, lotSize: 4, recipe: 4 },
-      batteries: { label: 'Батареи', unitCost: 680, lotSize: 2, recipe: 1 },
-      controllers: { label: 'Контроллеры', unitCost: 560, lotSize: 2, recipe: 1 },
-      cameras: { label: 'Камеры', unitCost: 420, lotSize: 2, recipe: 1 },
-      frames: { label: 'Рамы', unitCost: 260, lotSize: 2, recipe: 1 },
+      motors: { label: 'Моторы', unitCost: 170, lotSize: 4, recipe: 4 },
+      batteries: { label: 'Батареи', unitCost: 360, lotSize: 2, recipe: 1 },
+      controllers: { label: 'Контроллеры', unitCost: 300, lotSize: 2, recipe: 1 },
+      cameras: { label: 'Камеры', unitCost: 220, lotSize: 2, recipe: 1 },
+      frames: { label: 'Рамы', unitCost: 140, lotSize: 2, recipe: 1 },
     },
     roles: ['Сборщик', 'Техник электроники', 'Техник качества', 'Калибровщик'],
   },
@@ -253,19 +261,20 @@ const FACTORY_SCENARIOS = {
     productKey: 'smartphones',
     productLabel: 'Смартфоны',
     productUnit: 'шт.',
-    priceRange: { min: 1600, max: 3600 },
-    basePrice: 2400,
+    priceRange: { min: 2400, max: 5200 },
+    basePrice: 3400,
     baseDemandMin: 14,
     baseDemandMax: 24,
-    upkeep: 6500,
+    upkeep: 2200,
     starterCash: 190000,
     starterInventory: { displays: 5, batteries: 5, boards: 5, cameras: 10, cases: 5 },
+    salaryBand: [22, 52],
     components: {
-      displays: { label: 'Дисплеи', unitCost: 280, lotSize: 3, recipe: 1 },
-      batteries: { label: 'Батареи', unitCost: 180, lotSize: 3, recipe: 1 },
-      boards: { label: 'Платы', unitCost: 320, lotSize: 3, recipe: 1 },
-      cameras: { label: 'Камерные модули', unitCost: 120, lotSize: 6, recipe: 2 },
-      cases: { label: 'Корпуса', unitCost: 90, lotSize: 3, recipe: 1 },
+      displays: { label: 'Дисплеи', unitCost: 190, lotSize: 3, recipe: 1 },
+      batteries: { label: 'Батареи', unitCost: 130, lotSize: 3, recipe: 1 },
+      boards: { label: 'Платы', unitCost: 230, lotSize: 3, recipe: 1 },
+      cameras: { label: 'Камерные модули', unitCost: 85, lotSize: 6, recipe: 2 },
+      cases: { label: 'Корпуса', unitCost: 60, lotSize: 3, recipe: 1 },
     },
     roles: ['Сборщик', 'Техник электроники', 'Тестировщик', 'Руководитель упаковки'],
   },
@@ -274,19 +283,20 @@ const FACTORY_SCENARIOS = {
     productKey: 'ev_scooters',
     productLabel: 'Электросамокаты',
     productUnit: 'шт.',
-    priceRange: { min: 2600, max: 5600 },
-    basePrice: 3900,
+    priceRange: { min: 3200, max: 6800 },
+    basePrice: 4600,
     baseDemandMin: 9,
     baseDemandMax: 16,
-    upkeep: 6000,
+    upkeep: 2800,
     starterCash: 175000,
     starterInventory: { motorWheels: 4, batteries: 4, controllers: 4, frames: 4, brakes: 4 },
+    salaryBand: [30, 68],
     components: {
-      motorWheels: { label: 'Мотор-колёса', unitCost: 620, lotSize: 2, recipe: 1 },
-      batteries: { label: 'Батареи', unitCost: 780, lotSize: 2, recipe: 1 },
-      controllers: { label: 'Контроллеры', unitCost: 320, lotSize: 2, recipe: 1 },
-      frames: { label: 'Рамы', unitCost: 260, lotSize: 2, recipe: 1 },
-      brakes: { label: 'Тормозные комплекты', unitCost: 180, lotSize: 2, recipe: 1 },
+      motorWheels: { label: 'Мотор-колёса', unitCost: 430, lotSize: 2, recipe: 1 },
+      batteries: { label: 'Батареи', unitCost: 540, lotSize: 2, recipe: 1 },
+      controllers: { label: 'Контроллеры', unitCost: 230, lotSize: 2, recipe: 1 },
+      frames: { label: 'Рамы', unitCost: 180, lotSize: 2, recipe: 1 },
+      brakes: { label: 'Тормозные комплекты', unitCost: 120, lotSize: 2, recipe: 1 },
     },
     roles: ['Сборщик', 'Техник батарей', 'Инспектор безопасности', 'Мастер линии'],
   },
@@ -295,19 +305,20 @@ const FACTORY_SCENARIOS = {
     productKey: 'appliances',
     productLabel: 'Кофемашины',
     productUnit: 'шт.',
-    priceRange: { min: 1400, max: 3000 },
-    basePrice: 2100,
+    priceRange: { min: 1800, max: 3800 },
+    basePrice: 2500,
     baseDemandMin: 12,
     baseDemandMax: 20,
-    upkeep: 5000,
+    upkeep: 1500,
     starterCash: 165000,
     starterInventory: { housings: 5, motors: 5, heaters: 5, boards: 5, packaging: 5 },
+    salaryBand: [18, 42],
     components: {
-      housings: { label: 'Корпуса', unitCost: 140, lotSize: 3, recipe: 1 },
-      motors: { label: 'Моторы', unitCost: 260, lotSize: 3, recipe: 1 },
-      heaters: { label: 'Нагреватели', unitCost: 180, lotSize: 3, recipe: 1 },
-      boards: { label: 'Платы управления', unitCost: 150, lotSize: 3, recipe: 1 },
-      packaging: { label: 'Упаковка', unitCost: 40, lotSize: 3, recipe: 1 },
+      housings: { label: 'Корпуса', unitCost: 100, lotSize: 3, recipe: 1 },
+      motors: { label: 'Моторы', unitCost: 190, lotSize: 3, recipe: 1 },
+      heaters: { label: 'Нагреватели', unitCost: 130, lotSize: 3, recipe: 1 },
+      boards: { label: 'Платы управления', unitCost: 110, lotSize: 3, recipe: 1 },
+      packaging: { label: 'Упаковка', unitCost: 30, lotSize: 3, recipe: 1 },
     },
     roles: ['Сборщик', 'Тестировщик', 'Техник качества', 'Руководитель упаковки'],
   },
@@ -795,7 +806,7 @@ const FACTORY_DECISION_SCENARIOS = {
 const DIFFICULTY_CONFIGS = {
   easy: {
     key: 'easy',
-    label: 'Easy',
+    label: 'Лёгкая',
     description: 'Guided flow, higher cash buffer, softer factory costs, and fewer visible panels.',
     uiMode: 'guided',
     visibleTabs: ['overview', 'operations', 'market', 'events'],
@@ -1997,9 +2008,14 @@ function makeWorkerCandidate(scenarioKey, index = 0) {
   const role = config?.roles?.[index % config.roles.length] || 'Assembler';
   const first = ['Alex', 'Sam', 'Nika', 'Dana', 'Ira', 'Maks', 'Tim', 'Oleg', 'Kate', 'Artem'];
   const last = ['Volkov', 'Smirnov', 'Petrov', 'Orlov', 'Kim', 'Sokolov', 'Giniatov', 'Yakovlev', 'Borisov'];
+  const [salaryMin, salaryMax] = Array.isArray(config?.salaryBand) && config.salaryBand.length === 2
+    ? config.salaryBand
+    : [38, 88];
   const experienceYears = randomBetween(1, 12);
-  const expectedSalary = randomBetween(95, 220) * 100;
-  const suitability = clamp(Math.round(38 + experienceYears * 4.5 + (24000 - expectedSalary) / 550 + Math.random() * 18), 35, 96);
+  const expectedSalary = randomBetween(salaryMin, salaryMax) * 100;
+  const salaryMidpoint = (salaryMin + salaryMax) / 200;
+  // Дорогие кандидаты в среднем опытнее/качественнее: зарплата — осознанный выбор, а не штраф.
+  const suitability = clamp(Math.round(38 + experienceYears * 4.5 + ((expectedSalary - salaryMidpoint) / 260) + Math.random() * 14), 35, 96);
   const hint = suitability >= 82
     ? 'Strong fit for a high-output line.'
     : suitability >= 64
@@ -2085,7 +2101,7 @@ function restockFactorySuppliers(room, { force = false } = {}) {
 }
 
 function workerPower(worker) {
-  return 0.65 + worker.suitability / 100 + worker.experienceYears * 0.08;
+  return 1.2 + worker.suitability / 100 + worker.experienceYears * 0.06;
 }
 
 function buildFactoryState(scenarioKey) {
@@ -2610,7 +2626,7 @@ function buildFactoryTurnGuide(room, player, {
       status: checklistStatus('workforce'),
       title: personnelSummary?.title || 'Проверить людей',
       summary: personnelSummary?.studentText || checklistByKey.get('workforce')?.summary || 'Проверьте сотрудников линии.',
-      tab: 'competitors',
+      tab: 'operations',
       department: 'workforce',
       buttonLabel: 'Открыть персонал',
     },
@@ -2789,7 +2805,7 @@ function buildFactoryPlayerDebrief(room, player, config, {
     metrics: [
       {
         key: 'profit',
-        label: 'Заработано за последний ход',
+        label: 'Финансовый результат хода',
         value: profit,
         displayValue: signedRub(profit),
         tone: profit >= 0 ? 'positive' : 'danger',
@@ -2817,7 +2833,7 @@ function buildFactoryPlayerDebrief(room, player, config, {
       },
       {
         key: 'margin',
-        label: 'Маржа на единицу',
+        label: 'Расчётная маржа на единицу',
         value: marginPerUnit,
         displayValue: signedRub(marginPerUnit),
         tone: marginPerUnit >= 0 ? 'positive' : 'danger',
@@ -5543,7 +5559,7 @@ function buildClassDebrief(room, players, classSnapshot) {
       { key: 'sales', label: 'Продано за матч', value: salesTotal, hint: 'единиц продукции' },
       { key: 'profitable', label: 'Плюсовой ход', value: `${profitableCount}/${activePlayers.length}`, hint: 'команд с неотрицательной прибылью' },
       { key: 'contracts', label: 'Контракты', value: completedContracts, hint: 'выполнено командами' },
-      { key: 'avg_score', label: 'Средний балл', value: averageScore, hint: 'simulation score' },
+      { key: 'avg_score', label: 'Средний индекс', value: averageScore, hint: 'балл симуляции' },
     ],
     commonIssues,
     discussionPrompts: commonIssues.length
@@ -5951,7 +5967,7 @@ function advanceFactoryRoom(room) {
     return;
   }
 
-  const baseDemand = randomBetween(config.baseDemandMin, config.baseDemandMax) + Math.max(0, Math.floor(activePlayers.length * 1.5));
+  const baseDemand = randomBetween(config.baseDemandMin, config.baseDemandMax) + Math.round(activePlayers.length * 2.5);
   const eventDemandMultiplier = room.activeEvent?.scope === 'factory' ? room.activeEvent.demandMultiplier || 1 : 1;
   const eventQualityMultiplier = factoryEventMultiplier(room, 'qualityMultiplier');
   const eventPayrollMultiplier = factoryEventMultiplier(room, 'payrollMultiplier');
@@ -5994,6 +6010,10 @@ function advanceFactoryRoom(room) {
 
   activePlayers.forEach(player => {
     const factory = player.factory;
+    // Новый ход: сборка этого хода обнуляется, иначе дым на карте и блокер
+    // «Не собрали продукт» залипали бы после первой же успешной сборки.
+    factory.assembledThisTurn = 0;
+    player.producedLastTick = 0;
     const payroll = (factory.workers || []).reduce((sum, worker) => sum + worker.expectedSalary, 0);
     const upkeep = Math.round(config.upkeep * difficulty.costMultiplier * eventUpkeepMultiplier);
     const adjustedPayroll = Math.round(payroll * difficulty.costMultiplier * eventPayrollMultiplier);
@@ -6351,6 +6371,8 @@ const routeApiRequest = createApiRouter({
 
 const server = http.createServer(async (req, res) => {
   applyResponseSecurityHeaders(req, res);
+  corsPolicy.applyHttpHeaders(req, res);
+  if (corsPolicy.handlePreflight(req, res)) return;
   const startedAt = Date.now();
   let url = null;
   try {
@@ -6525,6 +6547,10 @@ server.on('upgrade', (req, socket, head) => {
   }
   if (url.pathname !== '/ws') {
     socket.destroy();
+    return;
+  }
+  if (!corsPolicy.allowsWebSocket(req)) {
+    socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
     return;
   }
   wsServer.handleUpgrade(req, socket, head, ws => {

@@ -1,0 +1,26 @@
+{
+  "buildCommand": "npm run build:vercel",
+  "outputDirectory": "dist/vercel-public",
+  "cleanUrls": true,
+  "rewrites": [
+    {
+      "source": "/client",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/server",
+      "destination": "/index.html"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/runtime-config.js",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    }
+  ]
+}
