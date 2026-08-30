@@ -461,16 +461,31 @@ function createFactorySummaryHelpers({
       };
     }
 
+    if (room.hostPlayerId === player.id) {
+      return {
+        key: 'next_turn',
+        status: 'ready',
+        tone: 'ok',
+        title: 'Завершить ход',
+        body: 'Основные решения готовы. Пересчитайте ход, когда команды закончат работу.',
+        actionLabel: 'Принять решения',
+        tab: '',
+        department: '',
+        action: 'next-turn',
+        progress: { ready: readyCount, total: totalCount },
+      };
+    }
+
     return {
-      key: 'next_turn',
+      key: 'wait_for_host',
       status: 'ready',
       tone: 'ok',
-      title: 'Завершить ход',
-      body: 'Основные решения готовы. Преподаватель или хост может пересчитать ход.',
-      actionLabel: 'Принять решения',
-      tab: '',
+      title: 'Решения приняты',
+      body: 'Заявка готова. Дождитесь, когда преподаватель или хост пересчитает ход.',
+      actionLabel: 'Открыть отчёт хода',
+      tab: 'events',
       department: '',
-      action: 'next-turn',
+      action: '',
       progress: { ready: readyCount, total: totalCount },
     };
   }

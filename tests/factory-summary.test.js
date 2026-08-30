@@ -64,7 +64,7 @@ function makePlayer(overrides = {}) {
 
 test('factory summary checklist reflects warehouse, workforce, assembly, and sale readiness', () => {
   const { buildTurnChecklist, buildNextAction } = makeHelpers();
-  const room = makeRoom();
+  const room = makeRoom({ hostPlayerId: 'p1' });
   const blocked = makePlayer();
 
   const initial = buildTurnChecklist(room, blocked);
@@ -92,6 +92,16 @@ test('factory summary checklist reflects warehouse, workforce, assembly, and sal
   const readyAction = buildNextAction(room, ready, { turnChecklist: checklist });
   assert.equal(readyAction.key, 'next_turn');
   assert.equal(readyAction.action, 'next-turn');
+
+  const student = makePlayer({
+    id: 'p2',
+    factory: ready.factory,
+  });
+  const studentAction = buildNextAction(room, student, { turnChecklist: checklist });
+  assert.equal(studentAction.key, 'wait_for_host');
+  assert.equal(studentAction.action, '');
+  assert.equal(studentAction.tab, 'events');
+  assert.match(studentAction.body, /дождитесь/i);
 });
 
 test('factory summary market hints expose recommendation and high risk for overpriced offers', () => {

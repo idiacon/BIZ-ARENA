@@ -2,6 +2,20 @@ window.BizArenaFrontendModules = Object.assign(window.BizArenaFrontendModules ||
   student: Object.freeze({ contract: 'student-ui-v1' }),
 });
 
+function studentRuCount(value, one, few, many) {
+  const count = Math.abs(Math.trunc(Number(value) || 0));
+  const lastTwo = count % 100;
+  const last = count % 10;
+  const form = lastTwo >= 11 && lastTwo <= 14
+    ? many
+    : last === 1
+      ? one
+      : last >= 2 && last <= 4
+        ? few
+        : many;
+  return `${count} ${form}`;
+}
+
 function factoryScenarioLead(scenario) {
   if (!scenario) return '';
   const demandBand = Number.isFinite(scenario.baseDemandMin) && Number.isFinite(scenario.baseDemandMax)
@@ -587,7 +601,7 @@ function renderStudentFactoryScene(routeItems = []) {
     {
       key: 'workforce',
       label: 'Команда',
-      value: `${workers.length} сотрудников`,
+      value: studentRuCount(workers.length, 'сотрудник', 'сотрудника', 'сотрудников'),
       hint: `Мощность ${assemblyCapacity} ед.`,
       icon: 'teams',
       progress: uiPercent(workers.length, Math.max(4, workers.length)),

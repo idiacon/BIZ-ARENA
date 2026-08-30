@@ -155,6 +155,57 @@ async function assertNoHorizontalOverflow(cdp, label) {
   assert.equal(result.ok, true, `${label} has horizontal overflow: ${JSON.stringify(result)}`);
 }
 
+async function assertTextContrast(cdp, selector, label, minimum = 4.5) {
+  const result = await evaluate(cdp, `(() => {
+    const node = document.querySelector(${JSON.stringify(selector)});
+    if (!node) return { ok: false, reason: 'missing-node' };
+    const parseColor = value => {
+      const parts = String(value || '').match(/[\\d.]+/g)?.map(Number) || [];
+      return {
+        r: parts[0] || 0,
+        g: parts[1] || 0,
+        b: parts[2] || 0,
+        a: parts.length > 3 ? parts[3] : 1,
+      };
+    };
+    const composite = (front, back) => {
+      const alpha = front.a + back.a * (1 - front.a);
+      if (!alpha) return { r: 0, g: 0, b: 0, a: 0 };
+      return {
+        r: (front.r * front.a + back.r * back.a * (1 - front.a)) / alpha,
+        g: (front.g * front.a + back.g * back.a * (1 - front.a)) / alpha,
+        b: (front.b * front.a + back.b * back.a * (1 - front.a)) / alpha,
+        a: alpha,
+      };
+    };
+    let background = { r: 0, g: 0, b: 0, a: 0 };
+    for (let current = node; current; current = current.parentElement) {
+      background = composite(background, parseColor(getComputedStyle(current).backgroundColor));
+      if (background.a >= 0.999) break;
+    }
+    if (background.a < 0.999) background = composite(background, { r: 255, g: 255, b: 255, a: 1 });
+    const foreground = composite(parseColor(getComputedStyle(node).color), background);
+    const luminance = color => {
+      const channels = [color.r, color.g, color.b].map(channel => {
+        const normalized = channel / 255;
+        return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+      });
+      return channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
+    };
+    const brighter = Math.max(luminance(foreground), luminance(background));
+    const darker = Math.min(luminance(foreground), luminance(background));
+    const ratio = (brighter + 0.05) / (darker + 0.05);
+    return {
+      ok: ratio >= ${Number(minimum)},
+      ratio,
+      text: (node.textContent || '').trim(),
+      color: getComputedStyle(node).color,
+      background,
+    };
+  })()`);
+  assert.equal(result.ok, true, `${label} contrast is below ${minimum}: ${JSON.stringify(result)}`);
+}
+
 async function assertVisibleSidebarLabelsFit(cdp, label) {
   const result = await evaluate(cdp, `(() => {
     const sidebar = document.querySelector('.app-sidebar');
@@ -557,6 +608,83 @@ async function main() {
     await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student workspace close button');
     await evaluate(studentBrowser.cdp, 'document.querySelector("[data-role-navigation=student] [data-game-tab=purchase]")?.click()');
     await waitFor(studentBrowser.cdp, 'Boolean(document.querySelector("[data-game-panel=purchase].student-workspace-dialog"))', 'student purchase dialog');
+    const purchaseDialogChrome = await evaluate(studentBrowser.cdp, `(() => {
+      const dialog = document.querySelector('[data-game-panel=purchase].student-workspace-dialog');
+      const close = dialog?.querySelector('[data-student-workspace-close]');
+      const tabs = [...(dialog?.querySelectorAll('[data-purchase-component]') || [])];
+      const closeRect = close?.getBoundingClientRect();
+      const dialogRect = dialog?.getBoundingClientRect();
+      return {
+        closeLabel: close?.getAttribute('aria-label') || '',
+        closeTitle: close?.getAttribute('title') || '',
+        closeWidth: closeRect?.width || 0,
+        closeHeight: closeRect?.height || 0,
+        closeRightGap: dialogRect && closeRect ? dialogRect.right - closeRect.right : -1,
+        tabRoles: tabs.map(tab => tab.getAttribute('role') || ''),
+        selectedTabs: tabs.filter(tab => tab.getAttribute('aria-selected') === 'true').length,
+      };
+    })()`);
+    assert.match(purchaseDialogChrome.closeLabel, /^Закрыть /);
+    assert.equal(purchaseDialogChrome.closeTitle, 'Закрыть окно');
+    assert.ok(purchaseDialogChrome.closeWidth >= 44 && purchaseDialogChrome.closeHeight >= 44, JSON.stringify(purchaseDialogChrome));
+    assert.ok(purchaseDialogChrome.closeRightGap >= 8, JSON.stringify(purchaseDialogChrome));
+    assert.equal(purchaseDialogChrome.tabRoles.every(role => role === 'tab'), true);
+    assert.equal(purchaseDialogChrome.selectedTabs, 1);
+    await assertTextContrast(studentBrowser.cdp, '[data-purchase-component="engines"] strong', 'purchase engine title');
+    await assertTextContrast(studentBrowser.cdp, '[data-purchase-component="engines"] small', 'purchase engine details');
+    await evaluate(studentBrowser.cdp, `(() => {
+      const selected = document.querySelector('[data-purchase-component][aria-selected="true"]');
+      selected?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    })()`);
+    await waitFor(studentBrowser.cdp, 'document.querySelector("[data-purchase-component=engines]")?.getAttribute("aria-selected") === "true"', 'purchase keyboard tab selection');
+    await waitFor(studentBrowser.cdp, 'document.activeElement?.dataset.purchaseComponent === "engines"', 'purchase keyboard tab focus');
+    for (const viewport of [{ width: 768, height: 900 }, { width: 375, height: 812 }]) {
+      await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', {
+        ...viewport,
+        mobile: viewport.width < 600,
+        deviceScaleFactor: 1,
+      });
+      await sleep(150);
+      const dialogBounds = await evaluate(studentBrowser.cdp, `(() => {
+        const dialog = document.querySelector('[data-game-panel=purchase].student-workspace-dialog');
+        const close = dialog?.querySelector('[data-student-workspace-close]');
+        const workspace = dialog?.querySelector('.purchase-workspace');
+        const header = dialog?.querySelector(':scope > .panel-header');
+        const heading = header?.querySelector('h2');
+        const description = header?.querySelector('.muted');
+        const coach = workspace?.querySelector('.purchase-coach');
+        const dialogRect = dialog?.getBoundingClientRect();
+        const closeRect = close?.getBoundingClientRect();
+        const headerRect = header?.getBoundingClientRect();
+        const headingRect = heading?.getBoundingClientRect();
+        const descriptionRect = description?.getBoundingClientRect();
+        const coachRect = coach?.getBoundingClientRect();
+        const headerContentBottom = Math.max(headingRect?.bottom || 0, descriptionRect?.bottom || 0);
+        return {
+          dialogInside: Boolean(dialogRect) && dialogRect.left >= -1 && dialogRect.right <= innerWidth + 1,
+          closeInside: Boolean(closeRect) && closeRect.left >= 0 && closeRect.right <= innerWidth && closeRect.top >= 0 && closeRect.bottom <= innerHeight,
+          headerClearsContent: Boolean(headerRect && coachRect)
+            && headerRect.bottom <= coachRect.top
+            && headerContentBottom <= coachRect.top,
+          headerBottom: headerRect?.bottom || 0,
+          headerContentBottom,
+          coachTop: coachRect?.top || 0,
+          dialogOverflow: dialog ? dialog.scrollWidth - dialog.clientWidth : -1,
+          workspaceOverflow: workspace ? workspace.scrollWidth - workspace.clientWidth : -1,
+        };
+      })()`);
+      assert.equal(dialogBounds.dialogInside, true, JSON.stringify({ viewport, dialogBounds }));
+      assert.equal(dialogBounds.closeInside, true, JSON.stringify({ viewport, dialogBounds }));
+      assert.equal(dialogBounds.headerClearsContent, true, JSON.stringify({ viewport, dialogBounds }));
+      assert.ok(dialogBounds.dialogOverflow <= 4 && dialogBounds.workspaceOverflow <= 4, JSON.stringify({ viewport, dialogBounds }));
+    }
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 900,
+      mobile: false,
+      deviceScaleFactor: 1,
+    });
+    await sleep(150);
     await evaluate(studentBrowser.cdp, 'document.querySelector("[data-student-workspace-backdrop]")?.click()');
     await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student workspace backdrop close');
     await evaluate(studentBrowser.cdp, 'document.querySelector("[data-role-navigation=student] [data-game-tab=market]")?.click()');
@@ -582,6 +710,40 @@ async function main() {
     assert.equal(await evaluate(studentBrowser.cdp, 'state.factorySaleDraft?.price'), '6417');
     await evaluate(studentBrowser.cdp, 'document.querySelector("[data-student-workspace-close]")?.click()');
     await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student sale draft final close');
+    const nextActionPoint = await evaluate(studentBrowser.cdp, `(() => {
+      const rect = document.querySelector('#game-next-action-chip')?.getBoundingClientRect();
+      return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
+    })()`);
+    assert.ok(nextActionPoint);
+    await studentBrowser.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: nextActionPoint.x, y: nextActionPoint.y });
+    const nextActionHover = await evaluate(studentBrowser.cdp, `(() => {
+      const chip = document.querySelector('#game-next-action-chip');
+      const style = getComputedStyle(chip);
+      return { hovered: chip.matches(':hover'), backgroundImage: style.backgroundImage };
+    })()`);
+    assert.equal(nextActionHover.hovered, true);
+    assert.notEqual(nextActionHover.backgroundImage, 'none');
+    await assertTextContrast(studentBrowser.cdp, '#game-next-action-title', 'next action hover title');
+    await assertTextContrast(studentBrowser.cdp, '#game-next-action-body', 'next action hover details');
+    await studentBrowser.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+    const toastAudit = await evaluate(studentBrowser.cdp, `(() => {
+      showToast('Тестовое предупреждение', 'error');
+      const toast = document.querySelector('.toast-error');
+      const style = getComputedStyle(toast);
+      return {
+        role: toast.getAttribute('role') || '',
+        atomic: toast.getAttribute('aria-atomic') || '',
+        backgroundColor: style.backgroundColor,
+        color: style.color,
+      };
+    })()`);
+    assert.equal(toastAudit.role, 'alert');
+    assert.equal(toastAudit.atomic, 'true');
+    assert.notEqual(toastAudit.backgroundColor, 'rgb(255, 255, 255)');
+    assert.notEqual(toastAudit.backgroundColor, toastAudit.color);
+    await assertTextContrast(studentBrowser.cdp, '.toast-error strong', 'error toast title');
+    await assertTextContrast(studentBrowser.cdp, '.toast-error span', 'error toast message');
+    await evaluate(studentBrowser.cdp, 'document.querySelectorAll(".toast").forEach(node => node.remove())');
     await assertReadableVisibleText(studentBrowser.cdp, 'student first turn desktop');
     await assertNoHorizontalOverflow(studentBrowser.cdp, 'student first turn desktop');
 
@@ -677,7 +839,22 @@ async function main() {
     await evaluate(studentBrowser.cdp, 'document.querySelector("[data-first-turn-target=workforce]")?.click()');
     await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnStep === "assembly"', 'student tutorial follows server progress');
     assert.equal(await evaluate(studentBrowser.cdp, 'state.player?.turnGuide?.primaryKey'), 'assembly');
+    const workforceStationCopy = await evaluate(studentBrowser.cdp, 'document.querySelector("[data-scene-station=workforce]")?.getAttribute("aria-label") || ""');
+    assert.match(workforceStationCopy, /1 сотрудник\./);
+    assert.doesNotMatch(workforceStationCopy, /1 сотрудников/);
     await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-skip-button")?.click()');
+    assert.equal(
+      await evaluate(studentBrowser.cdp, 'localizedWorkerHint("Stable hire with manageable salary expectations.")'),
+      'Надёжный кандидат с умеренными ожиданиями по зарплате.',
+    );
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-scene-station=workforce]")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("[data-factory-department-detail]")?.dataset.factoryDepartmentDetail === "workforce"', 'student workforce pluralization dialog');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".factory-detail-badge")?.textContent.trim()'), '1 активный работник');
+    await evaluate(studentBrowser.cdp, 'dismissStudentWorkspace({ fromHistory: true })');
+    await evaluate(studentBrowser.cdp, 'document.querySelector("[data-scene-station=assembly]")?.click()');
+    await waitFor(studentBrowser.cdp, 'document.querySelector("[data-factory-department-detail]")?.dataset.factoryDepartmentDetail === "assembly"', 'student assembly pluralization dialog');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector(".factory-detail-badge")?.textContent.trim()'), '2 единицы мощности');
+    await evaluate(studentBrowser.cdp, 'dismissStudentWorkspace({ fromHistory: true })');
     const teacherStateAfterRefresh = await getJson(
       `http://127.0.0.1:${PORT}/api/state?view=full&playerId=${encodeURIComponent(teacher.playerId)}`,
       teacher.sessionToken
@@ -692,6 +869,10 @@ async function main() {
     await evaluate(teacherBrowser.cdp, 'document.querySelector("[data-game-panel=\\"teacher\\"] [data-host-action=\\"pause-game\\"]")?.click()');
     await waitFor(teacherBrowser.cdp, 'document.querySelector("[data-game-panel=\\"teacher\\"] .teacher-control-card")?.dataset.teacherPhase === "paused"', 'teacher pause lifecycle');
     assert.equal(await evaluate(teacherBrowser.cdp, 'document.querySelector("[data-game-panel=\\"teacher\\"] .teacher-control-card")?.dataset.teacherPrimaryAction'), 'resume-game');
+    await evaluate(studentBrowser.cdp, '(async () => { await refreshState(); return state.room?.status || ""; })()');
+    await waitFor(studentBrowser.cdp, 'state.room?.status === "paused"', 'student paused timer state');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector("#game-turn-timer")?.textContent.trim()'), 'Пауза');
+    assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector("#game-turn-limit")?.textContent.trim()'), 'Ход на паузе');
 
     const teacherSessionBeforeReconnect = await evaluate(teacherBrowser.cdp, '({ playerId: localStorage.bizArenaPlayerId, sessionToken: localStorage.bizArenaSessionToken })');
     await navigate(teacherBrowser.cdp, `http://127.0.0.1:${PORT}/server`);

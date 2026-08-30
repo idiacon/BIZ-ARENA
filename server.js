@@ -2017,10 +2017,10 @@ function makeWorkerCandidate(scenarioKey, index = 0) {
   // Дорогие кандидаты в среднем опытнее/качественнее: зарплата — осознанный выбор, а не штраф.
   const suitability = clamp(Math.round(38 + experienceYears * 4.5 + ((expectedSalary - salaryMidpoint) / 260) + Math.random() * 14), 35, 96);
   const hint = suitability >= 82
-    ? 'Strong fit for a high-output line.'
+    ? 'Подходит для производительной линии.'
     : suitability >= 64
-      ? 'Stable hire with manageable salary expectations.'
-      : 'Cheap or inexperienced, useful only for backup capacity.';
+      ? 'Надёжный кандидат с умеренными ожиданиями по зарплате.'
+      : 'Недорогой кандидат для резервной мощности.';
   return {
     id: uid('cand'),
     name: `${randomNamePart(first)} ${randomNamePart(last)}`,

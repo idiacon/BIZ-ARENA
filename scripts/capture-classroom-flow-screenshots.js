@@ -1139,6 +1139,33 @@ async function main() {
         studentMarketDisclosureAudit = await collectStudentMarketDisclosureAudit(studentBrowser.cdp, 'student market disclosure full 1440px');
         await capture(studentBrowser.cdp, '06-student-game-full-1440x900.png', 'window.scrollTo(0, 0)');
         await capture(studentBrowser.cdp, '06a-student-factory-map-v9-1440x900.png', scrollBelowSticky('.student-factory-scene'));
+        await evaluate(studentBrowser.cdp, `document.querySelector('[data-role-navigation="student"] [data-game-tab="purchase"]')?.click()`);
+        await waitFor(
+          studentBrowser.cdp,
+          'Boolean(document.querySelector("[data-game-panel=purchase].student-workspace-dialog"))',
+          'student purchase dialog capture',
+        );
+        await capture(studentBrowser.cdp, '06d-student-purchase-dialog-1440x900.png', 'window.scrollTo(0, 0)');
+        await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MOBILE);
+        await capture(studentBrowser.cdp, '06e-student-purchase-dialog-390x844.png', 'window.scrollTo(0, 0)');
+        await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', DESKTOP);
+        await evaluate(studentBrowser.cdp, 'dismissStudentWorkspace({ fromHistory: true })');
+        await evaluate(studentBrowser.cdp, `document.querySelector('[data-scene-station="workforce"]')?.click()`);
+        await waitFor(
+          studentBrowser.cdp,
+          'document.querySelector("[data-factory-department-detail]")?.dataset.factoryDepartmentDetail === "workforce" && document.body.dataset.studentWorkspace === "dialog"',
+          'student workforce dialog capture',
+        );
+        await capture(studentBrowser.cdp, '06f-student-workforce-dialog-1440x900.png', 'window.scrollTo(0, 0)');
+        await evaluate(studentBrowser.cdp, 'dismissStudentWorkspace({ fromHistory: true })');
+        await evaluate(studentBrowser.cdp, `document.querySelector('[data-scene-station="assembly"]')?.click()`);
+        await waitFor(
+          studentBrowser.cdp,
+          'document.querySelector("[data-factory-department-detail]")?.dataset.factoryDepartmentDetail === "assembly" && document.body.dataset.studentWorkspace === "dialog"',
+          'student assembly dialog capture',
+        );
+        await capture(studentBrowser.cdp, '06g-student-assembly-dialog-1440x900.png', 'window.scrollTo(0, 0)');
+        await evaluate(studentBrowser.cdp, 'dismissStudentWorkspace({ fromHistory: true })');
         await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', ULTRAWIDE);
         await sleep(350);
         await capture(studentBrowser.cdp, '07-student-game-full-3440x1440.png', 'window.scrollTo(0, 0)');
@@ -1330,6 +1357,10 @@ async function main() {
         '06a-student-factory-map-v9-1440x900.png',
         '06b-student-first-turn-tutorial-1440x900.png',
         '06c-student-first-turn-tutorial-390x844.png',
+        '06d-student-purchase-dialog-1440x900.png',
+        '06e-student-purchase-dialog-390x844.png',
+        '06f-student-workforce-dialog-1440x900.png',
+        '06g-student-assembly-dialog-1440x900.png',
         '07-student-game-full-3440x1440.png',
         '08-student-game-standard-1440x900.png',
         '09-student-game-lite-1000x760.png',

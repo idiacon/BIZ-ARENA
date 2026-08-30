@@ -358,12 +358,70 @@ body[data-visual-system="studio-v3"] .game-next-action-chip {
   box-shadow: none;
 }
 
-body[data-visual-system="studio-v3"] .game-next-action-chip:hover {
+body[data-visual-system="studio-v3"] button.game-next-action-chip:hover:not(:disabled) {
   border-color: rgba(116, 130, 255, 0.44);
   background:
     linear-gradient(90deg, rgba(116, 130, 255, 0.22), rgba(66, 221, 212, 0.07)),
     rgba(7, 17, 30, 0.96);
   box-shadow: none;
+  color: var(--studio-ink);
+  transform: none;
+}
+
+body[data-visual-system="studio-v3"] button.game-next-action-chip:hover:not(:disabled) > span,
+body[data-visual-system="studio-v3"] button.game-next-action-chip:hover:not(:disabled) > small {
+  color: var(--studio-muted);
+}
+
+body[data-visual-system="studio-v3"] .toast {
+  border-color: rgba(145, 178, 222, 0.22);
+  background: rgba(7, 17, 30, 0.98);
+  color: var(--studio-ink);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.42);
+}
+
+body[data-visual-system="studio-v3"] .toast strong,
+body[data-visual-system="studio-v3"] .toast span {
+  color: inherit;
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .purchase-tabs button {
+  border: 1px solid rgba(145, 178, 222, 0.2);
+  background: rgba(8, 19, 33, 0.86);
+  color: var(--studio-muted);
+  box-shadow: none;
+  transform: none;
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .purchase-tabs button strong {
+  color: var(--studio-ink);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .purchase-tabs button small {
+  color: var(--studio-muted);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .purchase-tabs button:hover:not(:disabled) {
+  border-color: rgba(66, 221, 212, 0.42);
+  background: rgba(18, 35, 52, 0.94);
+  box-shadow: none;
+  transform: none;
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .purchase-tabs button.active,
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .purchase-tabs button[aria-selected="true"] {
+  border-color: rgba(116, 130, 255, 0.82);
+  background: rgba(116, 130, 255, 0.16);
+  color: var(--studio-ink);
+  box-shadow: inset 3px 0 0 var(--studio-brand);
+}
+
+body[data-screen="game-screen"][data-player-role="student"][data-visual-system="studio-v3"] .student-workspace-dialog button:disabled {
+  border-color: rgba(145, 178, 222, 0.14);
+  background: rgba(22, 36, 55, 0.92);
+  color: rgba(192, 205, 222, 0.58);
+  box-shadow: none;
+  opacity: 1;
 }
 
 /* Teacher: cyan command layer, restrained alerts, unmistakable match controls. */

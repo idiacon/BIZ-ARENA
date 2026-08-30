@@ -1212,8 +1212,16 @@ function updateTurnTimer() {
   if (!elements.gameTurnTimer) return;
   const room = state.room;
   if (!room || room.status !== 'running') {
-    elements.gameTurnTimer.textContent = '--:--';
-    if (elements.gameTurnLimit) elements.gameTurnLimit.textContent = 'Время на ход: --';
+    const timerCopy = !room
+      ? { value: '—', limit: 'Нет активной комнаты' }
+      : room.status === 'paused'
+        ? { value: 'Пауза', limit: 'Ход на паузе' }
+        : room.status === 'finished'
+          ? { value: 'Итог', limit: 'Матч завершён' }
+          : { value: 'Старт', limit: 'Ожидание начала' };
+    elements.gameTurnTimer.textContent = timerCopy.value;
+    elements.gameTurnTimer.classList.remove('warning');
+    if (elements.gameTurnLimit) elements.gameTurnLimit.textContent = timerCopy.limit;
     return;
   }
 
@@ -1261,7 +1269,10 @@ function renderGameNextAction() {
     progress: guide.progress || null,
   } : null);
   const connected = Boolean(state.room && state.player);
-  elements.gameNextActionChip.classList.toggle('disabled', !connected || !target);
+  const disabled = !connected || !target;
+  elements.gameNextActionChip.classList.toggle('disabled', disabled);
+  elements.gameNextActionChip.disabled = disabled;
+  elements.gameNextActionChip.setAttribute('aria-disabled', disabled ? 'true' : 'false');
   elements.gameNextActionChip.dataset.tone = target?.tone || 'neutral';
   elements.gameNextActionChip.dataset.action = target?.action || '';
   elements.gameNextActionChip.dataset.value = target?.value || '';
@@ -1637,6 +1648,8 @@ function showToast(message, tone = 'info') {
   if (!elements.toastStack) return;
   const node = document.createElement('div');
   node.className = `toast toast-${tone}`;
+  node.setAttribute('role', tone === 'error' ? 'alert' : 'status');
+  node.setAttribute('aria-atomic', 'true');
   node.innerHTML = `
     <strong>${tone === 'error' ? 'Нужно проверить' : tone === 'success' ? 'Готово' : 'Сообщение'}</strong>
     <span>${escapeHtml(text)}</span>
@@ -1711,6 +1724,29 @@ function isStudentWorkspaceViewer() {
     && isFactoryRoom();
 }
 
+function russianCount(value, one, few, many) {
+  const count = Math.abs(Math.trunc(Number(value) || 0));
+  const lastTwo = count % 100;
+  const last = count % 10;
+  const form = lastTwo >= 11 && lastTwo <= 14
+    ? many
+    : last === 1
+      ? one
+      : last >= 2 && last <= 4
+        ? few
+        : many;
+  return `${count} ${form}`;
+}
+
+function localizedWorkerHint(value) {
+  const hint = String(value || '').trim();
+  return ({
+    'Strong fit for a high-output line.': 'Подходит для производительной линии.',
+    'Stable hire with manageable salary expectations.': 'Надёжный кандидат с умеренными ожиданиями по зарплате.',
+    'Cheap or inexperienced, useful only for backup capacity.': 'Недорогой кандидат для резервной мощности.',
+  })[hint] || hint;
+}
+
 function studentWorkspaceDialog() {
   if (!isStudentWorkspaceViewer()) return null;
   if (state.studentWorkspace.department) {
@@ -1730,7 +1766,7 @@ function studentWorkspaceTitle(tabId = state.currentGameTab, department = state.
 function ensureStudentWorkspaceChrome(dialog) {
   if (!dialog || dialog.querySelector(':scope > [data-student-workspace-close]')) return;
   dialog.insertAdjacentHTML('afterbegin', `
-    <button type="button" class="student-workspace-close" data-student-workspace-close aria-label="Закрыть ${escapeHtml(studentWorkspaceTitle())}">
+    <button type="button" class="student-workspace-close" data-student-workspace-close aria-label="Закрыть ${escapeHtml(studentWorkspaceTitle())}" title="Закрыть окно">
       <span aria-hidden="true">×</span>
     </button>`);
 }
@@ -2889,7 +2925,7 @@ function renderFactoryOperations() {
   } else if (department === 'workforce') {
     detailTitle = t('dept_people_office');
     detailDescription = t('factory_people_desc');
-    detailBadge = `${workers.length} ${t('factory_active_workers')}`;
+    detailBadge = russianCount(workers.length, 'активный работник', 'активных работника', 'активных работников');
     detailMetrics = [
       renderMetric(t('factory_avg_suitability'), `${factory.avgSuitability || 0}/100`, t('factory_avg_suitability_hint')),
       renderMetric(t('factory_payroll'), `${rub(totalPayroll)} RUB`, t('factory_payroll_hint')),
@@ -2906,7 +2942,7 @@ function renderFactoryOperations() {
               <small>${candidate.role} - ${candidate.experienceYears} ${t('factory_exp')} - ${t('factory_suitability')} ${candidate.suitability}/100</small>
               <div class="badge-inline-row">
                 <span class="mini-badge">${rub(candidate.expectedSalary)} RUB / ${t('factory_per_turn')}</span>
-                <span class="mini-badge">${hint?.capacityGain ? `+${hint.capacityGain} мощн.` : candidate.hint}</span>
+                <span class="mini-badge">${escapeHtml(hint?.capacityGain ? `+${hint.capacityGain} мощн.` : localizedWorkerHint(candidate.hint))}</span>
                 ${hint?.paybackTurns ? `<span class="mini-badge">окуп. ${hint.paybackTurns} х.</span>` : ''}
               </div>
               ${hint?.reason ? `<small>${escapeHtml(hint.reason)}</small>` : ''}
@@ -2919,7 +2955,7 @@ function renderFactoryOperations() {
   } else if (department === 'assembly') {
     detailTitle = t('dept_assembly_hall');
     detailDescription = t('factory_assembly_desc');
-    detailBadge = `${factory.assemblyCapacity} ${t('factory_units_ready')}`;
+    detailBadge = russianCount(factory.assemblyCapacity, 'единица мощности', 'единицы мощности', 'единиц мощности');
     detailMetrics = [
       renderMetric(t('factory_capacity_turn'), `${factory.assemblyCapacity}`, t('factory_capacity_hint')),
       renderMetric(t('factory_finished_stock'), `${factory.finishedGoods}`, `${factory.productUnit} ${t('factory_on_hand')}`),
@@ -3338,41 +3374,45 @@ function renderFactoryPurchases() {
           const count = offers.filter(offer => offer.componentKey === component.key).length;
           const hint = purchaseHints.find(item => item.key === component.key);
           return `
-            <button type="button" class="${component.key === selectedKey ? 'active' : ''} ${escapeHtml(hint?.status || '')}" data-purchase-component="${escapeHtml(component.key)}">
+            <button type="button" id="purchase-tab-${escapeHtml(component.key)}" role="tab" aria-controls="purchase-component-panel" aria-selected="${component.key === selectedKey ? 'true' : 'false'}" tabindex="${component.key === selectedKey ? '0' : '-1'}" class="${component.key === selectedKey ? 'active' : ''} ${escapeHtml(hint?.status || '')}" data-purchase-component="${escapeHtml(component.key)}">
               <strong>${escapeHtml(component.label)}</strong>
               <small>${component.quantity} на складе • ${count} лота${hint?.missingForBatch ? ` • нужно ${hint.missingForBatch}` : ''}</small>
             </button>`;
         }).join('')}
       </div>
-      <div class="purchase-summary">
-        <article class="market-item">
-          <strong>${selectedComponent ? escapeHtml(selectedComponent.label) : 'Комплектующие'}</strong>
-          <div class="value">${ownedQuantity}</div>
-          <small>Ваш склад сейчас</small>
-        </article>
-        <article class="market-item">
-          <strong>Лучшая цена</strong>
-          <div class="value">${bestPrice ? money(bestPrice) : '—'}</div>
-          <small>Цена за единицу среди доступных заводов</small>
-        </article>
-        <article class="market-item">
-          <strong>Доступно на рынке</strong>
-          <div class="value">${totalAvailable}</div>
-          <small>${shortageLevel} • нужно ${neededForOne || '—'} на изделие</small>
-        </article>
-        <article class="market-item purchase-recommendation">
-          <strong>Рекомендация</strong>
-          <div class="value">${selectedHint?.recommendedQuantity ? `${selectedHint.recommendedQuantity} шт.` : selectedHint?.status === 'ready' ? 'хватает' : '—'}</div>
-          <small>${escapeHtml(selectedHint?.studentText || 'Выберите компонент, чтобы увидеть подсказку.')}</small>
-        </article>
-      </div>
-      <div class="supplier-board">
+      <section id="purchase-component-panel" class="purchase-component-panel" role="tabpanel" aria-labelledby="purchase-tab-${escapeHtml(selectedKey)}" tabindex="0">
+        <div class="purchase-summary">
+          <article class="market-item">
+            <strong>${selectedComponent ? escapeHtml(selectedComponent.label) : 'Комплектующие'}</strong>
+            <div class="value">${ownedQuantity}</div>
+            <small>Ваш склад сейчас</small>
+          </article>
+          <article class="market-item">
+            <strong>Лучшая цена</strong>
+            <div class="value">${bestPrice ? money(bestPrice) : '—'}</div>
+            <small>Цена за единицу среди доступных заводов</small>
+          </article>
+          <article class="market-item">
+            <strong>Доступно на рынке</strong>
+            <div class="value">${totalAvailable}</div>
+            <small>${shortageLevel} • нужно ${neededForOne || '—'} на изделие</small>
+          </article>
+          <article class="market-item purchase-recommendation">
+            <strong>Рекомендация</strong>
+            <div class="value">${selectedHint?.recommendedQuantity ? `${selectedHint.recommendedQuantity} шт.` : selectedHint?.status === 'ready' ? 'хватает' : '—'}</div>
+            <small>${escapeHtml(selectedHint?.studentText || 'Выберите компонент, чтобы увидеть подсказку.')}</small>
+          </article>
+        </div>
+        <div class="supplier-board">
         ${selectedOffers.length ? selectedOffers.map(offer => {
           const maxQuantity = Number(offer.quantity || 0);
           const totalCost = maxQuantity * Number(offer.unitPrice || 0);
           const isBest = Number(offer.unitPrice || 0) === bestPrice;
           const isRecommended = selectedHint?.recommendedOfferId === offer.id;
-          const quantityDraft = getSupplierPurchaseDraft(offer.id, maxQuantity);
+          const recommendedQuantity = isRecommended
+            ? Math.min(maxQuantity, Math.max(1, Number(selectedHint?.recommendedQuantity || maxQuantity)))
+            : maxQuantity;
+          const quantityDraft = getSupplierPurchaseDraft(offer.id, recommendedQuantity);
           const priceDelta = Number(offer.priceDeltaPct || 0);
           const priceTone = priceDelta <= -8 ? 'positive' : priceDelta >= 12 ? 'negative' : '';
           const scarcityLabel = offer.scarcity === 'high' ? 'дефицит' : offer.scarcity === 'low' ? 'стабильно' : 'ограничено';
@@ -3398,6 +3438,7 @@ function renderFactoryPurchases() {
                 <input type="number" min="1" max="${maxQuantity}" value="${escapeHtml(quantityDraft)}" data-supplier-quantity="${escapeHtml(offer.id)}" />
               </label>
               <button type="button" data-supplier-offer="${escapeHtml(offer.id)}" ${enabled && maxQuantity > 0 ? '' : 'disabled'}>${isRecommended ? 'Купить рекомендованный лот' : 'Купить у этого завода'}</button>
+              ${enabled ? '' : '<small class="supplier-action-disabled">Покупка будет доступна после продолжения хода.</small>'}
             </article>`;
         }).join('') : `
           <article class="market-item trade-empty">
@@ -3405,13 +3446,39 @@ function renderFactoryPurchases() {
             <div class="value">—</div>
             <small>Если другой игрок или бот забрал завод раньше, он исчезает до следующего хода.</small>
           </article>`}
-      </div>
+        </div>
+      </section>
     </section>`;
 
-  elements.factoryPurchases.querySelectorAll('[data-purchase-component]').forEach(button => {
+  const purchaseTabs = [...elements.factoryPurchases.querySelectorAll('[data-purchase-component]')];
+  const activatePurchaseTab = (componentKey, { focus = false } = {}) => {
+    setFactoryPurchaseComponent(componentKey);
+    renderFactoryPurchases();
+    if (focus) {
+      window.requestAnimationFrame(() => {
+        elements.factoryPurchases
+          ?.querySelector(`[data-purchase-component="${CSS.escape(componentKey)}"]`)
+          ?.focus({ preventScroll: true });
+      });
+    }
+  };
+  purchaseTabs.forEach((button, index) => {
     button.addEventListener('click', () => {
-      setFactoryPurchaseComponent(button.dataset.purchaseComponent);
-      renderFactoryPurchases();
+      activatePurchaseTab(button.dataset.purchaseComponent, { focus: true });
+    });
+    button.addEventListener('keydown', event => {
+      const nextIndex = event.key === 'ArrowRight'
+        ? (index + 1) % purchaseTabs.length
+        : event.key === 'ArrowLeft'
+          ? (index - 1 + purchaseTabs.length) % purchaseTabs.length
+          : event.key === 'Home'
+            ? 0
+            : event.key === 'End'
+              ? purchaseTabs.length - 1
+              : -1;
+      if (nextIndex < 0) return;
+      event.preventDefault();
+      activatePurchaseTab(purchaseTabs[nextIndex].dataset.purchaseComponent, { focus: true });
     });
   });
   elements.factoryPurchases.querySelectorAll('[data-purchase-shortcut]').forEach(button => {
@@ -4826,7 +4893,7 @@ function renderCompetitors() {
                   <span><b>${hint?.capacityGain ? `+${hint.capacityGain}` : '0'}</b><small>мощность</small></span>
                   <span><b>${hint?.paybackTurns ? `${hint.paybackTurns} х.` : '—'}</b><small>окупаемость</small></span>
                 </div>
-                <small class="personnel-reason">${escapeHtml(hint?.reason || candidate.hint || '')}</small>
+                <small class="personnel-reason">${escapeHtml(hint?.reason || localizedWorkerHint(candidate.hint))}</small>
                 <button type="button" data-personnel-hire="${escapeHtml(candidate.id)}" ${canUseBusinessActions() && hint?.affordable !== false ? '' : 'disabled'}>${isRecommended ? 'Нанять рекомендованного' : 'Нанять'}</button>
               </article>`;
             }).join('') || `<div class="trade-empty">Кандидатов пока нет.</div>`}
