@@ -2263,6 +2263,12 @@ test('Electron release contract: native rebuild runs once before packaging and k
   assert.doesNotMatch(buildScript, /installAppDepsCli/);
   assert.match(buildScript, /--config\.npmRebuild=false/);
   assert.match(buildScript, /--config\.win\.signExecutable=false/);
+  assert.match(buildScript, /--config\.directories\.output=/);
+  assert.match(buildScript, /fsApi\.mkdtempSync/);
+  assert.match(buildScript, /Missing desktop artifact/);
+  assert.match(buildScript, /fsApi\.copyFileSync/);
+  assert.match(buildScript, /npmCommandSpec\(\['rebuild', 'better-sqlite3'\]/);
+  assert.match(buildScript, /module\.exports = \{ runDesktopBuild \}/);
   assert.doesNotMatch(buildScript, /signAndEditExecutable=false/);
   assert.match(packageJson.scripts.dist, /--config\.win\.signExecutable=false/);
   assert.match(packageJson.scripts['dist:win'], /--config\.win\.signExecutable=false/);
