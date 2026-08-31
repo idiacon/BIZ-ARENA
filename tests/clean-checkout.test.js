@@ -8,6 +8,17 @@ const { execFileSync } = require('node:child_process');
 const { cloneCleanCheckout } = require('../scripts/lib/clean-checkout');
 const { sourceProvenance } = require('../scripts/lib/release-provenance');
 
+test('project install-script policy allows only the reviewed native dependency', () => {
+  const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const npmrc = fs.readFileSync(path.join(__dirname, '..', '.npmrc'), 'utf8');
+
+  assert.deepEqual(packageJson.allowScripts, {
+    'better-sqlite3@12.11.1': true,
+    'electron-winstaller': false,
+  });
+  assert.match(npmrc, /^strict-allow-scripts=true\s*$/);
+});
+
 test('clones the exact HEAD without carrying untracked files', () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'biz-arena-clean-checkout-test-'));
   const sourceDir = path.join(tempRoot, 'source');
