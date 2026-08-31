@@ -1832,6 +1832,12 @@ function dismissStudentWorkspace({ fromHistory = false } = {}) {
   });
 }
 
+function revealCurrentGameTab() {
+  const activeNavigationButton = [...document.querySelectorAll('.app-sidebar-nav .app-sidebar-link.active')]
+    .find(button => button.getClientRects().length > 0);
+  revealActiveGameTab(activeNavigationButton);
+}
+
 function trapStudentWorkspaceFocus(event) {
   const dialog = studentWorkspaceDialog();
   if (!dialog || event.key !== 'Tab') return;
@@ -6355,6 +6361,7 @@ elements.studentWorkspaceBackdrop?.addEventListener('wheel', event => event.prev
 window.addEventListener('popstate', () => {
   if (studentWorkspaceDialog()) dismissStudentWorkspace({ fromHistory: true });
 });
+window.addEventListener('resize', revealCurrentGameTab);
 window.addEventListener('resize', renderTutorialOverlay);
 window.addEventListener('scroll', refreshTutorialGeometry, true);
 document.addEventListener('visibilitychange', () => {

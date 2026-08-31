@@ -83,6 +83,8 @@ async function launchBrowser({ cdpPort, profileDir, width = 1440, height = 900 }
     `--user-data-dir=${profileDir}`,
     `--window-size=${width},${height}`,
     '--disable-gpu',
+    '--disable-extensions',
+    '--disable-component-extensions-with-background-pages',
     '--no-first-run',
     '--no-default-browser-check',
     'about:blank',

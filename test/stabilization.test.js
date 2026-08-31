@@ -2810,6 +2810,8 @@ test('Electron QA contract: packaged smoke captures and audits teacher and stude
 
   assert.match(cdpBrowser, /async function connectRemoteBrowser\(/);
   assert.match(cdpBrowser, /connectRemoteBrowser,/);
+  assert.match(cdpBrowser, /--disable-extensions/);
+  assert.match(cdpBrowser, /--disable-component-extensions-with-background-pages/);
   assert.match(packagedSmoke, /--remote-debugging-port=/);
   assert.match(packagedSmoke, /packaged-smoke-screenshots/);
   assert.match(packagedSmoke, /teacher-operations-center\.png/);
@@ -3488,6 +3490,7 @@ test('classroom package includes LAN diagnostics helpers and readable README tex
   assert.match(packageScript, /Allow-BizArena-Firewall\.ps1/);
   assert.match(packageScript, /Check-BizArena-LAN\.ps1/);
   assert.match(packageScript, /README-classroom\.md/);
+  assert.match(packageScript, /release-for-beginners\.md/);
   assert.match(packageScript, /PILOT-GATE\.md/);
   assert.match(packageScript, /pilot-gate-runbook\.md/);
   assert.match(packageScript, /pilot-evidence-schema\.md/);
@@ -3548,6 +3551,7 @@ test('vps release profile is primary while oracle remains archive-only', () => {
   const durableSmokeScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'smoke-durable-cloud-profile.js'), 'utf8');
   const vpsSmokeScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'smoke-vps-profile.js'), 'utf8');
   const vpsPackageScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-vps-package.js'), 'utf8');
+  const kaiPackageScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-kai-server-package.js'), 'utf8');
   const runbook = fs.readFileSync(path.join(__dirname, '..', 'docs', 'cloud-hosting-runbook.md'), 'utf8');
   const handoff = fs.readFileSync(path.join(__dirname, '..', 'docs', 'oracle-cloud-classroom-handoff.md'), 'utf8');
 
@@ -3564,6 +3568,7 @@ test('vps release profile is primary while oracle remains archive-only', () => {
   assert.match(vpsPackageScript, /scripts\/smoke-vps-profile\.js/);
   assert.match(vpsPackageScript, /scripts\/smoke-durable-cloud-profile\.js/);
   assert.doesNotMatch(vpsPackageScript, /scripts\/smoke-oracle-profile\.js/);
+  assert.match(kaiPackageScript, /docs\/release-for-beginners\.md/);
   assert.match(oracleSmokeScript, /Oracle archive/);
   assert.match(oracleSmokeScript, /smoke-durable-cloud-profile/);
   assert.match(durableSmokeScript, /BIZ_ARENA_STORAGE:\s*'sqlite'/);

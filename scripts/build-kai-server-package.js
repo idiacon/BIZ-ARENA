@@ -15,6 +15,7 @@ const requiredFiles = [
   `dist/BizArena-VPS-${version}.zip`,
   `dist/vps-release-manifest-${version}.json`,
   'docs/kai-server-handoff.md',
+  'docs/release-for-beginners.md',
   'docs/vps-cloud-classroom-runbook.md',
   'docs/teacher-cloud-classroom-handoff.md',
   'docs/teacher-classroom-handoff.md',
@@ -55,6 +56,7 @@ fs.mkdirSync(packageDir, { recursive: true });
 copy(`dist/BizArena-VPS-${version}.zip`, `BizArena-VPS-${version}.zip`);
 copy(`dist/vps-release-manifest-${version}.json`, `vps-release-manifest-${version}.json`);
 copy('docs/kai-server-handoff.md', 'docs/kai-server-handoff.md');
+copy('docs/release-for-beginners.md', 'docs/release-for-beginners.md');
 copy('docs/vps-cloud-classroom-runbook.md', 'docs/vps-cloud-classroom-runbook.md');
 copy('docs/teacher-cloud-classroom-handoff.md', 'docs/teacher-cloud-classroom-handoff.md');
 copy('docs/teacher-classroom-handoff.md', 'docs/teacher-classroom-handoff.md');
@@ -66,6 +68,7 @@ This package is for deploying Biz Arena on a KAI server or ordinary VPS.
 ## Contents
 
 - BizArena-VPS-${version}.zip - server deployment archive
+- docs/release-for-beginners.md - beginner release and hosting guide
 - docs/kai-server-handoff.md - admin handoff
 - docs/vps-cloud-classroom-runbook.md - full VPS runbook
 - docs/teacher-cloud-classroom-handoff.md - teacher instructions for cloud classroom

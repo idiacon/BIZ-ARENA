@@ -9,6 +9,8 @@ const version = packageJson.version;
 const distDir = path.join(rootDir, 'dist');
 const packageDir = path.join(distDir, `BizArena-Classroom-${version}`);
 const toolsDir = path.join(packageDir, 'tools');
+const beginnerGuideSource = path.join(rootDir, 'docs', 'release-for-beginners.md');
+const beginnerGuideTarget = path.join(packageDir, 'release-for-beginners.md');
 const pilotRunbookSource = path.join(rootDir, 'docs', 'pilot-gate-runbook.md');
 const pilotRunbookTarget = path.join(packageDir, 'PILOT-GATE.md');
 const pilotRunbookLinkTarget = path.join(packageDir, 'pilot-gate-runbook.md');
@@ -62,11 +64,13 @@ copyRequired(pilotRunbookSource, pilotRunbookTarget);
 copyRequired(pilotRunbookSource, pilotRunbookLinkTarget);
 copyRequired(pilotSchemaSource, pilotSchemaTarget);
 copyRequired(pilotTemplateSource, pilotTemplateTarget);
+copyRequired(beginnerGuideSource, beginnerGuideTarget);
 
 const readme = `# Biz Arena Classroom ${version}
 
 ## Pilot Gate files
 
+- [release-for-beginners.md](release-for-beginners.md) - с чего начать без опыта работы с серверами.
 - [PILOT-GATE.md](PILOT-GATE.md) - normative operator runbook.
 - [pilot-evidence-schema.md](pilot-evidence-schema.md) - strict manual-evidence allowlist.
 - [pilot-evidence-template.json](pilot-evidence-template.json) - device and classroom attestation template.
@@ -145,6 +149,7 @@ fs.writeFileSync(path.join(packageDir, 'README-classroom.md'), readme, 'utf8');
 const packagedFiles = [
   ...artifacts.map(name => path.join(packageDir, name)),
   path.join(packageDir, 'README-classroom.md'),
+  beginnerGuideTarget,
   pilotRunbookTarget,
   pilotRunbookLinkTarget,
   pilotSchemaTarget,

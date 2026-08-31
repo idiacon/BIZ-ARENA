@@ -19,6 +19,7 @@ tools/cloudflared*.log
 .omx/
 .codex/
 defense-assets/
+design-inspiration/
 graphify-out/
 graphify-out.backup-*/
 github-resources/

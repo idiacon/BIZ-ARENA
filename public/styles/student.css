@@ -1708,7 +1708,7 @@ body[data-screen="game-screen"][data-player-role="student"] [data-game-panel="op
 
 body[data-screen="game-screen"][data-player-role="student"][data-game-tab="operations"] .student-route-panel[data-student-layout="map-first"] {
   grid-template-columns: minmax(0, 1fr);
-  gap: 5px;
+  gap: 4px;
   padding: 10px;
 }
 
