@@ -284,7 +284,7 @@ async function verifyPartialFactoryNavigation(cdp) {
   return result;
 }
 
-async function collectFocusOrderAudit(cdp, label) {
+async function collectFocusOrderAudit(cdp, label, { passiveSlots = [] } = {}) {
   const result = await evaluate(cdp, `(() => {
     const slotNames = ['role-navigation', 'classroom-hud', 'primary-workspace', 'role-action-rail'];
     const focusableSelector = 'button:not([disabled]), a[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex]:not([tabindex="-1"])';
@@ -303,8 +303,12 @@ async function collectFocusOrderAudit(cdp, label) {
         firstFocusableText: String(first?.innerText || first?.getAttribute('aria-label') || '').trim().slice(0, 80),
       };
     });
-    const indices = slots.map(slot => slot.firstFocusableIndex);
-    const ordered = indices.every(index => index >= 0) && indices.every((index, position) => position === 0 || index > indices[position - 1]);
+    const configuredPassiveSlots = new Set(${JSON.stringify(passiveSlots)});
+    const requiredSlots = slots.filter(slot => !configuredPassiveSlots.has(slot.slot));
+    const indices = requiredSlots.map(slot => slot.firstFocusableIndex);
+    const ordered = slots.every(slot => slot.found)
+      && indices.every(index => index >= 0)
+      && indices.every((index, position) => position === 0 || index > indices[position - 1]);
     return { label: ${JSON.stringify(label)}, ordered, slots };
   })()`);
   if (!result.ordered) throw new Error(`${label} has an invalid keyboard focus order: ${JSON.stringify(result)}`);
@@ -1133,12 +1137,19 @@ async function main() {
         await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', DESKTOP);
         await sleep(350);
         studentSceneAudit = await collectStudentSceneAudit(studentBrowser.cdp);
-        studentFocusOrderAudit = await collectFocusOrderAudit(studentBrowser.cdp, 'student desktop focus order');
+        studentFocusOrderAudit = await collectFocusOrderAudit(studentBrowser.cdp, 'student desktop focus order', { passiveSlots: ['classroom-hud'] });
         reducedMotionAudit = await verifyReducedMotion(studentBrowser.cdp);
         studentMarketStatAudit = await collectStudentMarketStatAudit(studentBrowser.cdp, 'student market stats full 1440px');
         studentMarketDisclosureAudit = await collectStudentMarketDisclosureAudit(studentBrowser.cdp, 'student market disclosure full 1440px');
         await capture(studentBrowser.cdp, '06-student-game-full-1440x900.png', 'window.scrollTo(0, 0)');
         await capture(studentBrowser.cdp, '06a-student-factory-map-v9-1440x900.png', scrollBelowSticky('.student-factory-scene'));
+        await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', { width: 1024, height: 768, mobile: false, deviceScaleFactor: 1 });
+        await capture(studentBrowser.cdp, '06h-student-map-first-1024x768.png', 'window.scrollTo(0, 0)');
+        await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', { width: 768, height: 1024, mobile: true, deviceScaleFactor: 1 });
+        await capture(studentBrowser.cdp, '06i-student-map-first-768x1024.png', 'window.scrollTo(0, 0)');
+        await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', MOBILE);
+        await capture(studentBrowser.cdp, '06j-student-map-first-390x844.png', 'window.scrollTo(0, 0)');
+        await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', DESKTOP);
         await evaluate(studentBrowser.cdp, `document.querySelector('[data-role-navigation="student"] [data-game-tab="purchase"]')?.click()`);
         await waitFor(
           studentBrowser.cdp,
@@ -1361,6 +1372,9 @@ async function main() {
         '06e-student-purchase-dialog-390x844.png',
         '06f-student-workforce-dialog-1440x900.png',
         '06g-student-assembly-dialog-1440x900.png',
+        '06h-student-map-first-1024x768.png',
+        '06i-student-map-first-768x1024.png',
+        '06j-student-map-first-390x844.png',
         '07-student-game-full-3440x1440.png',
         '08-student-game-standard-1440x900.png',
         '09-student-game-lite-1000x760.png',

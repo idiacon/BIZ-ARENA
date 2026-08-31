@@ -2709,6 +2709,9 @@ test('UI QA contract: dual-role screenshot runner covers all student performance
   assert.match(captureScript, /student game \$\{mode\} \$\{viewport\.width\}px/);
   assert.match(captureScript, /student-game-full-1440x900\.png/);
   assert.match(captureScript, /student-factory-map-v9-1440x900\.png/);
+  assert.match(captureScript, /student-map-first-1024x768\.png/);
+  assert.match(captureScript, /student-map-first-768x1024\.png/);
+  assert.match(captureScript, /student-map-first-390x844\.png/);
   assert.match(captureScript, /student-game-standard-1440x900\.png/);
   assert.match(captureScript, /student-game-lite-1000x760\.png/);
   assert.match(captureScript, /async function collectStudentMarketStatAudit/);
@@ -2783,7 +2786,8 @@ test('UI QA contract: screenshot runner covers live help, paused, finished, and 
 test('UI accessibility contract: screenshot runner checks focus order, reduced motion, and live scene geometry', () => {
   const captureScript = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'capture-classroom-flow-screenshots.js'), 'utf8');
 
-  assert.match(captureScript, /async function collectFocusOrderAudit\(cdp, label\)/);
+  assert.match(captureScript, /async function collectFocusOrderAudit\(cdp, label, \{ passiveSlots = \[\] \} = \{\}\)/);
+  assert.match(captureScript, /passiveSlots: \['classroom-hud'\]/);
   assert.match(captureScript, /role-navigation[\s\S]*classroom-hud[\s\S]*primary-workspace[\s\S]*role-action-rail/);
   assert.match(captureScript, /async function verifyReducedMotion\(cdp\)/);
   assert.match(captureScript, /bizArenaAnimationMode/);
@@ -3295,6 +3299,21 @@ test('UI contract: student operations use a live factory map without changing co
   assert.match(styles, /\.student-factory-map[\s\S]*grid-template-columns/);
   assert.match(styles, /html\[data-performance-mode="lite"\] \.student-command-stage[\s\S]*align-items: start/);
   assert.match(styles, /body\[data-screen="game-screen"\]\[data-player-role="student"\]\[data-game-tab="operations"\] \.game-market-rail/);
+});
+
+test('UI contract: student operations keeps one map-first command deck', () => {
+  const appJs = readPublicAppSources();
+  const styles = readPublicStyles();
+  const renderStudentCommandPanel = sourceFunctionBlock(appJs, 'renderStudentCommandPanel');
+  const mapIndex = renderStudentCommandPanel.indexOf('renderStudentFactoryScene(routeItems)');
+  const secondaryKpiIndex = renderStudentCommandPanel.indexOf('renderStudentCommandKpis');
+
+  assert.match(renderStudentCommandPanel, /data-student-layout="map-first"/);
+  assert.ok(mapIndex >= 0, 'student factory scene should be rendered');
+  assert.ok(secondaryKpiIndex > mapIndex, 'secondary KPI disclosure should follow the map');
+  assert.match(styles, /data-player-role="student"[\s\S]*\.game-next-action-chip[\s\S]*display:\s*none/);
+  assert.match(styles, /data-game-panel="operations"[\s\S]*>\s*\.panel-header[\s\S]*display:\s*none/);
+  assert.match(styles, /data-student-layout="map-first"[\s\S]*\.student-route-flowline span[\s\S]*min-height:\s*48px/);
 });
 
 test('UI contract: student factory workspace keeps the map behind accessible dismissible dialogs', () => {

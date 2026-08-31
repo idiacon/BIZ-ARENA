@@ -1231,6 +1231,11 @@ html[data-performance-mode="lite"] .student-mini-stat {
     scrollbar-width: thin;
   }
 
+  body[data-screen="game-screen"][data-player-role="teacher"] [data-role-navigation="teacher"],
+  body[data-screen="game-screen"][data-player-role="student"] [data-role-navigation="student"] {
+    display: contents;
+  }
+
   body[data-screen="game-screen"] .app-sidebar-link {
     flex: 0 0 auto;
     width: auto;
@@ -1447,8 +1452,17 @@ html[data-performance-mode="lite"] .student-mini-stat {
   }
 
   body[data-screen="game-screen"] .app-sidebar {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: 34px minmax(0, 1fr);
+    gap: 8px;
+  }
+
+  body[data-screen="game-screen"] .app-sidebar-brand {
+    display: grid;
+    grid-template-columns: 32px;
+  }
+
+  body[data-screen="game-screen"] .app-sidebar-brand strong {
+    display: none;
   }
 
   body[data-screen="game-screen"] .app-sidebar-nav {
@@ -1468,7 +1482,7 @@ html[data-performance-mode="lite"] .student-mini-stat {
   body[data-screen="game-screen"] .app-sidebar-link {
     flex: 0 0 auto;
     width: max-content;
-    min-width: 112px;
+    min-width: 0;
     max-width: none;
     min-height: 40px;
     grid-template-columns: 17px minmax(0, 1fr);

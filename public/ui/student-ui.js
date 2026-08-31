@@ -1114,7 +1114,7 @@ function renderStudentCommandPanel({
     { label: 'Проверить', value: String(safeProblems), hint: safeProblems ? 'есть блокер первого хода' : 'критичных блокеров нет', tone: safeProblems ? 'warn' : 'ok' },
   ];
   return `
-    <section class="student-route-panel student-route-panel-v2 student-tycoon-console turn-guide-panel" data-ui-slot="primary-workspace" data-uiux-slice="student-first-turn-2" data-student-flow-contract="first-turn-v2" data-student-guided-focus="${isGuidedFirstTurn ? 'first-turn' : 'standard'}" data-student-primary-step="${escapeHtml(primaryStepKey)}" data-student-route-ready="${safeReady >= safeTotal ? 'true' : 'false'}" data-student-problems="${safeProblems}" aria-label="Маршрут хода">
+    <section class="student-route-panel student-route-panel-v2 student-tycoon-console turn-guide-panel" data-ui-slot="primary-workspace" data-uiux-slice="student-first-turn-2" data-student-layout="map-first" data-student-flow-contract="first-turn-v2" data-student-guided-focus="${isGuidedFirstTurn ? 'first-turn' : 'standard'}" data-student-primary-step="${escapeHtml(primaryStepKey)}" data-student-route-ready="${safeReady >= safeTotal ? 'true' : 'false'}" data-student-problems="${safeProblems}" aria-label="Маршрут хода">
       <div class="student-command-head">
         <div class="student-route-main">
           <span class="factory-node-label">Маршрут хода</span>
@@ -1141,11 +1141,11 @@ function renderStudentCommandPanel({
           </article>
         `).join('')}
       </div>
-      ${renderStudentCommandKpis({ collapsible: isGuidedFirstTurn })}
       <div class="student-command-stage">
         ${renderStudentFactoryScene(routeItems)}
         ${renderStudentCommandSupport(routeItems, primaryStepKey)}
       </div>
+      ${renderStudentCommandKpis({ collapsible: isGuidedFirstTurn })}
       ${hintsMarkup}
     </section>`;
 }

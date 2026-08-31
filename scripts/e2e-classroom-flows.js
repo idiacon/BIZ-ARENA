@@ -17,6 +17,12 @@ const DESKTOP_VIEWPORTS = [
   { width: 2560, height: 1440 },
   { width: 3440, height: 1440 },
 ];
+const MAP_FIRST_VIEWPORTS = [
+  { width: 375, height: 844 },
+  { width: 768, height: 1024 },
+  { width: 1024, height: 768 },
+  { width: 1440, height: 900 },
+];
 const SCREEN_PREREQUISITES = Object.freeze({
   'lobby-screen': 'typeof state !== "undefined" && Boolean(state.room)',
   'game-screen': 'typeof state !== "undefined" && Boolean(state.room && ["running", "paused"].includes(state.room.status))',
@@ -261,6 +267,130 @@ async function assertResponsiveMatrix(cdp, label, viewports = DESKTOP_VIEWPORTS)
     await assertNoHorizontalOverflow(cdp, `${label} ${viewport.width}x${viewport.height}`);
     await assertVisibleSidebarLabelsFit(cdp, `${label} ${viewport.width}x${viewport.height}`);
   }
+}
+
+async function assertStudentMapFirstLayout(cdp, url) {
+  await navigate(cdp, `${url}&quality=full`);
+  await openScreen(cdp, 'game-screen');
+  await evaluate(cdp, 'document.querySelector("[data-game-tab=operations]")?.click()');
+  await waitFor(cdp, 'Boolean(document.querySelector(".student-factory-scene .student-factory-node"))', 'student map-first workspace');
+  const snapshots = [];
+  for (const viewport of MAP_FIRST_VIEWPORTS) {
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      ...viewport,
+      mobile: false,
+      deviceScaleFactor: 1,
+    });
+    await sleep(250);
+    const snapshot = await evaluate(cdp, `(() => {
+      const isVisible = node => {
+        if (!node) return false;
+        const style = getComputedStyle(node);
+        const rect = node.getBoundingClientRect();
+        return style.display !== 'none' && style.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
+      };
+      const rectOf = node => {
+        const rect = node?.getBoundingClientRect();
+        return rect ? {
+          left: Math.round(rect.left),
+          right: Math.round(rect.right),
+          top: Math.round(rect.top),
+          bottom: Math.round(rect.bottom),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        } : null;
+      };
+      const primary = document.querySelector('.student-primary-next-action');
+      const activeNavigation = document.querySelector('[data-role-navigation="student"] .app-sidebar-link.active');
+      const scene = document.querySelector('.student-factory-scene');
+      const secondaryKpis = document.querySelector('.student-command-kpis-disclosure');
+      const sceneRect = scene?.getBoundingClientRect();
+      const visibleSceneHeight = sceneRect
+        ? Math.max(0, Math.min(innerHeight, sceneRect.bottom) - Math.max(0, sceneRect.top))
+        : 0;
+      const stationTargets = [...document.querySelectorAll('.student-factory-map-node')]
+        .map(node => node.getBoundingClientRect())
+        .filter(rect => rect.width > 0 && rect.height > 0)
+        .map(rect => Math.min(rect.width, rect.height));
+      const stationLabels = [...document.querySelectorAll('.student-factory-map-marker')]
+        .filter(isVisible)
+        .map(node => {
+          const rect = node.getBoundingClientRect();
+          const parent = node.closest('.student-factory-map-node');
+          const parentRect = parent?.getBoundingClientRect();
+          const style = getComputedStyle(node);
+          return {
+            station: parent?.dataset.sceneStation || '',
+            rect,
+            parentRect,
+            transform: style.transform,
+            left: style.left,
+            width: style.width,
+          };
+        });
+      const flatPresentation = getComputedStyle(document.querySelector('.student-factory-map-floor')).display === 'none';
+      const flatLabelOverflows = flatPresentation
+        ? stationLabels.filter(({ rect, parentRect }) => !parentRect
+          || rect.left < parentRect.left - 1
+          || rect.right > parentRect.right + 1)
+        : [];
+      const flatLabelOverlaps = flatPresentation
+        ? stationLabels.flatMap(({ rect }, index) => stationLabels.slice(index + 1)
+          .filter(({ rect: other }) => rect.left < other.right
+            && rect.right > other.left
+            && rect.top < other.bottom
+            && rect.bottom > other.top))
+        : [];
+      return {
+        viewport: { width: innerWidth, height: innerHeight },
+        primaryCount: [...document.querySelectorAll('.student-primary-next-action')].filter(isVisible).length,
+        primary: rectOf(primary),
+        activeNavigation: rectOf(activeNavigation),
+        scene: rectOf(scene),
+        visibleSceneHeight: Math.round(visibleSceneHeight),
+        visibleSceneRatio: Number((visibleSceneHeight / innerHeight).toFixed(3)),
+        nextActionVisible: isVisible(document.querySelector('#game-next-action-chip')),
+        operationsHeaderVisible: isVisible(document.querySelector('[data-game-panel="operations"] > .panel-header')),
+        secondaryKpisAfterScene: Boolean(scene && secondaryKpis && (scene.compareDocumentPosition(secondaryKpis) & Node.DOCUMENT_POSITION_FOLLOWING)),
+        stationCount: stationTargets.length,
+        minimumStationTarget: Math.round(Math.min(...stationTargets)),
+        flatPresentation,
+        flatLabelOverflowCount: flatLabelOverflows.length,
+        flatLabelOverflowDeltas: flatLabelOverflows.map(({ station, rect, parentRect, transform, left, width }) => ({
+          station,
+          left: Math.round(rect.left - parentRect.left),
+          right: Math.round(rect.right - parentRect.right),
+          transform,
+          computedLeft: left,
+          width,
+        })),
+        flatLabelOverlapCount: flatLabelOverlaps.length,
+        bodyOverflow: Math.max(document.documentElement.scrollWidth, document.body?.scrollWidth || 0) - innerWidth,
+      };
+    })()`);
+    snapshots.push(snapshot);
+    assert.equal(snapshot.primaryCount, 1, JSON.stringify(snapshot));
+    assert.ok(snapshot.primary?.height >= 48, JSON.stringify(snapshot));
+    assert.equal(snapshot.nextActionVisible, false, JSON.stringify(snapshot));
+    assert.equal(snapshot.operationsHeaderVisible, false, JSON.stringify(snapshot));
+    assert.equal(snapshot.secondaryKpisAfterScene, true, JSON.stringify(snapshot));
+    assert.equal(snapshot.stationCount, 4, JSON.stringify(snapshot));
+    assert.ok(snapshot.minimumStationTarget >= 42, JSON.stringify(snapshot));
+    assert.equal(snapshot.flatLabelOverflowCount, 0, JSON.stringify(snapshot));
+    assert.equal(snapshot.flatLabelOverlapCount, 0, JSON.stringify(snapshot));
+    assert.ok(snapshot.bodyOverflow <= 1, JSON.stringify(snapshot));
+    assert.ok(snapshot.primary.bottom <= viewport.height, JSON.stringify(snapshot));
+    assert.ok(snapshot.activeNavigation && snapshot.activeNavigation.width >= 42, JSON.stringify(snapshot));
+    if (viewport.width === 375) {
+      assert.ok(snapshot.activeNavigation.left >= 0 && snapshot.activeNavigation.right <= viewport.width, JSON.stringify(snapshot));
+    }
+    if (viewport.width === 1024) assert.ok(snapshot.scene.top <= 365, JSON.stringify(snapshot));
+    if (viewport.width === 1440) {
+      assert.ok(snapshot.scene.top <= 340, JSON.stringify(snapshot));
+      assert.ok(snapshot.visibleSceneRatio >= 0.48, JSON.stringify(snapshot));
+    }
+  }
+  return snapshots;
 }
 
 async function captureResultsExport(cdp) {
@@ -710,22 +840,8 @@ async function main() {
     assert.equal(await evaluate(studentBrowser.cdp, 'state.factorySaleDraft?.price'), '6417');
     await evaluate(studentBrowser.cdp, 'document.querySelector("[data-student-workspace-close]")?.click()');
     await waitFor(studentBrowser.cdp, 'document.body.dataset.studentWorkspace === "map"', 'student sale draft final close');
-    const nextActionPoint = await evaluate(studentBrowser.cdp, `(() => {
-      const rect = document.querySelector('#game-next-action-chip')?.getBoundingClientRect();
-      return rect ? { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 } : null;
-    })()`);
-    assert.ok(nextActionPoint);
-    await studentBrowser.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: nextActionPoint.x, y: nextActionPoint.y });
-    const nextActionHover = await evaluate(studentBrowser.cdp, `(() => {
-      const chip = document.querySelector('#game-next-action-chip');
-      const style = getComputedStyle(chip);
-      return { hovered: chip.matches(':hover'), backgroundImage: style.backgroundImage };
-    })()`);
-    assert.equal(nextActionHover.hovered, true);
-    assert.notEqual(nextActionHover.backgroundImage, 'none');
-    await assertTextContrast(studentBrowser.cdp, '#game-next-action-title', 'next action hover title');
-    await assertTextContrast(studentBrowser.cdp, '#game-next-action-body', 'next action hover details');
-    await studentBrowser.cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: 1, y: 1 });
+    assert.equal(await evaluate(studentBrowser.cdp, 'getComputedStyle(document.querySelector("#game-next-action-chip")).display'), 'none');
+    assert.equal(await evaluate(studentBrowser.cdp, '[...document.querySelectorAll(".student-primary-next-action")].filter(node => node.getBoundingClientRect().height > 0).length'), 1);
     const toastAudit = await evaluate(studentBrowser.cdp, `(() => {
       showToast('Тестовое предупреждение', 'error');
       const toast = document.querySelector('.toast-error');
@@ -749,6 +865,7 @@ async function main() {
 
     const studentProfileUrl = `http://127.0.0.1:${PORT}/client?roomCode=${teacher.roomCode}`;
     const fullProfile = await studentPerformanceSnapshot(studentBrowser.cdp, studentProfileUrl, 'full');
+    const mapFirstLayouts = await assertStudentMapFirstLayout(studentBrowser.cdp, studentProfileUrl);
     const standardProfile = await studentPerformanceSnapshot(studentBrowser.cdp, studentProfileUrl, 'standard');
     const liteProfile = await studentPerformanceSnapshot(studentBrowser.cdp, studentProfileUrl, 'lite');
     assert.deepEqual(standardProfile.controls, fullProfile.controls);
@@ -796,6 +913,7 @@ async function main() {
     assert.equal(fullProfile.scene.buildingBounds.every(entry => entry.insideScene), true, JSON.stringify(fullProfile.scene.buildingBounds));
     assert.deepEqual(fullProfile.scene.mapAnchors.map(anchor => anchor.station), ['purchase', 'workforce', 'assembly', 'market']);
     assert.equal(fullProfile.scene.sequenceLayoutOk, true);
+    assert.equal(mapFirstLayouts.length, MAP_FIRST_VIEWPORTS.length);
     assert.deepEqual(fullProfile.controls.buildingTypes, ['purchase', 'workforce', 'assembly', 'market']);
     assert.notEqual(fullProfile.scene.backgroundImage, 'none');
     assert.equal(standardProfile.mode, 'standard');
