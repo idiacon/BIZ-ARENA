@@ -61,8 +61,8 @@ async function connectCdp(wsUrl) {
   };
 }
 
-async function connectRemoteBrowser({ cdpPort, width = 1440, height = 900, label = 'remote browser' }) {
-  await waitForHttp(`http://127.0.0.1:${cdpPort}/json/version`);
+async function connectRemoteBrowser({ cdpPort, width = 1440, height = 900, label = 'remote browser', startupAttempts = 80 }) {
+  await waitForHttp(`http://127.0.0.1:${cdpPort}/json/version`, startupAttempts);
   const targets = await readJson(`http://127.0.0.1:${cdpPort}/json`);
   const target = targets.find(item => item.type === 'page') || targets[0];
   if (!target?.webSocketDebuggerUrl) throw new Error(`No CDP page target for ${label}`);

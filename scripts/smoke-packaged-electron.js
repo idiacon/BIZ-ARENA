@@ -206,7 +206,7 @@ async function main() {
     if (!isRunning(serverProcess)) throw new Error('Packaged Server exited during smoke.');
 
     const classroom = await createVisualQaClassroom();
-    serverCdp = await connectRemoteBrowser({ cdpPort: serverCdpPort, label: 'packaged Server.exe' });
+    serverCdp = await connectRemoteBrowser({ cdpPort: serverCdpPort, label: 'packaged Server.exe', startupAttempts: 200 });
     await installPlayerSession(serverCdp, {
       ...classroom.teacher,
       roomCode: classroom.roomCode,
@@ -222,7 +222,7 @@ async function main() {
       BIZ_ARENA_DESKTOP_MODE: 'client',
       BIZ_ARENA_SERVER_URL: `${baseUrl}/client`,
     }, [`--remote-debugging-port=${clientCdpPort}`]);
-    clientCdp = await connectRemoteBrowser({ cdpPort: clientCdpPort, label: 'packaged Client.exe' });
+    clientCdp = await connectRemoteBrowser({ cdpPort: clientCdpPort, label: 'packaged Client.exe', startupAttempts: 200 });
     await installPlayerSession(clientCdp, {
       ...classroom.student,
       roomCode: classroom.roomCode,

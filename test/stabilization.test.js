@@ -2889,6 +2889,8 @@ test('Electron QA contract: packaged smoke captures and audits teacher and stude
 
   assert.match(cdpBrowser, /async function connectRemoteBrowser\(/);
   assert.match(cdpBrowser, /connectRemoteBrowser,/);
+  assert.match(cdpBrowser, /startupAttempts = 80/);
+  assert.match(cdpBrowser, /waitForHttp\(`http:\/\/127\.0\.0\.1:\$\{cdpPort\}\/json\/version`, startupAttempts\)/);
   assert.match(cdpBrowser, /--disable-extensions/);
   assert.match(cdpBrowser, /--disable-component-extensions-with-background-pages/);
   assert.match(packagedSmoke, /--remote-debugging-port=/);
@@ -2900,6 +2902,7 @@ test('Electron QA contract: packaged smoke captures and audits teacher and stude
   assert.match(packagedSmoke, /student-tycoon-console/);
   assert.match(packagedSmoke, /browserErrors/);
   assert.match(packagedSmoke, /visualQa/);
+  assert.equal((packagedSmoke.match(/startupAttempts: 200/g) || []).length, 2);
 });
 
 test('UI performance gate: reproducible 30-player Chromium traces enforce the interaction p95 budget', () => {
