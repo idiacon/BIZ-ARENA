@@ -581,12 +581,14 @@ async function main() {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'biz-arena-e2e-data-'));
   const teacherProfile = fs.mkdtempSync(path.join(os.tmpdir(), 'biz-arena-e2e-teacher-'));
   const studentProfile = fs.mkdtempSync(path.join(os.tmpdir(), 'biz-arena-e2e-student-'));
+  const directoryProfile = fs.mkdtempSync(path.join(os.tmpdir(), 'biz-arena-e2e-directory-'));
   const server = spawn(process.execPath, ['server.js'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT), BIZ_ARENA_APP_MODE: 'server', BIZ_ARENA_DATA_DIR: dataDir }, stdio: 'ignore', windowsHide: true });
   let teacherBrowser;
   let studentBrowser;
+  let directoryBrowser;
   try {
     await waitForHttp(`http://127.0.0.1:${PORT}/api/health`);
-    const teacher = await postJson(`http://127.0.0.1:${PORT}/api/rooms/create`, { roomName: 'E2E Classroom', companyName: 'Teacher Console', userName: 'Teacher E2E', teacherHost: true, scenarioKey: 'motorcycles', difficulty: 'easy', maxPlayers: 30, dayLimit: 15, turnDurationMs: 300000 });
+    const teacher = await postJson(`http://127.0.0.1:${PORT}/api/rooms/create`, { roomName: 'E2E Classroom', companyName: 'Teacher Console', userName: 'Teacher E2E', teacherHost: true, scenarioKey: 'motorcycles', difficulty: 'easy', maxPlayers: 30, dayLimit: 15, turnDurationMs: 300000, lobbyVisibility: 'listed' });
     teacherBrowser = await launchBrowser({ cdpPort: 9440, profileDir: teacherProfile });
     await installPlayerSession(teacherBrowser.cdp, { ...teacher, userName: 'Teacher E2E', gameTab: 'teacher' });
     await navigate(teacherBrowser.cdp, `http://127.0.0.1:${PORT}/server`);
@@ -597,6 +599,30 @@ async function main() {
     assert.equal(await evaluate(teacherBrowser.cdp, 'document.querySelector("#lobby-screen.active .teacher-lobby-start-gate")?.dataset.startGateReason'), 'students');
     assert.equal(await evaluate(teacherBrowser.cdp, 'document.querySelector("#lobby-screen.active .teacher-lobby-start-gate")?.dataset.startGateCanStart'), 'false');
     assert.equal(await evaluate(teacherBrowser.cdp, 'document.querySelector("#lobby-screen.active [data-host-action=\\"start-game\\"]").disabled'), true);
+
+    directoryBrowser = await launchBrowser({ cdpPort: 9442, profileDir: directoryProfile });
+    await navigate(directoryBrowser.cdp, `http://127.0.0.1:${PORT}/client`);
+    await waitFor(directoryBrowser.cdp, 'document.querySelectorAll("#student-directory-list [data-directory-select]").length === 1', 'public student lobby directory');
+    assert.equal(await evaluate(directoryBrowser.cdp, 'document.querySelector("#student-directory-tab")?.getAttribute("aria-selected")'), 'true');
+    assert.equal(await evaluate(directoryBrowser.cdp, `document.querySelector("#student-directory-list")?.textContent.includes(${JSON.stringify(teacher.roomCode)})`), false);
+    await evaluate(directoryBrowser.cdp, 'document.querySelector("#student-directory-tab")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowRight", bubbles: true }))');
+    await waitFor(directoryBrowser.cdp, 'document.querySelector("#student-code-tab")?.getAttribute("aria-selected") === "true" && document.activeElement?.id === "student-code-tab"', 'student directory keyboard tab switch');
+    await evaluate(directoryBrowser.cdp, 'document.querySelector("#student-code-tab")?.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true }))');
+    await waitFor(directoryBrowser.cdp, 'document.querySelector("#student-directory-tab")?.getAttribute("aria-selected") === "true" && document.activeElement?.id === "student-directory-tab"', 'student directory keyboard tab return');
+    await evaluate(directoryBrowser.cdp, 'document.querySelector("#student-directory-list [data-directory-select]")?.click()');
+    await waitFor(directoryBrowser.cdp, 'document.querySelector("#join-form")?.hidden === false && document.activeElement?.id === "room-code"', 'directory join confirmation');
+    assert.equal(await evaluate(directoryBrowser.cdp, 'document.querySelector("#student-directory-selection")?.textContent.includes("E2E Classroom")'), true);
+    assert.equal(await evaluate(directoryBrowser.cdp, 'document.querySelector("#room-code")?.getAttribute("pattern")'), '[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}');
+    await evaluate(directoryBrowser.cdp, 'document.querySelector("#student-directory-back")?.click()');
+    await waitFor(directoryBrowser.cdp, 'document.activeElement?.matches("[data-directory-select]")', 'student directory focus return');
+    await evaluate(directoryBrowser.cdp, 'document.activeElement?.click()');
+    await waitFor(directoryBrowser.cdp, 'document.querySelector("#join-form")?.hidden === false && document.activeElement?.id === "room-code"', 'directory join confirmation after focus return');
+    await directoryBrowser.cdp.send('Emulation.setDeviceMetricsOverride', { width: 375, height: 812, deviceScaleFactor: 1, mobile: true });
+    await assertNoHorizontalOverflow(directoryBrowser.cdp, 'student lobby directory mobile');
+    await directoryBrowser.cdp.send('Emulation.clearDeviceMetricsOverride');
+    await navigate(directoryBrowser.cdp, `http://127.0.0.1:${PORT}/client?roomCode=${teacher.roomCode}`);
+    await waitFor(directoryBrowser.cdp, `document.querySelector("#join-form")?.hidden === false && document.querySelector("#room-code")?.value === ${JSON.stringify(teacher.roomCode)}`, 'student QR/manual code fallback');
+    assert.equal(await evaluate(directoryBrowser.cdp, 'document.querySelector("#student-code-tab")?.getAttribute("aria-selected")'), 'true');
 
     const student = await postJson(`http://127.0.0.1:${PORT}/api/rooms/join`, { roomCode: teacher.roomCode, companyName: 'Beta', userName: 'Student E2E' });
     await postJson(`http://127.0.0.1:${PORT}/api/action`, { playerId: student.playerId, sessionToken: student.sessionToken, action: 'toggle-ready' });
@@ -1034,6 +1060,7 @@ async function main() {
 
     assert.deepEqual(browserErrors(teacherBrowser.cdp), []);
     assert.deepEqual(browserErrors(studentBrowser.cdp), []);
+    assert.deepEqual(browserErrors(directoryBrowser.cdp), []);
     console.log(JSON.stringify({
       ok: true,
       roomCode: teacher.roomCode,
@@ -1050,15 +1077,17 @@ async function main() {
       studentResultsRole: true,
       studentResultsExport: true,
       studentLite: true,
+      studentDirectory: true,
       browserErrors: 0,
     }, null, 2));
   } finally {
-    teacherBrowser?.cdp.close(); studentBrowser?.cdp.close();
+    teacherBrowser?.cdp.close(); studentBrowser?.cdp.close(); directoryBrowser?.cdp.close();
     stop(teacherBrowser?.process, teacherProfile);
     stop(studentBrowser?.process, studentProfile);
+    stop(directoryBrowser?.process, directoryProfile);
     stop(server);
     await sleep(250);
-    remove(teacherProfile); remove(studentProfile); remove(dataDir);
+    remove(teacherProfile); remove(studentProfile); remove(directoryProfile); remove(dataDir);
   }
 }
 

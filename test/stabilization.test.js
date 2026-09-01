@@ -907,6 +907,72 @@ test('runtime hardening: reconnect requires the existing player session token', 
   assert.equal(bizArena.roomSummary(room, host.id).humanCount, 2);
 });
 
+test('public lobby directory confirmation never substitutes for the five-symbol room code', () => {
+  const { room } = bizArena.createRoom({
+    roomName: 'Listed Classroom',
+    companyName: 'Teacher Host',
+    userName: 'Teacher',
+    lobbyVisibility: 'listed',
+  });
+  const directoryEntry = bizArena.publicRoomDirectory()[0];
+
+  assert.ok(directoryEntry.directoryId);
+  assert.equal(directoryEntry.requiresCode, true);
+  assert.equal(Object.hasOwn(directoryEntry, 'code'), false);
+  assert.throws(() => bizArena.joinRoom({
+    roomCode: 'AAAAA',
+    directoryId: directoryEntry.directoryId,
+    companyName: 'Wrong Code Team',
+    userName: 'Wrong Code Student',
+  }), error => error.status === 404 && error.message === 'Комната недоступна');
+  assert.throws(() => bizArena.joinRoom({
+    roomCode: room.code,
+    directoryId: 'different_directory_identifier',
+    companyName: 'Wrong Directory Team',
+    userName: 'Wrong Directory Student',
+  }), error => error.status === 404 && error.message === 'Комната недоступна');
+
+  const joined = bizArena.joinRoom({
+    roomCode: room.code,
+    directoryId: directoryEntry.directoryId,
+    companyName: 'Confirmed Team',
+    userName: 'Confirmed Student',
+  });
+  assert.equal(joined.room.code, room.code);
+  assert.equal(joined.player.userName, 'Confirmed Student');
+});
+
+test('new students cannot join after start while an authenticated student can reconnect', () => {
+  const { room, player: host } = bizArena.createRoom({
+    roomName: 'Closed Classroom',
+    companyName: 'Teacher Host',
+    userName: 'Teacher',
+  });
+  const firstJoin = bizArena.joinRoom({
+    roomCode: room.code,
+    companyName: 'Existing Team',
+    userName: 'Existing Student',
+  });
+  bizArena.handleRoomAction(room, host, { action: 'toggle-ready' });
+  bizArena.handleRoomAction(room, firstJoin.player, { action: 'toggle-ready' });
+  bizArena.handleRoomAction(room, host, { action: 'start-game' });
+
+  assert.throws(() => bizArena.joinRoom({
+    roomCode: room.code,
+    companyName: 'Late Team',
+    userName: 'Late Student',
+  }), error => error.status === 404 && error.message === 'Комната недоступна');
+
+  const reconnected = bizArena.joinRoom({
+    roomCode: room.code,
+    companyName: 'Existing Team',
+    userName: 'Existing Student',
+    sessionToken: firstJoin.player.sessionToken,
+  });
+  assert.equal(reconnected.player.id, firstJoin.player.id);
+  assert.equal(room.players.size, 2);
+});
+
 test('room lifecycle: business actions are rejected outside a running match', () => {
   const { room, player } = bizArena.createRoom({
     roomName: 'Lifecycle Guard Room',
@@ -1082,6 +1148,7 @@ test('cloud classroom: teacher-owned room hides teacher host and rejects other t
   assert.equal(studentSummary.summaryContract, 'student-v2');
   for (const teacherOnlyKey of [
     'teacherAccountId',
+    'lobbyVisibility',
     'teacherControls',
     'lessonPlan',
     'classSnapshot',
@@ -1109,6 +1176,7 @@ test('cloud classroom: teacher-owned room hides teacher host and rejects other t
   assert.deepEqual(studentSummary.researchCatalog, []);
   assert.deepEqual(studentSummary.contractBoard, []);
   assert.ok(fullSummary.players.find(player => player.id === student.id)?.factory);
+  assert.equal(fullSummary.lobbyVisibility, 'code-only');
   assert.ok(JSON.stringify(studentSummary).length < JSON.stringify(fullSummary).length * 0.8);
   assert.ok(bizArena.playerSummary(room, student, student.id).factory);
   assert.ok(studentSummary.factoryScenario?.supplierOffers);
@@ -1585,6 +1653,8 @@ test('difficulty can be changed in lobby and rebalances factory starters', () =>
     scenarioKey: 'motorcycles',
   });
   const normalMoney = host.money;
+  assert.equal(room.lobbyVisibility, 'code-only');
+  assert.deepEqual(bizArena.publicRoomDirectory(), []);
 
   bizArena.handleRoomAction(room, host, {
     action: 'update-room-settings',
@@ -1593,11 +1663,14 @@ test('difficulty can be changed in lobby and rebalances factory starters', () =>
     scenarioKey: 'motorcycles',
     dayLimit: 14,
     difficulty: 'easy',
+    lobbyVisibility: 'listed',
   });
 
   const summary = bizArena.roomSummary(room, host.id);
   assert.equal(summary.difficulty, 'easy');
   assert.equal(summary.visibleUiMode, 'guided');
+  assert.equal(summary.lobbyVisibility, 'listed');
+  assert.equal(bizArena.publicRoomDirectory()[0]?.directoryId, room.directoryId);
   assert.ok(host.money > normalMoney);
 });
 
@@ -3997,4 +4070,34 @@ test('strategic rounds: no creation for bot, bankrupt player, paused room, or fi
   bizArena.advanceRoom(finishedCase.room);
   assert.equal(finishedCase.room.day, 1);
   assert.equal(finishedCase.host.decisionRound, null);
+});
+
+test('student lobby directory UI keeps room codes private and requires a valid five-symbol confirmation', () => {
+  const publicRoot = path.join(__dirname, '..', 'public');
+  const indexHtml = fs.readFileSync(path.join(publicRoot, 'index.html'), 'utf8');
+  const appJs = fs.readFileSync(path.join(publicRoot, 'app.js'), 'utf8');
+  const studentUi = fs.readFileSync(path.join(publicRoot, 'ui', 'student-ui.js'), 'utf8');
+  const baseCss = fs.readFileSync(path.join(publicRoot, 'styles.css'), 'utf8');
+  const studentCss = fs.readFileSync(path.join(publicRoot, 'styles', 'student.css'), 'utf8');
+  const joinScreen = indexHtml.slice(indexHtml.indexOf('id="join-room-screen"'), indexHtml.indexOf('id="profile-screen"'));
+  const directoryCardBlock = sourceFunctionBlock(studentUi, 'renderStudentDirectory');
+  const joinRoomBlock = sourceFunctionBlock(appJs, 'joinRoom');
+
+  assert.match(joinScreen, /data-client-entry-tab="directory"/);
+  assert.match(joinScreen, /data-client-entry-tab="manual"/);
+  assert.match(joinScreen, /id="student-directory-list"/);
+  assert.match(joinScreen, /id="room-code"[^>]*maxlength="5"[^>]*pattern="\[ABCDEFGHJKLMNPQRSTUVWXYZ23456789\]\{5\}"[^>]*autocomplete="one-time-code"/);
+  assert.match(studentUi, /request\('\/api\/rooms\/directory'\)/);
+  assert.match(studentUi, /public-room-directory-v1/);
+  assert.match(appJs, /STUDENT_ROOM_CODE_PATTERN/);
+  assert.match(appJs, /state\.studentDirectory\.view = 'manual'/);
+  assert.match(appJs, /\['ArrowLeft', 'ArrowRight', 'Home', 'End'\]/);
+  assert.match(joinRoomBlock, /directoryId: state\.studentDirectory\.selectedRoom\?\.directoryId \|\| ''/);
+  assert.match(directoryCardBlock, /data-directory-select=/);
+  assert.doesNotMatch(directoryCardBlock, /room\.code/);
+  assert.match(studentCss, /student-directory-card/);
+  assert.match(studentCss, /@media \(max-width: 520px\)/);
+  assert.match(indexHtml, /id="create-room-listed"/);
+  assert.match(indexHtml, /id="room-listed"/);
+  assert.match(baseCss, /\.room-directory-option input\[type="checkbox"\]/);
 });

@@ -36,8 +36,8 @@ The classroom shares one visual system but gives each role a purpose-built works
 
 ## Classroom Flow
 
-1. The teacher opens `/server`, creates a room, and configures the scenario, difficulty, turn count, and timer.
-2. Students open `/client` through a LAN link or QR code and join with a room code, name, and company.
+1. The teacher opens `/server`, creates a room, configures the scenario, difficulty, turn count, and timer, and chooses whether to publish it in the student lobby directory.
+2. Students open `/client`, select a published class or use the manual/QR path, then confirm entry with the separate five-character room code, name, and company.
 3. The teacher sees readiness, connection status, blockers, help requests, and the authoritative start gate.
 4. Every student acts independently during the shared turn.
 5. The next turn starts when all students finish, the timer expires, or the teacher ends the turn.
@@ -48,7 +48,7 @@ The classroom shares one visual system but gives each role a purpose-built works
 
 ### Teacher
 
-- Room creation, QR/student link, Network Doctor, and preflight checklist
+- Room creation, privacy-safe lobby publishing, QR/student link, Network Doctor, and preflight checklist
 - Class readiness and start eligibility controlled by server-side rules
 - Start, pause, resume, next-turn, finish, and reset controls
 - Live cockpit for connected, ready, stuck, inactive, and bankruptcy-risk teams

@@ -38,6 +38,112 @@ body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-cons
   scrollbar-width: thin;
 }
 
+body[data-screen="join-room-screen"][data-player-role="student"] .student-entry-card {
+  min-width: 0;
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-entry-tabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-entry-tabs button {
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: 8px 8px 0 0;
+  color: var(--muted);
+  background: transparent;
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-entry-tabs button[aria-selected="true"] {
+  color: var(--text);
+  background: rgba(49, 217, 210, 0.12);
+  box-shadow: inset 0 -2px 0 var(--accent-2);
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-panel,
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-list {
+  display: grid;
+  min-width: 0;
+  gap: 10px;
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-panel {
+  margin-top: 14px;
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-panel-head {
+  display: flex;
+  min-width: 0;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-panel h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-card,
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-empty,
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-selection {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+  padding: 13px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-card:hover,
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-card:focus-visible {
+  border-color: rgba(49, 217, 210, 0.65);
+  background: rgba(49, 217, 210, 0.09);
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-card span,
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-card small,
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-empty span,
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-selection span {
+  overflow-wrap: anywhere;
+  color: var(--muted);
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-card b {
+  margin-top: 4px;
+  color: var(--accent-2);
+  font-size: 0.82rem;
+}
+
+body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-selection {
+  margin-top: 14px;
+  border-color: rgba(49, 217, 210, 0.42);
+}
+
+@media (max-width: 520px) {
+  body[data-screen="join-room-screen"][data-player-role="student"] .student-entry-tabs {
+    gap: 2px;
+  }
+
+  body[data-screen="join-room-screen"][data-player-role="student"] .student-entry-tabs button {
+    flex: 1 1 0;
+    min-width: 0;
+    padding-inline: 6px;
+    font-size: 0.82rem;
+  }
+
+  body[data-screen="join-room-screen"][data-player-role="student"] .student-directory-panel-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
 body[data-screen="game-screen"][data-player-role="student"] .student-tycoon-console .student-task-stack {
   min-width: 0;
   overflow: clip;

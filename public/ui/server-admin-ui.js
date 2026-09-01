@@ -713,6 +713,10 @@ function renderCloudTeacherOverview() {
       <label><span>Компания хоста</span><input id="cloud-host-company" type="text" maxlength="24" value="Teacher Host" required /></label>
       <label><span>Сценарий</span><select id="cloud-scenario"><option value="motorcycles">Завод мотоциклов</option><option value="drones">Фабрика дронов</option><option value="smartphones">Сборка смартфонов</option></select></label>
       <label><span>Сложность</span><select id="cloud-difficulty"><option value="easy">Легкая</option><option value="normal">Нормальная</option><option value="hard">Сложная</option></select></label>
+      <label class="cloud-room-directory-option">
+        <input id="cloud-room-listed" type="checkbox" checked />
+        <span><b>Показывать во вкладке «Подключиться»</b><small>Ученики увидят только название, сценарий и заполненность. Пятисимвольный код останется обязательным.</small></span>
+      </label>
       <button type="submit">Создать комнату</button>
     </form>
     <div class="server-health-grid top-gap">
@@ -1037,6 +1041,7 @@ async function submitCloudCreateRoom(event) {
         companyName: document.querySelector('#cloud-host-company')?.value || 'Teacher Host',
         scenarioKey: document.querySelector('#cloud-scenario')?.value || 'motorcycles',
         difficulty: document.querySelector('#cloud-difficulty')?.value || 'easy',
+        lobbyVisibility: document.querySelector('#cloud-room-listed')?.checked ? 'listed' : 'code-only',
       }),
     });
     state.serverAdminSelection.roomCode = data.result?.roomCode || '';

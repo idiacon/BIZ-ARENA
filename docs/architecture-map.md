@@ -61,6 +61,7 @@ Current public API groups:
 
 - Student/player:
   - `POST /api/rooms/create`;
+  - `GET /api/rooms/directory` (safe opt-in lobby list without room codes or role data);
   - `POST /api/rooms/join`;
   - `GET /api/state`;
   - `POST /api/action`.

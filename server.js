@@ -1,5 +1,6 @@
 ﻿const http = require('http');
 const https = require('https');
+const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
@@ -95,6 +96,8 @@ const MAX_WEBSOCKET_CONNECTIONS_PER_IDENTITY = Math.max(1, Number(process.env.BI
 const WEBSOCKET_HEARTBEAT_MS = 30_000;
 const DB_SCHEMA_VERSION = 4;
 const ROOM_SNAPSHOT_SCHEMA_VERSION = 3;
+const ROOM_CODE_PATTERN = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/;
+const DIRECTORY_ID_PATTERN = /^[A-Za-z0-9_-]{16,64}$/;
 const roomSnapshotMigrationRegistry = createMigrationRegistry({
   schemaName: 'room snapshot',
   currentVersion: ROOM_SNAPSHOT_SCHEMA_VERSION,
@@ -938,6 +941,32 @@ function roomCode() {
   return state.rooms.has(code) ? roomCode() : code;
 }
 
+function normalizeRoomCode(value) {
+  const code = String(value || '').trim().toUpperCase();
+  return ROOM_CODE_PATTERN.test(code) ? code : '';
+}
+
+function randomDirectoryId() {
+  return crypto.randomBytes(18).toString('base64url');
+}
+
+function normalizeDirectoryId(value) {
+  const directoryId = String(value || '').trim();
+  return DIRECTORY_ID_PATTERN.test(directoryId) ? directoryId : '';
+}
+
+function normalizeLobbyVisibility(value) {
+  return value === 'listed' ? 'listed' : 'code-only';
+}
+
+function ensureRoomDirectoryId(room) {
+  const current = normalizeDirectoryId(room?.directoryId);
+  if (current) return current;
+  const directoryId = randomDirectoryId();
+  if (room) room.directoryId = directoryId;
+  return directoryId;
+}
+
 function isPlainObject(value) {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
 }
@@ -1175,6 +1204,8 @@ function migrateRoomSnapshot(rawSnapshot) {
     ...snapshot,
     schemaVersion: ROOM_SNAPSHOT_SCHEMA_VERSION,
     teacherAccountId: typeof snapshot.teacherAccountId === 'string' ? snapshot.teacherAccountId : '',
+    directoryId: normalizeDirectoryId(snapshot.directoryId) || randomDirectoryId(),
+    lobbyVisibility: normalizeLobbyVisibility(snapshot.lobbyVisibility),
     version: Math.max(1, Number(snapshot.version) || 1),
     status: typeof snapshot.status === 'string' ? snapshot.status : 'lobby',
     day: Math.max(1, Number(snapshot.day) || 1),
@@ -1847,6 +1878,7 @@ function handleTeacherAction(teacher, body = {}) {
       demandProfile: body.demandProfile,
       dayLimit: body.dayLimit,
       turnDurationMs: body.turnDurationMs,
+      lobbyVisibility: body.lobbyVisibility,
       teacherAccountId: teacher.id,
     });
     touchRoom(payload.room, payload.player);
@@ -2955,7 +2987,7 @@ function turnDurationMsForRoom(room) {
   return Number(room.settings?.turnDurationMs) || MANUAL_TURN_MS;
 }
 
-function createRoom({ roomName, companyName, userName, avatar, scenarioKey, difficulty, practiceMode, maxPlayers, demandProfile, dayLimit, turnDurationMs, teacherAccountId = '', teacherHost = false }) {
+function createRoom({ roomName, companyName, userName, avatar, scenarioKey, difficulty, practiceMode, maxPlayers, demandProfile, dayLimit, turnDurationMs, lobbyVisibility, teacherAccountId = '', teacherHost = false }) {
   const code = roomCode();
   const normalizedTeacherAccountId = String(teacherAccountId || '');
   const host = createPlayer(companyName, {
@@ -2982,6 +3014,8 @@ function createRoom({ roomName, companyName, userName, avatar, scenarioKey, diff
     name: safeName(roomName, `Комната ${code}`),
     hostPlayerId: host.id,
     teacherAccountId: normalizedTeacherAccountId,
+    directoryId: randomDirectoryId(),
+    lobbyVisibility: normalizeLobbyVisibility(lobbyVisibility),
     version: 1,
     status: 'lobby',
     day: 1,
@@ -4419,6 +4453,7 @@ function roomSummary(room, viewerId, options = {}) {
     name: room.name,
     version: Math.max(1, Number(room.version) || 1),
     teacherAccountId: room.teacherAccountId || '',
+    lobbyVisibility: normalizeLobbyVisibility(room.lobbyVisibility),
     status: room.status,
     day: room.day,
     tick: room.tick,
@@ -4480,10 +4515,31 @@ function roomSummary(room, viewerId, options = {}) {
   return filterRoomSummaryForView(summary, viewerId, view);
 }
 
-function joinRoom({ roomCode: requestedCode, companyName, userName, avatar, sessionToken = '' }) {
-  const code = String(requestedCode || '').trim().toUpperCase();
+function publicRoomDirectory() {
+  return [...state.rooms.values()]
+    .filter(room => (
+      room.lobbyVisibility === 'listed'
+      && room.status === 'lobby'
+      && [...room.players.values()].filter(isClassPlayer).length < room.settings.maxPlayers
+    ))
+    .slice(0, 50)
+    .map(room => ({
+      directoryId: ensureRoomDirectoryId(room),
+      name: room.name,
+      status: 'open',
+      requiresCode: true,
+      playerCount: [...room.players.values()].filter(isClassPlayer).length,
+      maxPlayers: room.settings.maxPlayers,
+      scenarioLabel: scenarioLabel(room.settings.scenarioKey),
+    }));
+}
+
+function joinRoom({ roomCode: requestedCode, directoryId, companyName, userName, avatar, sessionToken = '' }) {
+  const code = normalizeRoomCode(requestedCode);
   const room = state.rooms.get(code);
-  if (!room) throw Object.assign(new Error('Комната не найдена'), { status: 404 });
+  const unavailable = () => Object.assign(new Error('Комната недоступна'), { status: 404 });
+  if (!room) throw unavailable();
+  if (directoryId && normalizeDirectoryId(directoryId) !== room.directoryId) throw unavailable();
   const existingPlayer = findHumanPlayerByUserName(room, userName);
   if (existingPlayer) {
     const requestedCompanyName = safeName(companyName, existingPlayer.name);
@@ -4501,6 +4557,7 @@ function joinRoom({ roomCode: requestedCode, companyName, userName, avatar, sess
     persistRuntimeState();
     return { room, player: existingPlayer };
   }
+  if (room.status !== 'lobby') throw unavailable();
   const classroomPlayerCount = [...room.players.values()].filter(isClassPlayer).length;
   if (classroomPlayerCount >= room.settings.maxPlayers) throw Object.assign(new Error('Комната заполнена'), { status: 400 });
   const player = createPlayer(companyName, { userName, avatar });
@@ -4941,6 +4998,7 @@ function updateRoomSettings(room, body) {
   room.settings.dayLimit = dayLimit;
   room.settings.tickIntervalMs = tickIntervalMs;
   room.settings.turnDurationMs = turnDurationMs;
+  room.lobbyVisibility = normalizeLobbyVisibility(body.lobbyVisibility || room.lobbyVisibility);
   if (previousScenarioKey !== scenarioKey || (isFactoryScenario(scenarioKey) && previousDifficulty !== difficulty)) configureRoomScenario(room);
 }
 
@@ -5123,6 +5181,8 @@ function serializeRoom(room) {
     name: room.name,
     hostPlayerId: room.hostPlayerId,
     teacherAccountId: room.teacherAccountId || '',
+    directoryId: ensureRoomDirectoryId(room),
+    lobbyVisibility: normalizeLobbyVisibility(room.lobbyVisibility),
     version: Math.max(1, Number(room.version) || 1),
     status: room.status,
     day: room.day,
@@ -6321,6 +6381,7 @@ const routeApiRequest = createApiRouter({
   serverOverview,
   createRoom,
   joinRoom,
+  publicRoomDirectory,
   roomStartGate,
   canStartMatch,
   roomSummary,
@@ -6380,6 +6441,9 @@ const server = http.createServer(async (req, res) => {
     const handled = await routeApiRequest(req, res, url);
     if (!handled) sendJson(res, 404, { error: 'Not found' });
   } catch (error) {
+    if (error.retryAfterSeconds && !res.headersSent) {
+      res.setHeader('Retry-After', String(error.retryAfterSeconds));
+    }
     operationalLog(error.status >= 500 || !error.status ? 'error' : 'warn', 'request-error', {
       method: req.method,
       pathname: url?.pathname || String(req.url || ''),
@@ -6667,6 +6731,7 @@ module.exports = {
   processRoomTimers,
   createRoom,
   joinRoom,
+  publicRoomDirectory,
   roomStartGate,
   canStartMatch,
   roomSummary,

@@ -6414,6 +6414,44 @@ body {
   grid-row: 4;
 }
 
+.room-directory-option,
+.cloud-room-directory-option {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid rgba(49, 217, 210, 0.28);
+  border-radius: 8px;
+  background: rgba(49, 217, 210, 0.05);
+}
+
+#create-room-screen .stack-form > .room-directory-option,
+#room-settings-form > .room-directory-option {
+  grid-column: 1 / -1;
+}
+
+.room-directory-option input[type="checkbox"],
+.cloud-room-directory-option input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  margin: 1px 0 0;
+  accent-color: var(--accent-2);
+}
+
+.room-directory-option span,
+.cloud-room-directory-option span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.room-directory-option b,
+.cloud-room-directory-option b {
+  color: var(--text);
+}
+
 .create-room-blueprint {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

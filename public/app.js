@@ -338,6 +338,7 @@ const PERFORMANCE_MODES = ['auto', 'full', 'standard', 'lite'];
 const REFRESH_CADENCES = ['auto', 'fast', 'normal', 'slow'];
 const ANIMATION_MODES = ['auto', 'on', 'off'];
 const ANALYTICS_MODES = ['learning', 'advanced'];
+const STUDENT_ROOM_CODE_PATTERN = /^[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}$/;
 
 function normalizePerformanceMode(value) {
   return PERFORMANCE_MODES.includes(value) ? value : 'auto';
@@ -394,6 +395,15 @@ const state = {
   currentScreen: 'main-menu-screen',
   screenHistory: [],
   roomAutoOpenDismissed: false,
+  studentDirectory: {
+    rooms: [],
+    loading: false,
+    error: '',
+    loadedAt: 0,
+    view: 'directory',
+    selectedRoom: null,
+    focusDirectoryId: '',
+  },
   currentGameTab: localStorage.getItem('bizArenaGameTab') || 'overview',
   studentWorkspace: {
     department: '',
@@ -498,6 +508,7 @@ const elements = {
   createMaxPlayersSelect: document.querySelector('#create-max-players-select'),
   createDayLimitSelect: document.querySelector('#create-day-limit-select'),
   createTurnDurationSelect: document.querySelector('#create-turn-duration-select'),
+  createRoomListed: document.querySelector('#create-room-listed'),
   createDifficultySelect: document.querySelector('#create-difficulty-select'),
   createDifficultyButtons: document.querySelectorAll('[data-create-difficulty]'),
   createScenarioPreview: document.querySelector('#create-scenario-preview'),
@@ -506,6 +517,16 @@ const elements = {
   joinUserName: document.querySelector('#join-user-name'),
   joinCompanyName: document.querySelector('#join-company-name'),
   joinFormStatus: document.querySelector('#join-form-status'),
+  studentEntryHeading: document.querySelector('#student-entry-heading'),
+  studentDirectoryTab: document.querySelector('#student-directory-tab'),
+  studentCodeTab: document.querySelector('#student-code-tab'),
+  studentDirectoryPanel: document.querySelector('#student-directory-panel'),
+  studentDirectoryList: document.querySelector('#student-directory-list'),
+  studentDirectoryStatus: document.querySelector('#student-directory-status'),
+  studentDirectoryRefresh: document.querySelector('#student-directory-refresh'),
+  studentDirectoryRetry: document.querySelector('#student-directory-retry'),
+  studentDirectorySelection: document.querySelector('#student-directory-selection'),
+  studentDirectoryBack: document.querySelector('#student-directory-back'),
   roomOverview: document.querySelector('#room-overview'),
   sessionStatus: document.querySelector('#session-status'),
   companyOverview: document.querySelector('#company-overview'),
@@ -604,6 +625,7 @@ const elements = {
   difficultySelect: document.querySelector('#difficulty-select'),
   dayLimitSelect: document.querySelector('#day-limit-select'),
   turnDurationSelect: document.querySelector('#turn-duration-select'),
+  roomListed: document.querySelector('#room-listed'),
   toggleReady: document.querySelector('#toggle-ready'),
   saveRoomButton: document.querySelector('#save-room-button'),
   loadRoomButton: document.querySelector('#load-room-button'),
@@ -1539,7 +1561,10 @@ function applyClientLaunchParams() {
     localStorage.setItem('bizArenaUserName', launch.userName);
     if (elements.joinUserName) elements.joinUserName.value = launch.userName;
   }
-  if (launch.roomCode && elements.roomCodeInput) elements.roomCodeInput.value = launch.roomCode;
+  if (launch.roomCode && elements.roomCodeInput) {
+    elements.roomCodeInput.value = launch.roomCode;
+    state.studentDirectory.view = 'manual';
+  }
   if (launch.companyName && elements.joinCompanyName) elements.joinCompanyName.value = launch.companyName;
   state.clientLaunchParamsApplied = true;
 }
@@ -1921,6 +1946,12 @@ function showScreen(screenId, { addToHistory = true } = {}) {
   syncGameTabVisibility();
   if (screenId === 'game-screen' && !wasGameScreen) setGameTab(defaultGameTabForViewer());
   renderNavigationState();
+  if (screenId === 'join-room-screen' && isClientMode()) {
+    renderStudentDirectory();
+    if (state.studentDirectory.view === 'directory') loadStudentRoomDirectory();
+  } else if (screenId === 'join-room-screen' && elements.joinForm) {
+    elements.joinForm.hidden = false;
+  }
   renderTurnControlDock();
   maybeStartFirstTurnTutorial();
   renderTutorialOverlay();
@@ -2119,8 +2150,9 @@ function syncLobbyControls() {
     elements.difficultySelect.value = 'easy';
     elements.dayLimitSelect.value = '30';
     if (elements.turnDurationSelect) elements.turnDurationSelect.value = '1800000';
+    if (elements.roomListed) elements.roomListed.checked = false;
     elements.toggleReady.disabled = true;
-    elements.roomSettingsForm.querySelectorAll('select, button[type="submit"]').forEach(node => { node.disabled = true; });
+    elements.roomSettingsForm.querySelectorAll('select, input, button[type="submit"]').forEach(node => { node.disabled = true; });
     elements.saveRoomButton.disabled = true;
     elements.loadRoomButton.disabled = true;
     elements.saveRoomButtonGame.disabled = true;
@@ -2133,10 +2165,11 @@ function syncLobbyControls() {
   elements.difficultySelect.value = room.settings.difficulty || room.difficulty || 'normal';
   elements.dayLimitSelect.value = String(room.settings.dayLimit || 30);
   if (elements.turnDurationSelect) elements.turnDurationSelect.value = String(room.settings.turnDurationMs || room.turnDurationMs || 1800000);
+  if (elements.roomListed) elements.roomListed.checked = room.lobbyVisibility === 'listed';
   elements.toggleReady.disabled = room.status !== 'lobby' || player.isBot;
   elements.toggleReady.textContent = player.ready ? 'Принято' : 'Принять участие';
   const hostCanEdit = room.status === 'lobby' && player.isHost && !isClientMode();
-  elements.roomSettingsForm.querySelectorAll('select, button[type="submit"]').forEach(node => { node.disabled = !hostCanEdit; });
+  elements.roomSettingsForm.querySelectorAll('select, input, button[type="submit"]').forEach(node => { node.disabled = !hostCanEdit; });
   elements.saveRoomButton.disabled = !player.isHost || isClientMode();
   elements.loadRoomButton.disabled = !(player.isHost && !isClientMode() && ['lobby', 'paused', 'finished'].includes(room.status) && room.saveMeta);
   elements.saveRoomButtonGame.disabled = !player.isHost || isClientMode();
@@ -6000,6 +6033,7 @@ async function createRoom(overrides = {}) {
       maxPlayers: overrides.maxPlayers ?? Number(elements.createMaxPlayersSelect?.value || 30),
       dayLimit: overrides.dayLimit ?? Number(elements.createDayLimitSelect?.value || 30),
       turnDurationMs: overrides.turnDurationMs ?? Number(elements.createTurnDurationSelect?.value || 1800000),
+      lobbyVisibility: overrides.lobbyVisibility ?? (elements.createRoomListed?.checked ? 'listed' : 'code-only'),
     })
   });
   persistSession(data.playerId, data.roomCode, data.sessionToken);
@@ -6056,7 +6090,7 @@ async function joinRoom() {
   const roomCode = elements.roomCodeInput.value.trim().toUpperCase();
   const companyName = elements.joinCompanyName.value.trim();
   if (!joinUserName) throw new Error('Введите имя участника.');
-  if (!roomCode) throw new Error('Введите код комнаты с экрана преподавателя.');
+  if (!STUDENT_ROOM_CODE_PATTERN.test(roomCode)) throw new Error('Введите пятисимвольный код: латинские буквы без I и O, либо цифры 2–9.');
   if (!companyName) throw new Error('Введите название команды.');
   state.profile.userName = joinUserName;
   localStorage.setItem('bizArenaUserName', state.profile.userName);
@@ -6064,6 +6098,7 @@ async function joinRoom() {
     method: 'POST',
     body: JSON.stringify({
       roomCode,
+      directoryId: state.studentDirectory.selectedRoom?.directoryId || '',
       companyName,
       userName: joinUserName,
       avatar: state.profile.avatar,
@@ -6099,6 +6134,7 @@ async function sendAction(action, value, options = {}) {
       payload.difficulty = elements.difficultySelect.value;
       payload.dayLimit = Number(elements.dayLimitSelect.value);
       payload.turnDurationMs = Number(elements.turnDurationSelect?.value || 1800000);
+      payload.lobbyVisibility = elements.roomListed?.checked ? 'listed' : 'code-only';
     }
     await request(localTeacherConsole ? '/api/server/action' : '/api/action', {
       method: 'POST',
@@ -6287,6 +6323,7 @@ elements.joinForm.addEventListener('submit', async event => {
     setJoinFormStatus();
     elements.roomCodeInput.value = '';
     elements.joinCompanyName.value = '';
+    state.studentDirectory.selectedRoom = null;
   } catch (error) {
     const message = friendlyConnectionError(error.message);
     setJoinFormStatus(message, 'error');
@@ -6294,6 +6331,36 @@ elements.joinForm.addEventListener('submit', async event => {
   } finally {
     submitButton.disabled = false;
   }
+});
+document.querySelectorAll('[data-client-entry-tab]').forEach(button => {
+  button.addEventListener('click', () => showStudentDirectoryView(button.dataset.clientEntryTab));
+  button.addEventListener('keydown', event => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const tabs = [...document.querySelectorAll('[data-client-entry-tab]')];
+    const currentIndex = Math.max(0, tabs.indexOf(button));
+    const nextIndex = event.key === 'Home'
+      ? 0
+      : event.key === 'End'
+        ? tabs.length - 1
+        : (currentIndex + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+    const nextTab = tabs[nextIndex];
+    showStudentDirectoryView(nextTab.dataset.clientEntryTab, { focus: 'tab' });
+  });
+});
+elements.studentDirectoryRefresh?.addEventListener('click', () => loadStudentRoomDirectory({ force: true }));
+elements.studentDirectoryRetry?.addEventListener('click', () => loadStudentRoomDirectory({ force: true }));
+elements.studentDirectoryList?.addEventListener('click', event => {
+  const button = event.target.closest('[data-directory-select]');
+  if (button) selectStudentDirectoryRoom(button.dataset.directorySelect);
+});
+elements.studentDirectoryBack?.addEventListener('click', () => {
+  state.studentDirectory.focusDirectoryId = state.studentDirectory.selectedRoom?.directoryId || '';
+  showStudentDirectoryView('directory', { focus: 'return' });
+});
+elements.roomCodeInput?.addEventListener('input', () => {
+  elements.roomCodeInput.value = elements.roomCodeInput.value.toUpperCase().replace(/[^ABCDEFGHJKLMNPQRSTUVWXYZ23456789]/g, '').slice(0, 5);
+  elements.roomCodeInput.setCustomValidity(STUDENT_ROOM_CODE_PATTERN.test(elements.roomCodeInput.value) || !elements.roomCodeInput.value ? '' : 'Введите допустимый пятисимвольный код.');
 });
 elements.priceInput.addEventListener('input', event => { elements.priceValue.textContent = event.target.value; });
 elements.actionButtons.forEach(button => button.addEventListener('click', () => {

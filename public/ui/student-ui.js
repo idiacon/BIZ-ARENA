@@ -2,6 +2,117 @@ window.BizArenaFrontendModules = Object.assign(window.BizArenaFrontendModules ||
   student: Object.freeze({ contract: 'student-ui-v1' }),
 });
 
+function studentDirectoryRoom(room = {}) {
+  return {
+    directoryId: String(room.directoryId || ''),
+    name: String(room.name || 'Занятие преподавателя'),
+    scenarioLabel: String(room.scenarioLabel || 'Учебный сценарий'),
+    playerCount: Math.max(0, Number(room.playerCount) || 0),
+    maxPlayers: Math.max(0, Number(room.maxPlayers) || 0),
+  };
+}
+
+function setStudentDirectoryStatus(message = '', tone = '') {
+  if (!elements.studentDirectoryStatus) return;
+  elements.studentDirectoryStatus.textContent = message;
+  elements.studentDirectoryStatus.dataset.tone = tone;
+}
+
+function renderStudentDirectory() {
+  if (!isClientMode() || !elements.studentDirectoryPanel || !elements.joinForm) return;
+  const directory = state.studentDirectory;
+  const selected = directory.selectedRoom;
+  const isDirectory = directory.view === 'directory';
+  elements.studentDirectoryPanel.hidden = !isDirectory;
+  elements.joinForm.hidden = isDirectory;
+  elements.studentDirectoryTab.setAttribute('aria-selected', String(isDirectory));
+  elements.studentCodeTab.setAttribute('aria-selected', String(!isDirectory));
+  elements.studentDirectoryTab.tabIndex = isDirectory ? 0 : -1;
+  elements.studentCodeTab.tabIndex = isDirectory ? -1 : 0;
+  elements.studentEntryHeading.textContent = isDirectory
+    ? 'Подключиться к занятию'
+    : selected ? 'Подтвердите вход в занятие' : 'Ввести код комнаты';
+  const note = document.querySelector('[data-client-entry-note] span');
+  if (note) note.textContent = isDirectory
+    ? 'Выберите занятие преподавателя или введите код комнаты вручную.'
+    : selected ? 'Проверьте выбранное занятие, затем введите код преподавателя.' : 'Введите пятисимвольный код, который показал преподаватель.';
+  elements.studentDirectoryBack.hidden = !selected || directory.view === 'manual';
+  elements.studentDirectorySelection.hidden = !selected;
+  elements.studentDirectorySelection.innerHTML = selected
+    ? `<strong>${escapeHtml(selected.name)}</strong><span>${escapeHtml(selected.scenarioLabel)} · ${selected.playerCount} из ${selected.maxPlayers} мест занято</span>`
+    : '';
+  elements.studentDirectoryRetry.hidden = !directory.error;
+  if (isDirectory && elements.studentDirectoryList) {
+    if (directory.loading) elements.studentDirectoryList.innerHTML = '<p class="muted">Ищем доступные занятия…</p>';
+    else if (directory.error) elements.studentDirectoryList.innerHTML = '';
+    else if (!directory.rooms.length) {
+      elements.studentDirectoryList.innerHTML = '<div class="student-directory-empty"><strong>Сейчас нет открытых занятий</strong><span>Попросите преподавателя открыть лобби или используйте вкладку «Ввести код».</span></div>';
+    } else {
+      elements.studentDirectoryList.innerHTML = directory.rooms.map(room => `
+        <button type="button" class="student-directory-card" data-directory-select="${escapeHtml(room.directoryId)}">
+          <strong>${escapeHtml(room.name)}</strong><span>${escapeHtml(room.scenarioLabel)}</span>
+          <small>${room.playerCount} из ${room.maxPlayers} мест занято</small><b>Выбрать занятие →</b>
+        </button>`).join('');
+    }
+    if (directory.focusDirectoryId && !directory.loading && !directory.error) {
+      const focusDirectoryId = directory.focusDirectoryId;
+      window.requestAnimationFrame(() => {
+        const target = [...elements.studentDirectoryList.querySelectorAll('[data-directory-select]')]
+          .find(button => button.dataset.directorySelect === focusDirectoryId);
+        (target || elements.studentDirectoryTab)?.focus();
+        directory.focusDirectoryId = '';
+      });
+    }
+  }
+  if (!directory.loading && !directory.error && isDirectory) setStudentDirectoryStatus('');
+}
+
+function showStudentDirectoryView(view, { focus = 'content' } = {}) {
+  if (!isClientMode()) return;
+  const directory = state.studentDirectory;
+  if (view === 'directory' || view === 'manual') directory.selectedRoom = null;
+  directory.view = view;
+  renderStudentDirectory();
+  if (view === 'directory') {
+    loadStudentRoomDirectory();
+    if (focus !== 'return') window.requestAnimationFrame(() => elements.studentDirectoryTab?.focus());
+  } else window.requestAnimationFrame(() => (focus === 'tab' ? elements.studentCodeTab : elements.roomCodeInput)?.focus());
+}
+
+function selectStudentDirectoryRoom(directoryId) {
+  const selectedRoom = state.studentDirectory.rooms.find(room => room.directoryId === directoryId);
+  if (!selectedRoom) return;
+  state.studentDirectory.selectedRoom = selectedRoom;
+  state.studentDirectory.view = 'confirmation';
+  if (elements.roomCodeInput) elements.roomCodeInput.value = '';
+  setJoinFormStatus();
+  renderStudentDirectory();
+  window.requestAnimationFrame(() => elements.roomCodeInput?.focus());
+}
+
+async function loadStudentRoomDirectory({ force = false } = {}) {
+  if (!isClientMode()) return;
+  const directory = state.studentDirectory;
+  if (directory.loading || (!force && directory.loadedAt && Date.now() - directory.loadedAt < 10_000)) return;
+  directory.loading = true;
+  directory.error = '';
+  renderStudentDirectory();
+  try {
+    const data = await request('/api/rooms/directory');
+    if (data?.contract !== 'public-room-directory-v1') throw new Error('Сервер вернул несовместимый список занятий.');
+    directory.rooms = Array.isArray(data?.rooms) ? data.rooms.map(studentDirectoryRoom).filter(room => room.directoryId) : [];
+    directory.loadedAt = Date.now();
+    setStudentDirectoryStatus(directory.rooms.length ? `${directory.rooms.length} ${directory.rooms.length === 1 ? 'занятие доступно' : 'занятий доступно'}.` : '');
+  } catch (error) {
+    directory.rooms = [];
+    directory.error = friendlyConnectionError(error.message);
+    setStudentDirectoryStatus(directory.error, 'error');
+  } finally {
+    directory.loading = false;
+    renderStudentDirectory();
+  }
+}
+
 function studentRuCount(value, one, few, many) {
   const count = Math.abs(Math.trunc(Number(value) || 0));
   const lastTwo = count % 100;

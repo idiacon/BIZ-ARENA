@@ -155,6 +155,20 @@ The teacher lobby also exposes the server start decision through `data-start-gat
 - During active play, `playerDebrief` is withheld from `student-player-v2`; it is only needed for the finished-results screen.
 - Personnel hints in `student-player-v2` expose only the top classroom-useful candidates. The full room candidate pool remains in `room.factoryScenario` when the UI needs the broader market.
 
+## Public Lobby Directory Contract
+
+`GET /api/rooms/directory` is a separate pre-authentication contract. It is not part of `student-state-v2` and must not reuse Server/Admin or Teacher overview payloads.
+
+- The response contract is `public-room-directory-v1`.
+- Only rooms explicitly marked `listed`, still in `lobby`, and with a free participant slot may appear.
+- Every entry uses an opaque random `directoryId`; the five-character room code is never returned by the directory or rendered into a lobby card.
+- Allowed public fields are the teacher-provided room title, scenario label, occupancy, capacity, `status: "open"`, and `requiresCode: true`.
+- Teacher account identifiers, email, player or company names, readiness, session tokens, links, QR data, IP addresses, controls, lesson guidance, dashboards, events, results, and room codes are forbidden.
+- Choosing a directory entry does not create a session. `POST /api/rooms/join` still requires the exact five-character code and, for directory entry, must verify that `directoryId` and code refer to the same room.
+- New participants may join only while the room is in `lobby`. Existing authenticated participants may reconnect to an active or paused room through their established session.
+- Manual code entry and existing QR links remain valid fallback paths.
+- Anonymous `/api/state` responses must not expose a parallel room list or room codes.
+
 ## Student First Turn UI Contract
 
 The first-turn route panel exposes stable selectors:

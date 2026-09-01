@@ -167,22 +167,52 @@ async function main() {
     const me = await getJson('/api/teacher/me', { token: teacherToken });
     if (me.status !== 200 || me.json.teacher?.email !== teacherEmail) throw new Error('/api/teacher/me did not return teacher account.');
 
+    const hiddenCreated = await postJson('/api/teacher/action', {
+      action: 'create-room',
+      roomName: 'Hidden Cloud Smoke',
+      companyName: 'Teacher Console',
+      scenarioKey: 'motorcycles',
+      difficulty: 'easy',
+    }, { token: teacherToken });
+    if (hiddenCreated.status !== 200 || !hiddenCreated.json.result?.roomCode) {
+      throw new Error(`Hidden cloud room creation failed: ${hiddenCreated.status} ${JSON.stringify(hiddenCreated.json)}`);
+    }
+    const hiddenDirectory = await getJson('/api/rooms/directory');
+    if (hiddenDirectory.status !== 200 || hiddenDirectory.json.rooms?.length !== 0
+      || JSON.stringify(hiddenDirectory.json).includes(hiddenCreated.json.result.roomCode)) {
+      throw new Error(`Code-only cloud room leaked into the directory: ${JSON.stringify(hiddenDirectory.json)}`);
+    }
+
     const created = await postJson('/api/teacher/action', {
       action: 'create-room',
       roomName: 'Cloud Smoke',
       companyName: 'Teacher Console',
       scenarioKey: 'motorcycles',
       difficulty: 'easy',
+      lobbyVisibility: 'listed',
     }, { token: teacherToken });
     if (created.status !== 200 || !created.json.result?.roomCode || !created.json.result?.studentUrl) {
       throw new Error(`Cloud room creation failed: ${created.status} ${JSON.stringify(created.json)}`);
     }
     const roomCode = created.json.result.roomCode;
 
+    const directory = await getJson('/api/rooms/directory');
+    const directoryRoom = directory.json.rooms?.find(room => room.name === 'Cloud Smoke');
+    const expectedDirectoryKeys = ['directoryId', 'maxPlayers', 'name', 'playerCount', 'requiresCode', 'scenarioLabel', 'status'];
+    if (directory.status !== 200 || directory.json.contract !== 'public-room-directory-v1' || !directoryRoom) {
+      throw new Error(`Listed cloud room did not appear in the public directory: ${JSON.stringify(directory.json)}`);
+    }
+    if (JSON.stringify(directory.json).includes(roomCode)
+      || JSON.stringify(Object.keys(directoryRoom).sort()) !== JSON.stringify(expectedDirectoryKeys)) {
+      throw new Error(`Cloud directory crossed its public field boundary: ${JSON.stringify(directoryRoom)}`);
+    }
+
+    const studentUserName = `Student-${Date.now()}`;
     const joined = await postJson('/api/rooms/join', {
       roomCode,
+      directoryId: directoryRoom.directoryId,
       companyName: 'Student Plant',
-      userName: `Student-${Date.now()}`,
+      userName: studentUserName,
     });
     if (joined.status !== 201 || !joined.json.sessionToken) {
       throw new Error(`Student join failed: ${joined.status} ${JSON.stringify(joined.json)}`);
@@ -268,6 +298,28 @@ async function main() {
     }
     if (started.json.result?.lifecycle?.contract !== 'teacher-lifecycle-v1' || started.json.result?.lifecycle?.phase !== 'running') {
       throw new Error(`Teacher start did not return lifecycle contract: ${JSON.stringify(started.json.result)}`);
+    }
+
+    const closedDirectory = await getJson('/api/rooms/directory');
+    if (closedDirectory.json.rooms?.some(room => room.directoryId === directoryRoom.directoryId)) {
+      throw new Error(`Running cloud room remained in the public directory: ${JSON.stringify(closedDirectory.json)}`);
+    }
+    const lateJoin = await postJson('/api/rooms/join', {
+      roomCode,
+      companyName: 'Late Plant',
+      userName: `Late-${Date.now()}`,
+    });
+    if (lateJoin.status !== 404 || lateJoin.json.error !== 'Комната недоступна') {
+      throw new Error(`New cloud student joined after start: ${lateJoin.status} ${JSON.stringify(lateJoin.json)}`);
+    }
+    const reconnected = await postJson('/api/rooms/join', {
+      roomCode,
+      companyName: 'Student Plant',
+      userName: studentUserName,
+      sessionToken: joined.json.sessionToken,
+    });
+    if (reconnected.status !== 201 || reconnected.json.playerId !== joined.json.playerId) {
+      throw new Error(`Existing cloud student could not reconnect after start: ${reconnected.status} ${JSON.stringify(reconnected.json)}`);
     }
 
     const forcedEvent = await postJson('/api/teacher/action', {
@@ -379,6 +431,11 @@ async function main() {
       anonymousRoomCreationClosed: true,
       anonymousAccountLookupClosed: true,
       anonymousRoomDiscoveryClosed: true,
+      codeOnlyLobbyHidden: true,
+      publicDirectorySafe: true,
+      directoryConfirmationRequired: true,
+      lateJoinRejected: true,
+      activeReconnectAccepted: true,
       securityHeaders: true,
       legacyWebsocketAuthRejected: true,
       websocketInvalidation: true,

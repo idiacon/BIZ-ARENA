@@ -653,6 +653,13 @@
                   <option value="1800000" selected>30 минут</option>
                 </select>
               </label>
+              <label class="room-directory-option">
+                <input id="create-room-listed" type="checkbox" checked />
+                <span>
+                  <b>Показывать во вкладке «Подключиться»</b>
+                  <small>Ученики увидят только название, сценарий и заполненность. Код комнаты всё равно потребуется для входа.</small>
+                </span>
+              </label>
               <input id="create-difficulty-select" type="hidden" value="easy" />
               <div id="create-difficulty-picker" class="difficulty-picker" aria-label="Difficulty">
                 <button type="button" class="difficulty-card active" data-create-difficulty="easy">
@@ -707,17 +714,35 @@
         <div class="screen-shell student-entry-shell">
           <div class="panel screen-panel student-entry-card">
             <div class="panel-header">
-              <h2 data-i18n="join_room_screen">Войти в комнату преподавателя</h2>
+              <h2 id="student-entry-heading" data-i18n="join_room_screen">Подключиться к занятию</h2>
               <button type="button" class="ghost back-button" data-back data-i18n="back_btn">Back</button>
             </div>
             <div class="student-entry-note" data-client-entry-note>
               <strong>Режим ученика</strong>
-              <span>Сначала введите код с экрана преподавателя. Затем представьтесь и назовите команду.</span>
+              <span>Выберите занятие преподавателя или введите код комнаты вручную.</span>
             </div>
-            <form id="join-form" class="stack-form" novalidate>
+            <div class="student-entry-tabs" role="tablist" aria-label="Способ подключения">
+              <button id="student-directory-tab" type="button" role="tab" aria-controls="student-directory-panel" aria-selected="true" data-client-entry-tab="directory">Доступные занятия</button>
+              <button id="student-code-tab" type="button" role="tab" aria-controls="join-form" aria-selected="false" data-client-entry-tab="manual">Ввести код</button>
+            </div>
+            <section id="student-directory-panel" class="student-directory-panel" role="tabpanel" aria-labelledby="student-directory-tab" data-client-entry-panel="directory" aria-live="polite">
+              <div class="student-directory-panel-head">
+                <div>
+                  <h3>Занятия, к которым можно подключиться</h3>
+                  <p class="muted small">Код не показывается в списке: его даст преподаватель.</p>
+                </div>
+                <button id="student-directory-refresh" type="button" class="ghost">Обновить</button>
+              </div>
+              <div id="student-directory-list" class="student-directory-list"></div>
+              <p id="student-directory-status" class="form-status" role="status" aria-live="polite"></p>
+              <button id="student-directory-retry" type="button" class="ghost" hidden>Повторить попытку</button>
+            </section>
+            <form id="join-form" class="stack-form" role="tabpanel" aria-labelledby="student-code-tab" novalidate hidden data-client-entry-panel="join">
+              <div id="student-directory-selection" class="student-directory-selection" hidden aria-live="polite"></div>
+              <button id="student-directory-back" type="button" class="ghost" hidden>← К списку занятий</button>
               <label>
                 <span data-i18n="room_code">Room code</span>
-                <input id="room-code" type="text" maxlength="5" data-i18n-placeholder="room_code_placeholder" placeholder="ABCDE" required />
+                <input id="room-code" type="text" maxlength="5" pattern="[ABCDEFGHJKLMNPQRSTUVWXYZ23456789]{5}" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false" data-i18n-placeholder="room_code_placeholder" placeholder="ABCDE" required />
               </label>
               <label>
                 <span>Ваше имя</span>
@@ -730,7 +755,7 @@
               <button type="submit" data-i18n="join_room_btn">Войти и ждать старт</button>
               <p id="join-form-status" class="form-status" role="status" aria-live="polite"></p>
             </form>
-            <p class="muted small" data-i18n="join_hint">Введите код с экрана преподавателя. После входа нажмите “Готов”, дальше игра покажет первый шаг.</p>
+            <p class="muted small" data-i18n="join_hint">Введите пятисимвольный код с экрана преподавателя. После входа нажмите «Готов», дальше игра покажет первый шаг.</p>
           </div>
           <aside class="panel screen-panel student-entry-side" aria-label="Student route">
             <span class="factory-node-label">Путь ученика</span>
@@ -1100,6 +1125,13 @@
                   <option value="1200000">20 минут</option>
                   <option value="1800000">30 минут</option>
                 </select>
+              </label>
+              <label class="room-directory-option">
+                <input id="room-listed" type="checkbox" />
+                <span>
+                  <b>Показывать занятие во вкладке «Подключиться»</b>
+                  <small>Код комнаты, данные преподавателя и названия команд в список не попадут.</small>
+                </span>
               </label>
               <div class="button-pair">
                 <button id="toggle-ready" type="button" class="ghost" data-i18n="toggle_ready">Ready</button>

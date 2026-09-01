@@ -13,6 +13,7 @@ function createApiRouter({
   serverOverview,
   createRoom,
   joinRoom,
+  publicRoomDirectory,
   roomSummary,
   playerSummary,
   playerStateSummary,
@@ -35,8 +36,38 @@ function createApiRouter({
   createQrSvg,
   checkNetworkHealthUrl,
   serveStatic,
+  now = () => Date.now(),
 }) {
   const teacherAuthAttempts = new Map();
+  const failedJoinAttempts = new Map();
+  const failedJoinAddressAttempts = new Map();
+  const directoryRequests = new Map();
+
+  function enforceRateLimit(attempts, req, { limit, windowMs, message, keySuffix = '' }) {
+    const address = forwardedClientAddress(req);
+    const key = keySuffix ? `${address}|${keySuffix}` : address;
+    const currentTime = now();
+    const recent = (attempts.get(key) || []).filter(timestamp => currentTime - timestamp < windowMs);
+    if (recent.length >= limit) {
+      throw Object.assign(new Error(message), {
+        status: 429,
+        retryAfterSeconds: Math.max(1, Math.ceil(windowMs / 1000)),
+      });
+    }
+    return { key, recent, currentTime };
+  }
+
+  function recordRateLimitAttempt(attempts, req, options) {
+    const { key, recent, currentTime } = enforceRateLimit(attempts, req, options);
+    recent.push(currentTime);
+    attempts.set(key, recent);
+    if (attempts.size > 2048) {
+      for (const [candidateKey, timestamps] of attempts) {
+        if (timestamps.every(timestamp => currentTime - timestamp >= options.windowMs)) attempts.delete(candidateKey);
+      }
+      while (attempts.size > 2048) attempts.delete(attempts.keys().next().value);
+    }
+  }
 
   function isLocalRequest(req) {
     const address = String(req.socket?.remoteAddress || '');
@@ -55,14 +86,55 @@ function createApiRouter({
   }
 
   function enforceTeacherAuthRateLimit(req) {
-    const key = forwardedClientAddress(req);
-    const now = Date.now();
-    const recent = (teacherAuthAttempts.get(key) || []).filter(timestamp => now - timestamp < 60_000);
-    if (recent.length >= 10) {
-      throw Object.assign(new Error('Слишком много попыток входа. Повторите через минуту.'), { status: 429 });
-    }
-    recent.push(now);
-    teacherAuthAttempts.set(key, recent);
+    recordRateLimitAttempt(teacherAuthAttempts, req, {
+      limit: 10,
+      windowMs: 60_000,
+      message: 'Слишком много попыток входа. Повторите через минуту.',
+    });
+  }
+
+  function enforceDirectoryRequestRateLimit(req) {
+    recordRateLimitAttempt(directoryRequests, req, {
+      limit: 120,
+      windowMs: 60_000,
+      message: 'Слишком много запросов к списку лобби. Повторите через минуту.',
+    });
+  }
+
+  function failedJoinKey(body = {}) {
+    const roomKey = body.directoryId
+      ? String(body.directoryId).trim().slice(0, 64)
+      : String(body.roomCode || '').trim().toUpperCase().slice(0, 64);
+    const userKey = String(body.userName || '').trim().toLowerCase().slice(0, 64);
+    return `${roomKey}|${userKey}`;
+  }
+
+  function enforceFailedJoinRateLimit(req, body) {
+    enforceRateLimit(failedJoinAttempts, req, {
+      limit: 8,
+      windowMs: 60_000,
+      message: 'Слишком много неудачных попыток входа. Повторите через минуту.',
+      keySuffix: failedJoinKey(body),
+    });
+    enforceRateLimit(failedJoinAddressAttempts, req, {
+      limit: 60,
+      windowMs: 5 * 60_000,
+      message: 'Слишком много неудачных попыток входа. Повторите через пять минут.',
+    });
+  }
+
+  function recordFailedJoinAttempt(req, body) {
+    recordRateLimitAttempt(failedJoinAttempts, req, {
+      limit: 8,
+      windowMs: 60_000,
+      message: 'Слишком много неудачных попыток входа. Повторите через минуту.',
+      keySuffix: failedJoinKey(body),
+    });
+    recordRateLimitAttempt(failedJoinAddressAttempts, req, {
+      limit: 60,
+      windowMs: 5 * 60_000,
+      message: 'Слишком много неудачных попыток входа. Повторите через пять минут.',
+    });
   }
 
   function hasTeacherAuthHeader(req) {
@@ -119,9 +191,7 @@ function createApiRouter({
           room: null,
           player: null,
           account: null,
-          rooms: isCloudDeployment()
-            ? []
-            : [...state.rooms.values()].map(room => ({ code: room.code, name: room.name, status: room.status, players: room.players.size })),
+          rooms: [],
         });
         return true;
       }
@@ -156,6 +226,15 @@ function createApiRouter({
         account: accountSummary(account),
         roomVersion,
         playerVersion,
+      });
+      return true;
+    }
+
+    if (req.method === 'GET' && url.pathname === '/api/rooms/directory') {
+      enforceDirectoryRequestRateLimit(req);
+      sendJson(res, 200, {
+        contract: 'public-room-directory-v1',
+        rooms: publicRoomDirectory ? publicRoomDirectory() : [],
       });
       return true;
     }
@@ -363,7 +442,14 @@ function createApiRouter({
 
     if (req.method === 'POST' && url.pathname === '/api/rooms/join') {
       const body = await parseBody(req);
-      const payload = joinRoom(body);
+      enforceFailedJoinRateLimit(req, body);
+      let payload;
+      try {
+        payload = joinRoom(body);
+      } catch (error) {
+        if ([403, 404].includes(Number(error.status))) recordFailedJoinAttempt(req, body);
+        throw error;
+      }
       if (onRoomMutation) onRoomMutation(payload.room, { source: 'room-join' });
       sendJson(res, 201, {
         playerId: payload.player.id,

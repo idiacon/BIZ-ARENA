@@ -4,6 +4,7 @@ const { URL } = require('node:url');
 
 const { createRoomActionHandler } = require('../server/room/actions');
 const { createApiRouter } = require('../server/http/routes');
+const bizArena = require('../server');
 
 test('createRoomActionHandler toggles ready state through extracted dispatcher', () => {
   const log = [];
@@ -75,6 +76,246 @@ test('createApiRouter hides room discovery from anonymous cloud state requests',
     status: 200,
     payload: { room: null, player: null, account: null, rooms: [] },
   }]);
+});
+
+test('createApiRouter never exposes room codes through anonymous state requests', async () => {
+  const calls = [];
+  const routeApiRequest = createApiRouter({
+    sendJson: (_res, status, payload) => calls.push({ status, payload }),
+    state: { rooms: new Map([['ABCDE', { code: 'ABCDE', name: 'Private class', status: 'lobby', players: new Map() }]]) },
+    getRuntimeMeta: () => ({ deployment: 'local' }),
+  });
+
+  await routeApiRequest(
+    { method: 'GET', headers: {} },
+    {},
+    new URL('http://localhost/api/state')
+  );
+
+  assert.deepEqual(calls, [{
+    status: 200,
+    payload: { room: null, player: null, account: null, rooms: [] },
+  }]);
+});
+
+test('createApiRouter serves the dedicated public lobby directory contract', async () => {
+  const calls = [];
+  const listedRooms = [{
+    directoryId: 'd_7hJpQX8kLmN2rStUvWxY',
+    name: 'Economics 101',
+    status: 'open',
+    requiresCode: true,
+    playerCount: 4,
+    maxPlayers: 30,
+    scenarioLabel: 'Motorcycles',
+  }];
+  const routeApiRequest = createApiRouter({
+    sendJson: (_res, status, payload) => calls.push({ status, payload }),
+    state: { rooms: new Map() },
+    publicRoomDirectory: () => listedRooms,
+  });
+
+  await routeApiRequest(
+    { method: 'GET', headers: {}, socket: { remoteAddress: '203.0.113.10' } },
+    {},
+    new URL('https://arena.example/api/rooms/directory')
+  );
+
+  assert.deepEqual(calls, [{
+    status: 200,
+    payload: { contract: 'public-room-directory-v1', rooms: listedRooms },
+  }]);
+  assert.deepEqual(Object.keys(calls[0].payload.rooms[0]).sort(), [
+    'directoryId',
+    'maxPlayers',
+    'name',
+    'playerCount',
+    'requiresCode',
+    'scenarioLabel',
+    'status',
+  ]);
+});
+
+test('createApiRouter forwards directory selection and room code only to join handling', async () => {
+  const calls = [];
+  const joined = [];
+  const room = { code: 'ABCDE', version: 1 };
+  const player = { id: 'student_1', userName: 'Student', sessionToken: 'session_1', version: 1 };
+  const routeApiRequest = createApiRouter({
+    sendJson: (_res, status, payload) => calls.push({ status, payload }),
+    parseBody: async () => ({ roomCode: 'ABCDE', directoryId: 'd_7hJpQX8kLmN2rStUvWxY', userName: 'Student', companyName: 'Team' }),
+    state: { rooms: new Map([['ABCDE', room]]) },
+    joinRoom: body => {
+      joined.push(body);
+      return { room, player };
+    },
+    roomSummary: () => ({ summaryContract: 'student-v2' }),
+    playerStateSummary: () => ({ playerContract: 'student-player-v2' }),
+    ensureAccount: () => ({ id: 'account_1' }),
+    accountSummary: () => ({ id: 'account_1' }),
+  });
+
+  await routeApiRequest(
+    { method: 'POST', headers: {}, socket: { remoteAddress: '203.0.113.10' } },
+    {},
+    new URL('https://arena.example/api/rooms/join')
+  );
+
+  assert.deepEqual(joined, [{ roomCode: 'ABCDE', directoryId: 'd_7hJpQX8kLmN2rStUvWxY', userName: 'Student', companyName: 'Team' }]);
+  assert.equal(calls[0].status, 201);
+  assert.equal(calls[0].payload.stateContract, 'student-state-v2');
+});
+
+test('createApiRouter rate limits failed joins by forwarded client address', async () => {
+  let currentTime = 1000;
+  let joinAttempts = 0;
+  let requestBody = { roomCode: 'ABCDE', userName: 'Student One' };
+  const routeApiRequest = createApiRouter({
+    sendJson: () => { throw new Error('a failed join must not return a success payload'); },
+    parseBody: async () => requestBody,
+    state: { rooms: new Map() },
+    joinRoom: () => {
+      joinAttempts += 1;
+      throw Object.assign(new Error('Комната недоступна'), { status: 404 });
+    },
+    now: () => currentTime,
+  });
+  const url = new URL('https://arena.example/api/rooms/join');
+  const proxiedRequest = address => ({
+    method: 'POST',
+    socket: { remoteAddress: '127.0.0.1' },
+    headers: { 'x-forwarded-for': `198.51.100.99, ${address}` },
+  });
+
+  for (let index = 0; index < 8; index += 1) {
+    await assert.rejects(() => routeApiRequest(proxiedRequest('203.0.113.10'), {}, url), error => error.status === 404);
+  }
+  await assert.rejects(
+    () => routeApiRequest(proxiedRequest('203.0.113.10'), {}, url),
+    error => error.status === 429 && error.retryAfterSeconds === 60
+  );
+  requestBody = { roomCode: 'ABCDE', userName: 'Student Two' };
+  await assert.rejects(() => routeApiRequest(proxiedRequest('203.0.113.10'), {}, url), error => error.status === 404);
+  await assert.rejects(() => routeApiRequest(proxiedRequest('203.0.113.11'), {}, url), error => error.status === 404);
+  assert.equal(joinAttempts, 10);
+
+  currentTime += 60_001;
+  requestBody = { roomCode: 'ABCDE', userName: 'Student One' };
+  await assert.rejects(() => routeApiRequest(proxiedRequest('203.0.113.10'), {}, url), error => error.status === 404);
+  assert.equal(joinAttempts, 11);
+});
+
+test('createApiRouter rate limits public lobby directory requests', async () => {
+  let currentTime = 1000;
+  const calls = [];
+  const routeApiRequest = createApiRouter({
+    sendJson: (_res, status, payload) => calls.push({ status, payload }),
+    state: { rooms: new Map() },
+    publicRoomDirectory: () => [],
+    now: () => currentTime,
+  });
+  const req = { method: 'GET', headers: {}, socket: { remoteAddress: '203.0.113.10' } };
+  const url = new URL('https://arena.example/api/rooms/directory');
+
+  for (let index = 0; index < 120; index += 1) await routeApiRequest(req, {}, url);
+  await assert.rejects(
+    () => routeApiRequest(req, {}, url),
+    error => error.status === 429 && error.retryAfterSeconds === 60
+  );
+  assert.equal(calls.length, 120);
+
+  currentTime += 60_001;
+  await routeApiRequest(req, {}, url);
+  assert.equal(calls.length, 121);
+});
+
+test('publicRoomDirectory includes only listed non-full lobby rooms without room codes', () => {
+  const originalRooms = new Map(bizArena.state.rooms);
+  try {
+    bizArena.state.rooms.clear();
+    const makeRoom = ({ code, directoryId, visibility, status = 'lobby', players = 1, maxPlayers = 3 }) => ({
+      code,
+      directoryId,
+      lobbyVisibility: visibility,
+      name: `${code} classroom`,
+      status,
+      players: new Map(Array.from({ length: players }, (_, index) => [`p_${index}`, { id: `p_${index}`, isBot: false, isTeacherHost: false }])),
+      settings: { maxPlayers, scenarioKey: 'standard', difficulty: 'normal' },
+    });
+    bizArena.state.rooms.set('ABCDE', makeRoom({
+      code: 'ABCDE',
+      directoryId: 'd_7hJpQX8kLmN2rStUvWxY',
+      visibility: 'listed',
+    }));
+    bizArena.state.rooms.set('BCDEF', makeRoom({
+      code: 'BCDEF',
+      directoryId: 'd_privateRoomOnly_12345',
+      visibility: 'code-only',
+    }));
+    bizArena.state.rooms.set('CDEFG', makeRoom({
+      code: 'CDEFG',
+      directoryId: 'd_runningRoomOnly_12345',
+      visibility: 'listed',
+      status: 'running',
+    }));
+    bizArena.state.rooms.set('DEFGH', makeRoom({
+      code: 'DEFGH',
+      directoryId: 'd_fullRoomOnly_123456789',
+      visibility: 'listed',
+      players: 3,
+    }));
+
+    assert.deepEqual(bizArena.publicRoomDirectory(), [{
+      directoryId: 'd_7hJpQX8kLmN2rStUvWxY',
+      name: 'ABCDE classroom',
+      status: 'open',
+      requiresCode: true,
+      playerCount: 1,
+      maxPlayers: 3,
+      scenarioLabel: 'Balanced growth',
+    }]);
+  } finally {
+    bizArena.state.rooms.clear();
+    originalRooms.forEach((room, code) => bizArena.state.rooms.set(code, room));
+  }
+});
+
+test('serializeRoom persists the opaque directory identifier and visibility', () => {
+  const snapshot = bizArena.serializeRoom({
+    code: 'ABCDE',
+    name: 'Room',
+    hostPlayerId: 'host_1',
+    teacherAccountId: '',
+    directoryId: 'd_7hJpQX8kLmN2rStUvWxY',
+    lobbyVisibility: 'listed',
+    version: 1,
+    status: 'lobby',
+    day: 1,
+    tick: 0,
+    winnerPlayerId: null,
+    finishReason: null,
+    startedAt: null,
+    finishedAt: null,
+    completedSessionId: '',
+    log: [],
+    adminSnapshots: [],
+    helpRequests: [],
+    pauseRequest: null,
+    marketHistory: [],
+    segmentSnapshots: [],
+    settings: {},
+    teacherState: {},
+    activeEvent: null,
+    contractBoard: [],
+    factoryScenario: null,
+    lastSavedAt: null,
+    turnStartedAt: null,
+    pausedRemainingMs: null,
+    players: new Map(),
+  });
+
+  assert.equal(snapshot.directoryId, 'd_7hJpQX8kLmN2rStUvWxY');
+  assert.equal(snapshot.lobbyVisibility, 'listed');
 });
 
 test('createApiRouter serves extracted account endpoint', async () => {

@@ -1,8 +1,12 @@
-const http = require('http');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const { spawn } = require('child_process');
 
 const PORT = Number(process.env.PORT || 3099);
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+const DATA_DIR = process.env.BIZ_ARENA_DATA_DIR || fs.mkdtempSync(path.join(os.tmpdir(), 'biz-arena-lan-smoke-'));
+const SHOULD_CLEAN_DATA_DIR = !process.env.BIZ_ARENA_DATA_DIR;
 
 function wait(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -37,7 +41,7 @@ async function main() {
       ...process.env,
       PORT: String(PORT),
       BIZ_ARENA_APP_MODE: 'server',
-      BIZ_ARENA_DATA_DIR: process.env.BIZ_ARENA_DATA_DIR || undefined,
+      BIZ_ARENA_DATA_DIR: DATA_DIR,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
@@ -64,9 +68,36 @@ async function main() {
       userName: `Host-${Date.now()}`,
       scenarioKey: 'motorcycles',
       difficulty: 'easy',
+      lobbyVisibility: 'listed',
     });
     if (created.status !== 201 || !created.json.sessionToken) {
       throw new Error(`Create room failed: ${created.status} ${JSON.stringify(created.json)}`);
+    }
+
+    const anonymousState = await fetch(`${BASE_URL}/api/state`).then(response => response.json());
+    if (anonymousState.rooms?.length !== 0 || JSON.stringify(anonymousState).includes(created.json.roomCode)) {
+      throw new Error(`Anonymous state leaked room discovery data: ${JSON.stringify(anonymousState)}`);
+    }
+    const directoryResponse = await fetch(`${BASE_URL}/api/rooms/directory`);
+    const directory = await directoryResponse.json();
+    const directoryRoom = directory.rooms?.[0];
+    const expectedDirectoryKeys = ['directoryId', 'maxPlayers', 'name', 'playerCount', 'requiresCode', 'scenarioLabel', 'status'];
+    if (directoryResponse.status !== 200 || directory.contract !== 'public-room-directory-v1' || directory.rooms?.length !== 1) {
+      throw new Error(`Listed LAN room did not appear in the public directory: ${JSON.stringify(directory)}`);
+    }
+    if (JSON.stringify(directory).includes(created.json.roomCode)
+      || JSON.stringify(Object.keys(directoryRoom || {}).sort()) !== JSON.stringify(expectedDirectoryKeys)) {
+      throw new Error(`LAN directory crossed its public field boundary: ${JSON.stringify(directoryRoom)}`);
+    }
+
+    const wrongDirectoryJoin = await post('/api/rooms/join', {
+      roomCode: created.json.roomCode,
+      directoryId: 'different_directory_identifier',
+      companyName: 'Wrong Directory Plant',
+      userName: `Wrong-${Date.now()}`,
+    });
+    if (wrongDirectoryJoin.status !== 404 || wrongDirectoryJoin.json.error !== 'Комната недоступна') {
+      throw new Error(`Mismatched directory confirmation was not rejected neutrally: ${wrongDirectoryJoin.status} ${JSON.stringify(wrongDirectoryJoin.json)}`);
     }
 
     const badAction = await post('/api/action', {
@@ -95,10 +126,12 @@ async function main() {
       throw new Error(`Server admin allowed solo classroom start: ${soloAdminStart.status} ${JSON.stringify(soloAdminStart.json)}`);
     }
 
+    const studentUserName = `Student-${Date.now()}`;
     const joined = await post('/api/rooms/join', {
       roomCode: created.json.roomCode,
+      directoryId: directoryRoom.directoryId,
       companyName: 'Student Plant',
-      userName: `Student-${Date.now()}`,
+      userName: studentUserName,
     });
     if (joined.status !== 201 || !joined.json.sessionToken) {
       throw new Error(`Student join failed: ${joined.status} ${JSON.stringify(joined.json)}`);
@@ -128,6 +161,28 @@ async function main() {
     }
     if (adminStart.json.result?.lifecycle?.contract !== 'teacher-lifecycle-v1' || adminStart.json.result?.lifecycle?.phase !== 'running') {
       throw new Error(`Server admin start did not return lifecycle contract: ${JSON.stringify(adminStart.json.result)}`);
+    }
+
+    const closedDirectory = await fetch(`${BASE_URL}/api/rooms/directory`).then(response => response.json());
+    if (closedDirectory.rooms?.some(room => room.directoryId === directoryRoom.directoryId)) {
+      throw new Error(`Running LAN room remained in the public directory: ${JSON.stringify(closedDirectory)}`);
+    }
+    const lateJoin = await post('/api/rooms/join', {
+      roomCode: created.json.roomCode,
+      companyName: 'Late Plant',
+      userName: `Late-${Date.now()}`,
+    });
+    if (lateJoin.status !== 404 || lateJoin.json.error !== 'Комната недоступна') {
+      throw new Error(`New LAN student joined after start: ${lateJoin.status} ${JSON.stringify(lateJoin.json)}`);
+    }
+    const reconnected = await post('/api/rooms/join', {
+      roomCode: created.json.roomCode,
+      companyName: 'Student Plant',
+      userName: studentUserName,
+      sessionToken: joined.json.sessionToken,
+    });
+    if (reconnected.status !== 201 || reconnected.json.playerId !== joined.json.playerId) {
+      throw new Error(`Existing LAN student could not reconnect after start: ${reconnected.status} ${JSON.stringify(reconnected.json)}`);
     }
 
     const stateResponse = await fetch(
@@ -226,6 +281,10 @@ async function main() {
       healthOk: true,
       qrOk: true,
       networkCheckOk: true,
+      publicDirectorySafe: true,
+      directoryConfirmationRequired: true,
+      lateJoinRejected: true,
+      activeReconnectAccepted: true,
       overviewRooms: overview.overview.rooms.length,
       overviewPlayers: smokeRoom.players.length,
       invalidTokenRejected: true,
@@ -242,6 +301,7 @@ async function main() {
     console.log(JSON.stringify(result, null, 2));
   } finally {
     child.kill();
+    if (SHOULD_CLEAN_DATA_DIR) fs.rmSync(DATA_DIR, { recursive: true, force: true });
   }
 }
 
