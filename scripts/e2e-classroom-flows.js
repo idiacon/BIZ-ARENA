@@ -754,6 +754,90 @@ async function main() {
     await waitFor(studentBrowser.cdp, 'document.querySelector("[data-factory-department-detail]")?.dataset.factoryDepartmentDetail === "workforce"', 'student workforce CTA');
     await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.dataset.firstTurnTargetMode === "action"', 'student tutorial workforce action');
     assert.equal(await evaluate(studentBrowser.cdp, 'document.querySelector("[data-first-turn-target=workforce]")?.matches("[data-factory-action=hire-worker]")'), true);
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 432,
+      height: 873,
+      mobile: true,
+      deviceScaleFactor: 1,
+    });
+    await evaluate(studentBrowser.cdp, 'renderTutorialOverlay()');
+    await sleep(250);
+    const mobileWorkforceDialogLayout = await evaluate(studentBrowser.cdp, `(() => {
+      const dialog = document.querySelector('[data-factory-department-detail="workforce"].student-workspace-dialog');
+      const header = dialog?.querySelector('.factory-detail-head');
+      const heading = header?.querySelector('h3');
+      const description = header?.querySelector('.muted');
+      const metrics = dialog?.querySelector('.factory-metrics');
+      const metricCards = [...(metrics?.querySelectorAll('.factory-metric') || [])];
+      const target = document.querySelector('[data-first-turn-target="workforce"]');
+      const tutorialCard = document.querySelector('[data-first-turn-card]');
+      const rect = node => node?.getBoundingClientRect() || null;
+      const dialogRect = rect(dialog);
+      const headingRect = rect(heading);
+      const descriptionRect = rect(description);
+      const metricsRect = rect(metrics);
+      const metricRects = metricCards.map(rect).filter(Boolean);
+      const targetRect = rect(target);
+      const tutorialRect = rect(tutorialCard);
+      const contentBottom = Math.max(headingRect?.bottom || 0, descriptionRect?.bottom || 0);
+      const targetClearsTutorial = Boolean(targetRect && tutorialRect)
+        && (targetRect.bottom <= tutorialRect.top - 8 || targetRect.top >= tutorialRect.bottom + 8);
+      const layoutNode = node => {
+        const nodeRect = rect(node);
+        const style = node ? getComputedStyle(node) : null;
+        return {
+          className: node?.className || '',
+          top: nodeRect?.top || 0,
+          bottom: nodeRect?.bottom || 0,
+          height: nodeRect?.height || 0,
+          position: style?.position || '',
+          display: style?.display || '',
+          gridColumn: style?.gridColumn || '',
+          gridRow: style?.gridRow || '',
+        };
+      };
+      return {
+        dialogInside: Boolean(dialogRect)
+          && dialogRect.left >= -1
+          && dialogRect.right <= innerWidth + 1
+          && dialogRect.top >= -1
+          && dialogRect.bottom <= innerHeight + 1,
+        headerClearsMetrics: Boolean(metricsRect) && contentBottom <= metricsRect.top,
+        metricsUseReadableRows: metricRects.length === 3
+          && metricRects.every(metricRect => metricRect.width >= (metricsRect?.width || 0) - 2),
+        targetClearsTutorial,
+        tutorialHeightRatio: tutorialRect ? tutorialRect.height / innerHeight : 1,
+        dialogOverflow: dialog ? dialog.scrollWidth - dialog.clientWidth : -1,
+        metricsWidth: metricsRect?.width || 0,
+        metricWidths: metricRects.map(metricRect => metricRect.width),
+        contentBottom,
+        metricsTop: metricsRect?.top || 0,
+        targetBottom: targetRect?.bottom || 0,
+        tutorialTop: tutorialRect?.top || 0,
+        dialogLayout: dialog ? {
+          display: getComputedStyle(dialog).display,
+          gridTemplateColumns: getComputedStyle(dialog).gridTemplateColumns,
+          gridAutoFlow: getComputedStyle(dialog).gridAutoFlow,
+          children: [...dialog.children].map(layoutNode),
+          headerChildren: header ? [...header.children].map(layoutNode) : [],
+          headerCopyChildren: header?.firstElementChild ? [...header.firstElementChild.children].map(layoutNode) : [],
+        } : null,
+      };
+    })()`);
+    assert.equal(mobileWorkforceDialogLayout.dialogInside, true, JSON.stringify(mobileWorkforceDialogLayout));
+    assert.equal(mobileWorkforceDialogLayout.headerClearsMetrics, true, JSON.stringify(mobileWorkforceDialogLayout));
+    assert.equal(mobileWorkforceDialogLayout.metricsUseReadableRows, true, JSON.stringify(mobileWorkforceDialogLayout));
+    assert.equal(mobileWorkforceDialogLayout.targetClearsTutorial, true, JSON.stringify(mobileWorkforceDialogLayout));
+    assert.ok(mobileWorkforceDialogLayout.tutorialHeightRatio <= 0.34, JSON.stringify(mobileWorkforceDialogLayout));
+    assert.ok(mobileWorkforceDialogLayout.dialogOverflow <= 4, JSON.stringify(mobileWorkforceDialogLayout));
+    await studentBrowser.cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 900,
+      mobile: false,
+      deviceScaleFactor: 1,
+    });
+    await evaluate(studentBrowser.cdp, 'renderTutorialOverlay()');
+    await sleep(200);
     await evaluate(studentBrowser.cdp, 'document.querySelector("#tutorial-skip-button")?.click()');
     await waitFor(studentBrowser.cdp, 'document.querySelector("#tutorial-overlay")?.classList.contains("hidden")', 'student tutorial skip');
     assert.equal(await evaluate(studentBrowser.cdp, 'Object.entries(localStorage).some(([key, value]) => key.startsWith("bizArenaFirstTurnTutorial:") && value === "skipped")'), true);

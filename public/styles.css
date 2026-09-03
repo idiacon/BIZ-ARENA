@@ -4062,6 +4062,7 @@ body[data-performance-mode="lite"] .role-entry-option:hover {
 }
 
 .factory-brief-card,
+.factory-metrics .factory-metric,
 .factory-metrics .metric-card,
 .factory-toolbar .market-item,
 .factory-team-strip article,
@@ -4070,6 +4071,27 @@ body[data-performance-mode="lite"] .role-entry-option:hover {
   border-radius: 8px;
   background: var(--panel-soft);
   padding: 12px;
+}
+
+.factory-metrics .factory-metric {
+  display: grid;
+  align-content: start;
+  gap: 4px;
+  min-width: 0;
+}
+
+.factory-metrics .factory-metric strong,
+.factory-metrics .factory-metric .value,
+.factory-metrics .factory-metric small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.factory-metrics .factory-metric .value {
+  color: var(--text);
+  font-size: 1.12rem;
+  font-weight: 800;
+  line-height: 1.15;
 }
 
 .factory-brief-card {

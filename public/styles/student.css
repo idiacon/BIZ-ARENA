@@ -1592,6 +1592,33 @@ body[data-screen="game-screen"][data-player-role="student"] .factory-candidate-l
 }
 
 @media (max-width: 760px) {
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .factory-detail-head {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    justify-content: stretch;
+    gap: 10px;
+    min-height: max-content;
+    padding-right: 58px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .factory-detail-head > div:first-child,
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .factory-detail-head .muted,
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .factory-detail-head .factory-detail-badge {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .factory-detail-head .muted {
+    margin-bottom: 0;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"] .student-workspace-dialog > .factory-metrics {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   body[data-screen="game-screen"][data-player-role="student"] .purchase-summary,
   body[data-screen="game-screen"][data-player-role="student"] .assembly-bottleneck-grid,
   body[data-screen="game-screen"][data-player-role="student"] .factory-candidate-list,
@@ -1616,6 +1643,7 @@ body[data-screen="game-screen"][data-player-role="student"] .student-workspace-d
 
 body[data-screen="game-screen"][data-player-role="student"] .factory-detail.student-workspace-dialog {
   align-content: start;
+  grid-auto-rows: max-content;
 }
 
 body[data-screen="game-screen"][data-player-role="student"] .game-market-rail {
@@ -2419,6 +2447,41 @@ body[data-screen="game-screen"][data-player-role="student"] .tutorial-card[data-
   body[data-screen="game-screen"][data-player-role="student"] .tutorial-card[data-first-turn-card] .tutorial-card-body { grid-template-columns: 54px minmax(0, 1fr); gap: 10px; margin: 11px 0; }
   body[data-screen="game-screen"][data-player-role="student"] .tutorial-card[data-first-turn-card] .tutorial-mentor svg { width: 54px; }
   body[data-screen="game-screen"][data-player-role="student"] .tutorial-arrow[data-first-turn-arrow] { display: none; }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .tutorial-card[data-first-turn-card] {
+    max-height: 33dvh;
+    overflow-y: auto;
+    padding: 12px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .tutorial-card[data-first-turn-card] .tutorial-progress {
+    margin: 8px 0 7px;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .tutorial-card[data-first-turn-card] .tutorial-route,
+  body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .tutorial-card[data-first-turn-card] .tutorial-mentor {
+    display: none;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .tutorial-card[data-first-turn-card] .tutorial-card-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0;
+    margin: 8px 0;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .tutorial-card[data-first-turn-card] h3 {
+    font-size: 1rem;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .tutorial-card[data-first-turn-card] p {
+    font-size: 0.82rem;
+    line-height: 1.35;
+  }
+
+  body[data-screen="game-screen"][data-player-role="student"][data-student-workspace="dialog"] .tutorial-card[data-first-turn-card] .tutorial-hint {
+    margin-top: 6px;
+    font-size: 0.74rem;
+  }
 }
 
 @keyframes student-tutorial-pulse {
