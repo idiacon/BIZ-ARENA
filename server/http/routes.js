@@ -42,6 +42,7 @@ function createApiRouter({
   const failedJoinAttempts = new Map();
   const failedJoinAddressAttempts = new Map();
   const directoryRequests = new Map();
+  const roomCreateAttempts = new Map();
 
   function enforceRateLimit(attempts, req, { limit, windowMs, message, keySuffix = '' }) {
     const address = forwardedClientAddress(req);
@@ -98,6 +99,15 @@ function createApiRouter({
       limit: 120,
       windowMs: 60_000,
       message: 'Слишком много запросов к списку лобби. Повторите через минуту.',
+    });
+  }
+
+  function enforceRoomCreateRateLimit(req, identity = '') {
+    recordRateLimitAttempt(roomCreateAttempts, req, {
+      limit: 5,
+      windowMs: 10 * 60_000,
+      message: 'Слишком много созданных комнат. Повторите через десять минут.',
+      keySuffix: String(identity || '').trim().slice(0, 128),
     });
   }
 
@@ -399,6 +409,7 @@ function createApiRouter({
     if (req.method === 'POST' && url.pathname === '/api/teacher/action') {
       const payload = resolveTeacherRequest(req, url);
       const body = await parseBody(req);
+      if (body.action === 'create-room') enforceRoomCreateRateLimit(req, payload.account.id);
       const result = handleTeacherAction(payload.account, body);
       if (onRoomMutation && result?.roomCode) onRoomMutation(state.rooms.get(result.roomCode), { source: 'teacher', action: result.action });
       sendJson(res, 200, { ok: true, result });
@@ -425,6 +436,11 @@ function createApiRouter({
         sendJson(res, 403, { error: 'Cloud rooms must be created through the authenticated teacher API.' });
         return true;
       }
+      if (!isLocalAdminRequest(req)) {
+        sendJson(res, 403, { error: 'Создавать комнаты можно только на компьютере преподавателя.' });
+        return true;
+      }
+      enforceRoomCreateRateLimit(req);
       const body = await parseBody(req);
       const payload = createRoom(body);
       if (onRoomMutation) onRoomMutation(payload.room, { source: 'room-create' });

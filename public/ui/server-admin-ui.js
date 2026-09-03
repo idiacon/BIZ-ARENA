@@ -520,10 +520,12 @@ function serverAdminControlButtons(room) {
     ['save-room', 'Сохранить', ['lobby', 'running', 'paused', 'finished'].includes(room.status)],
     ['add-bot', 'Добавить бота', room.status === 'lobby' && room.playerCount < room.maxPlayers],
     ['finish-room', 'Завершить матч', actions.finish ?? ['running', 'paused'].includes(room.status)],
+    ['finish-and-close-room', 'Завершить и закрыть', actions.finishAndCloseRoom ?? ['running', 'paused'].includes(room.status)],
+    ['close-room', 'Закрыть комнату', actions.closeRoom ?? ['lobby', 'finished'].includes(room.status)],
     ['reset-room', 'Сброс', ['paused', 'finished', 'lobby'].includes(room.status)],
   ];
   return controls.map(([action, label, enabled]) => `
-    <button type="button" class="${['finish-room', 'reset-room'].includes(action) ? 'danger ghost' : 'ghost'} ${lifecycle.primaryAction === action ? 'primary-teacher-action' : ''}" data-server-admin-action="${escapeHtml(action)}" ${enabled ? '' : 'disabled'}>
+    <button type="button" class="${['finish-room', 'finish-and-close-room', 'close-room', 'reset-room'].includes(action) ? 'danger ghost' : 'ghost'} ${lifecycle.primaryAction === action ? 'primary-teacher-action' : ''}" data-server-admin-action="${escapeHtml(action)}" ${enabled ? '' : 'disabled'}>
       ${escapeHtml(label)}
     </button>`).join('');
 }
@@ -996,16 +998,26 @@ async function runServerAdminAction(action, value = '') {
     showToast('Сначала выберите комнату.', 'error');
     return;
   }
+  if (!confirmRoomClosure(action, roomCode)) return;
   try {
     await request('/api/server/action', {
       method: 'POST',
       body: JSON.stringify({ roomCode, action, value }),
     });
+    if (['close-room', 'finish-and-close-room'].includes(action)) state.serverAdminSelection.roomCode = '';
     await fetchRuntimeMeta();
-    showToast('Команда панели преподавателя выполнена.', 'success');
+    showToast(['close-room', 'finish-and-close-room'].includes(action) ? 'Комната закрыта. История занятия сохранена.' : 'Команда панели преподавателя выполнена.', 'success');
   } catch (error) {
     showToast(error.message, 'error');
   }
+}
+
+function confirmRoomClosure(action, roomCode) {
+  if (!['close-room', 'finish-and-close-room'].includes(action)) return true;
+  const message = action === 'finish-and-close-room'
+    ? `Завершить матч ${roomCode} и закрыть комнату? Итоги останутся в истории занятий.`
+    : `Закрыть комнату ${roomCode}? Для завершённого матча история останется доступной.`;
+  return window.confirm(message);
 }
 
 async function submitCloudTeacherAuth(event) {
@@ -1057,14 +1069,16 @@ async function runCloudTeacherAction(action, { roomCode, value = '' } = {}) {
     showToast('Сначала создайте или выберите cloud room.', 'error');
     return;
   }
+  if (!confirmRoomClosure(action, roomCode)) return;
   try {
     await request('/api/teacher/action', {
       method: 'POST',
       headers: teacherAuthHeaders(),
       body: JSON.stringify({ roomCode, action, value }),
     });
+    if (['close-room', 'finish-and-close-room'].includes(action)) state.serverAdminSelection.roomCode = '';
     await fetchRuntimeMeta();
-    showToast('Cloud команда выполнена.', 'success');
+    showToast(['close-room', 'finish-and-close-room'].includes(action) ? 'Комната закрыта. История занятия сохранена.' : 'Cloud команда выполнена.', 'success');
   } catch (error) {
     showToast(error.message, 'error');
   }

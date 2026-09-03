@@ -703,6 +703,69 @@ test('createApiRouter requires teacher flow to create rooms in cloud deployment'
   assert.match(calls[0].payload.error, /teacher/i);
 });
 
+test('createApiRouter keeps local room creation on the host computer', async () => {
+  const calls = [];
+  const routeApiRequest = createApiRouter({
+    sendJson: (_res, status, payload) => calls.push({ status, payload }),
+    parseBody: async () => { throw new Error('remote local request must be rejected before body parsing'); },
+    state: { rooms: new Map() },
+    getRuntimeMeta: () => ({ deployment: 'local' }),
+    createRoom: () => { throw new Error('remote local room creation must not run'); },
+  });
+
+  assert.equal(await routeApiRequest(
+    { method: 'POST', headers: {}, socket: { remoteAddress: '192.168.0.25' } },
+    {},
+    new URL('http://arena.local/api/rooms/create')
+  ), true);
+
+  assert.deepEqual(calls, [{
+    status: 403,
+    payload: { error: 'Создавать комнаты можно только на компьютере преподавателя.' },
+  }]);
+});
+
+test('createApiRouter rate limits bursts of local room creation', async () => {
+  const calls = [];
+  let roomNumber = 0;
+  const routeApiRequest = createApiRouter({
+    sendJson: (_res, status, payload) => calls.push({ status, payload }),
+    parseBody: async () => ({ roomName: 'Room' }),
+    state: { rooms: new Map() },
+    getRuntimeMeta: () => ({ deployment: 'local' }),
+    createRoom: () => {
+      roomNumber += 1;
+      return {
+        room: { code: `ROOM${roomNumber}`, version: 1 },
+        player: { id: `player-${roomNumber}`, sessionToken: `token-${roomNumber}`, userName: 'Teacher' },
+      };
+    },
+    roomSummary: room => ({ code: room.code }),
+    playerStateSummary: (_room, player) => ({ id: player.id }),
+    accountSummary: account => account,
+    ensureAccount: userName => ({ userName }),
+    now: () => 1_000,
+  });
+
+  for (let index = 0; index < 5; index += 1) {
+    assert.equal(await routeApiRequest(
+      { method: 'POST', headers: {}, socket: { remoteAddress: '127.0.0.1' } },
+      {},
+      new URL('http://localhost/api/rooms/create')
+    ), true);
+  }
+
+  await assert.rejects(
+    () => routeApiRequest(
+      { method: 'POST', headers: {}, socket: { remoteAddress: '127.0.0.1' } },
+      {},
+      new URL('http://localhost/api/rooms/create')
+    ),
+    error => error.status === 429 && error.retryAfterSeconds === 600
+  );
+  assert.equal(calls.length, 5);
+});
+
 test('createRoomActionHandler forwards unknown actions to business handlers', () => {
   const calls = [];
   const handler = createRoomActionHandler({

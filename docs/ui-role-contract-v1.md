@@ -192,6 +192,14 @@ Authoritative phases:
 - `paused` - `resume-game` and `finish-room` may be available;
 - `finished` - match mutations are closed and `canOpenDebrief` is true.
 
+Room disposal is a separate teacher-only lifecycle:
+
+- `close-room` is available only for `lobby|finished` and removes the live room, player indexes, and resumable snapshot;
+- `finish-and-close-room` is available only for `running|paused`, archives the completed session first, then removes the live room;
+- both actions require an explicit browser confirmation in the teacher console;
+- local disposal remains localhost-only; cloud disposal requires the owning teacher session;
+- closing never deletes an archived completed-session report.
+
 The lifecycle object exposes:
 
 - `phase`, `phaseLock`, `primaryAction`, and `nextExpectedPhase`;
@@ -204,6 +212,16 @@ Server authority must reject invalid transitions even if a client sends an actio
 - `resume-game` outside `paused`;
 - `next-turn` outside `running` or while manual phase lock is not `open`;
 - `finish-room` outside `running|paused`.
+- `close-room` while a match is `running|paused`;
+- any cloud close request from a teacher who does not own the room.
+
+Room creation and retention limits:
+
+- anonymous local creation is accepted only from the server host computer;
+- one local client address or authenticated cloud teacher identity may create at most five rooms per ten-minute process window;
+- a cloud teacher may keep at most three non-finished rooms and two listed lobbies;
+- empty cloud lobbies expire after two hours, empty local lobbies after 24 hours, and finished live rooms after 24 hours;
+- `running|paused` rooms are never removed by TTL cleanup.
 
 Teacher cockpit exposes stable selectors:
 

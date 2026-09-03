@@ -1372,6 +1372,163 @@ test('server admin action controls a room through the host player', () => {
   assert.equal(room.finishReason, 'teacher_stopped');
 });
 
+test('room lifecycle: local admin closes a lobby and removes its live indexes', () => {
+  resetRuntime();
+  const { room, player: host } = bizArena.createRoom({
+    roomName: 'Disposable Lobby',
+    companyName: 'Teacher Console',
+    userName: 'Teacher',
+    teacherHost: true,
+  });
+  bizArena.flushRuntimeState();
+  assert.ok(bizArena.state.db.activeRooms[room.code]);
+
+  const result = bizArena.handleServerAdminAction({ roomCode: room.code, action: 'close-room' });
+
+  assert.equal(result.action, 'close-room');
+  assert.equal(result.status, 'closed');
+  assert.equal(bizArena.state.rooms.has(room.code), false);
+  assert.equal(bizArena.state.playerRoomIndex.has(host.id), false);
+  assert.equal(bizArena.state.db.activeRooms[room.code], undefined);
+});
+
+test('room lifecycle: active match must be finished before ordinary close', () => {
+  const { room } = createStartedFactoryRoom();
+
+  assert.throws(
+    () => bizArena.handleServerAdminAction({ roomCode: room.code, action: 'close-room' }),
+    error => error.status === 409 && /завершить/i.test(error.message)
+  );
+  assert.equal(room.status, 'running');
+  assert.equal(bizArena.state.rooms.has(room.code), true);
+});
+
+test('room lifecycle: finish and close preserves completed session history', () => {
+  const { room } = createStartedFactoryRoom();
+
+  const result = bizArena.handleServerAdminAction({ roomCode: room.code, action: 'finish-and-close-room' });
+
+  assert.equal(result.status, 'closed');
+  assert.equal(bizArena.state.rooms.has(room.code), false);
+  const sessions = bizArena.listCompletedSessions({ teacherAccountId: '' });
+  assert.equal(sessions.length, 1);
+  assert.equal(sessions[0].roomCode, room.code);
+  assert.equal(sessions[0].finishReason, 'teacher_stopped');
+});
+
+test('room lifecycle: stale cleanup removes only empty lobbies and finished rooms', () => {
+  resetRuntime();
+  const now = Date.now();
+  const { room: emptyLobby } = bizArena.createRoom({
+    roomName: 'Old Empty Lobby',
+    companyName: 'Teacher Console',
+    userName: 'Teacher',
+    teacherHost: true,
+    teacherAccountId: 'teacher-cleanup',
+  });
+  emptyLobby.lastActivityAt = now - (3 * 60 * 60 * 1000);
+
+  const { room: activeRoom, player: activeHost } = bizArena.createRoom({
+    roomName: 'Old Active Room',
+    companyName: 'Teacher Console',
+    userName: 'Teacher',
+    teacherHost: true,
+    teacherAccountId: 'teacher-cleanup',
+  });
+  const { player: student } = bizArena.joinRoom({
+    roomCode: activeRoom.code,
+    companyName: 'Student Plant',
+    userName: 'Student',
+  });
+  bizArena.handleRoomAction(activeRoom, student, { action: 'toggle-ready' });
+  bizArena.handleRoomAction(activeRoom, activeHost, { action: 'start-game' });
+  activeRoom.lastActivityAt = now - (8 * 24 * 60 * 60 * 1000);
+
+  const { room: finishedRoom, player: finishedHost } = bizArena.createRoom({
+    roomName: 'Old Finished Room',
+    companyName: 'Teacher Console',
+    userName: 'Teacher',
+    teacherHost: true,
+    teacherAccountId: 'teacher-cleanup',
+  });
+  const { player: finishedStudent } = bizArena.joinRoom({
+    roomCode: finishedRoom.code,
+    companyName: 'Finished Student Plant',
+    userName: 'Finished Student',
+  });
+  bizArena.handleRoomAction(finishedRoom, finishedStudent, { action: 'toggle-ready' });
+  bizArena.handleRoomAction(finishedRoom, finishedHost, { action: 'start-game' });
+  bizArena.handleRoomAction(finishedRoom, finishedHost, { action: 'finish-room' });
+  finishedRoom.lastActivityAt = now - (25 * 60 * 60 * 1000);
+
+  const { room: localLobby } = bizArena.createRoom({
+    roomName: 'Recent Local Lobby',
+    companyName: 'Local Teacher',
+    userName: 'Local Teacher',
+    teacherHost: true,
+  });
+  localLobby.lastActivityAt = now - (3 * 60 * 60 * 1000);
+
+  const removed = bizArena.cleanupExpiredRooms(now);
+
+  assert.deepEqual(removed.map(item => item.roomCode), [emptyLobby.code, finishedRoom.code]);
+  assert.equal(bizArena.state.rooms.has(emptyLobby.code), false);
+  assert.equal(bizArena.state.rooms.has(finishedRoom.code), false);
+  assert.equal(bizArena.state.rooms.has(activeRoom.code), true);
+  assert.equal(bizArena.state.rooms.has(localLobby.code), true);
+  assert.equal(activeRoom.status, 'running');
+});
+
+test('teacher console exposes explicit confirmed room closure controls', () => {
+  const source = fs.readFileSync(path.join(__dirname, '..', 'public', 'ui', 'server-admin-ui.js'), 'utf8');
+  const controls = sourceFunctionBlock(source, 'serverAdminControlButtons');
+  const confirmation = sourceFunctionBlock(source, 'confirmRoomClosure');
+
+  assert.match(controls, /finish-and-close-room/);
+  assert.match(controls, /close-room/);
+  assert.match(confirmation, /window\.confirm/);
+  assert.match(confirmation, /история останется/i);
+});
+
+test('cloud classroom: teacher room quotas survive in active room state and release after close', () => {
+  resetRuntime();
+  const owner = bizArena.createTeacherAccount({
+    email: 'quota@example.com',
+    password: 'correct-horse-42',
+    displayName: 'Quota Teacher',
+  });
+  const roomCodes = [];
+  for (let index = 0; index < 3; index += 1) {
+    roomCodes.push(bizArena.handleTeacherAction(owner, {
+      action: 'create-room',
+      roomName: `Quota Room ${index + 1}`,
+      lobbyVisibility: index < 2 ? 'listed' : 'code-only',
+    }).roomCode);
+  }
+
+  assert.throws(
+    () => bizArena.handleTeacherAction(owner, { action: 'create-room', roomName: 'Fourth Room' }),
+    error => error.status === 409 && error.code === 'ROOM_QUOTA_REACHED'
+  );
+  bizArena.handleTeacherAction(owner, { action: 'close-room', roomCode: roomCodes[2] });
+  assert.throws(
+    () => bizArena.handleTeacherAction(owner, {
+      action: 'create-room',
+      roomName: 'Third Listed Room',
+      lobbyVisibility: 'listed',
+    }),
+    error => error.status === 409 && error.code === 'LISTED_ROOM_QUOTA_REACHED'
+  );
+
+  bizArena.handleTeacherAction(owner, { action: 'close-room', roomCode: roomCodes[0] });
+  const replacement = bizArena.handleTeacherAction(owner, {
+    action: 'create-room',
+    roomName: 'Replacement Room',
+    lobbyVisibility: 'listed',
+  });
+  assert.ok(bizArena.state.rooms.has(replacement.roomCode));
+});
+
 test('server overview keeps admin day snapshots after resolved turns', () => {
   const { room, host } = createStartedFactoryRoom();
   host.factory.finishedGoods = 2;

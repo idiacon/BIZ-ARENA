@@ -93,6 +93,12 @@ const MAX_AVATAR_LENGTH = 250_000;
 const MAX_WEBSOCKET_PAYLOAD_BYTES = 16 * 1024;
 const MAX_WEBSOCKET_CONNECTIONS = Math.max(30, Number(process.env.BIZ_ARENA_WS_MAX_CONNECTIONS || 512) || 512);
 const MAX_WEBSOCKET_CONNECTIONS_PER_IDENTITY = Math.max(1, Number(process.env.BIZ_ARENA_WS_MAX_PER_IDENTITY || 2) || 2);
+const MAX_LIVE_ROOMS = Math.max(1, Number(process.env.BIZ_ARENA_MAX_LIVE_ROOMS || 100) || 100);
+const MAX_ACTIVE_ROOMS_PER_TEACHER = Math.max(1, Number(process.env.BIZ_ARENA_MAX_ACTIVE_ROOMS_PER_TEACHER || 3) || 3);
+const MAX_LISTED_LOBBIES_PER_TEACHER = Math.max(1, Number(process.env.BIZ_ARENA_MAX_LISTED_LOBBIES_PER_TEACHER || 2) || 2);
+const CLOUD_EMPTY_LOBBY_TTL_MS = Math.max(1, Number(process.env.BIZ_ARENA_CLOUD_EMPTY_LOBBY_TTL_HOURS || 2) || 2) * 60 * 60 * 1000;
+const LOCAL_EMPTY_LOBBY_TTL_MS = Math.max(1, Number(process.env.BIZ_ARENA_LOCAL_EMPTY_LOBBY_TTL_HOURS || 24) || 24) * 60 * 60 * 1000;
+const FINISHED_ROOM_TTL_MS = Math.max(1, Number(process.env.BIZ_ARENA_FINISHED_ROOM_TTL_HOURS || 24) || 24) * 60 * 60 * 1000;
 const WEBSOCKET_HEARTBEAT_MS = 30_000;
 const DB_SCHEMA_VERSION = 4;
 const ROOM_SNAPSHOT_SCHEMA_VERSION = 3;
@@ -1207,6 +1213,8 @@ function migrateRoomSnapshot(rawSnapshot) {
     directoryId: normalizeDirectoryId(snapshot.directoryId) || randomDirectoryId(),
     lobbyVisibility: normalizeLobbyVisibility(snapshot.lobbyVisibility),
     version: Math.max(1, Number(snapshot.version) || 1),
+    createdAt: Number(snapshot.createdAt) || Date.now(),
+    lastActivityAt: Number(snapshot.lastActivityAt) || Number(snapshot.createdAt) || Date.now(),
     status: typeof snapshot.status === 'string' ? snapshot.status : 'lobby',
     day: Math.max(1, Number(snapshot.day) || 1),
     tick: Math.max(0, Number(snapshot.tick) || 0),
@@ -1417,6 +1425,7 @@ function touchPlayer(player) {
 function touchRoom(room, ...players) {
   if (!room) return;
   room.version = Math.max(1, Number(room.version) || 1) + 1;
+  room.lastActivityAt = Date.now();
   players.filter(Boolean).forEach(touchPlayer);
 }
 
@@ -1775,6 +1784,12 @@ function handleServerAdminAction(body = {}) {
   const host = room.players.get(room.hostPlayerId) || [...room.players.values()].find(isClassPlayer);
   if (!host) throw Object.assign(new Error('В комнате нет хоста для управления матчем'), { status: 400 });
   const action = String(body.action || '');
+  if (action === 'close-room' || action === 'finish-and-close-room') {
+    return closeRoom(room, {
+      finishActive: action === 'finish-and-close-room',
+      reason: 'closed_by_local_admin',
+    });
+  }
   const hostActions = new Set([
     'start-game',
     'pause-game',
@@ -1896,6 +1911,13 @@ function handleTeacherAction(teacher, body = {}) {
   if (!room) throw Object.assign(new Error('Комната не найдена'), { status: 404 });
   if (!teacherOwnsRoom(teacher, room)) {
     throw Object.assign(new Error('Эта cloud room принадлежит другому преподавателю.'), { status: 403 });
+  }
+
+  if (action === 'close-room' || action === 'finish-and-close-room') {
+    return closeRoom(room, {
+      finishActive: action === 'finish-and-close-room',
+      reason: 'closed_by_teacher',
+    });
   }
 
   const host = room.players.get(room.hostPlayerId) || [...room.players.values()].find(isClassPlayer);
@@ -2987,7 +3009,36 @@ function turnDurationMsForRoom(room) {
   return Number(room.settings?.turnDurationMs) || MANUAL_TURN_MS;
 }
 
+function assertRoomCreationAllowed({ teacherAccountId = '', lobbyVisibility = 'code-only' } = {}) {
+  if (state.rooms.size >= MAX_LIVE_ROOMS) {
+    throw Object.assign(new Error('Сервер достиг лимита одновременно открытых комнат.'), {
+      status: 409,
+      code: 'ROOM_CAPACITY_REACHED',
+    });
+  }
+  const ownerId = String(teacherAccountId || '');
+  if (!ownerId) return;
+  const ownedRooms = [...state.rooms.values()].filter(room => room.teacherAccountId === ownerId);
+  const activeRooms = ownedRooms.filter(room => room.status !== 'finished');
+  if (activeRooms.length >= MAX_ACTIVE_ROOMS_PER_TEACHER) {
+    throw Object.assign(new Error('У преподавателя уже открыто максимальное количество активных комнат.'), {
+      status: 409,
+      code: 'ROOM_QUOTA_REACHED',
+    });
+  }
+  const listedLobbies = ownedRooms.filter(room => (
+    room.status === 'lobby' && normalizeLobbyVisibility(room.lobbyVisibility) === 'listed'
+  ));
+  if (normalizeLobbyVisibility(lobbyVisibility) === 'listed' && listedLobbies.length >= MAX_LISTED_LOBBIES_PER_TEACHER) {
+    throw Object.assign(new Error('У преподавателя уже опубликовано максимальное количество лобби.'), {
+      status: 409,
+      code: 'LISTED_ROOM_QUOTA_REACHED',
+    });
+  }
+}
+
 function createRoom({ roomName, companyName, userName, avatar, scenarioKey, difficulty, practiceMode, maxPlayers, demandProfile, dayLimit, turnDurationMs, lobbyVisibility, teacherAccountId = '', teacherHost = false }) {
+  assertRoomCreationAllowed({ teacherAccountId, lobbyVisibility });
   const code = roomCode();
   const normalizedTeacherAccountId = String(teacherAccountId || '');
   const host = createPlayer(companyName, {
@@ -3017,6 +3068,8 @@ function createRoom({ roomName, companyName, userName, avatar, scenarioKey, diff
     directoryId: randomDirectoryId(),
     lobbyVisibility: normalizeLobbyVisibility(lobbyVisibility),
     version: 1,
+    createdAt: Date.now(),
+    lastActivityAt: Date.now(),
     status: 'lobby',
     day: 1,
     tick: 0,
@@ -5174,6 +5227,44 @@ function finishRoom(room, winner, reason = 'completed') {
   persistDb();
 }
 
+function roomWinner(room) {
+  return [...room.players.values()]
+    .filter(player => !player.bankrupt)
+    .sort((left, right) => (
+      (right.simulationScore?.total || 0) - (left.simulationScore?.total || 0)
+        || (right.netWorth || right.money || 0) - (left.netWorth || left.money || 0)
+    ))[0] || null;
+}
+
+function closeRoom(room, { finishActive = false, reason = 'closed_by_teacher' } = {}) {
+  if (!room || !state.rooms.has(room.code)) {
+    throw Object.assign(new Error('Комната не найдена'), { status: 404 });
+  }
+  if (['running', 'paused'].includes(room.status)) {
+    if (!finishActive) {
+      throw Object.assign(new Error('Сначала завершите активный матч или выберите «Завершить и закрыть».'), { status: 409 });
+    }
+    finishRoom(room, roomWinner(room), 'teacher_stopped');
+  }
+  if (!['lobby', 'finished'].includes(room.status)) {
+    throw Object.assign(new Error('Эту комнату сейчас нельзя закрыть.'), { status: 409 });
+  }
+  const result = {
+    roomCode: room.code,
+    teacherAccountId: room.teacherAccountId || '',
+    completedSessionId: room.completedSessionId || '',
+    action: finishActive ? 'finish-and-close-room' : 'close-room',
+    status: 'closed',
+    reason,
+  };
+  room.players.forEach(player => state.playerRoomIndex.delete(player.id));
+  state.rooms.delete(room.code);
+  delete state.db.activeRooms[room.code];
+  delete state.db.savedRooms[room.code];
+  persistRuntimeState({ immediate: true });
+  return result;
+}
+
 function serializeRoom(room) {
   return JSON.parse(JSON.stringify({
     schemaVersion: ROOM_SNAPSHOT_SCHEMA_VERSION,
@@ -5184,6 +5275,8 @@ function serializeRoom(room) {
     directoryId: ensureRoomDirectoryId(room),
     lobbyVisibility: normalizeLobbyVisibility(room.lobbyVisibility),
     version: Math.max(1, Number(room.version) || 1),
+    createdAt: Number(room.createdAt) || Date.now(),
+    lastActivityAt: Number(room.lastActivityAt) || Date.now(),
     status: room.status,
     day: room.day,
     tick: room.tick,
@@ -5436,6 +5529,8 @@ function publicTeacherControls(room, viewerId, classReadiness = null) {
       resume: lifecycle.canResume,
       acceptPauseRequest: isHost && room.status === 'paused' && room.pauseRequest?.status === 'pending',
       finish: lifecycle.canFinish,
+      closeRoom: isHost && ['lobby', 'finished'].includes(room.status),
+      finishAndCloseRoom: isHost && ['running', 'paused'].includes(room.status),
       forceEvent: isHost && ['running', 'paused'].includes(room.status),
       forceDecisionRound: isHost && ['running', 'paused'].includes(room.status),
       setPhaseLock: isHost && (room.settings.tickMode || 'manual') === 'manual',
@@ -6624,7 +6719,26 @@ server.on('upgrade', (req, socket, head) => {
 
 let roomTicker = null;
 
+function cleanupExpiredRooms(now = Date.now()) {
+  const expired = [];
+  state.rooms.forEach(room => {
+    const lastActivityAt = Number(room.lastActivityAt) || Number(room.createdAt) || now;
+    const ageMs = Math.max(0, now - lastActivityAt);
+    if (room.status === 'finished' && ageMs >= FINISHED_ROOM_TTL_MS) {
+      expired.push(room);
+      return;
+    }
+    if (room.status !== 'lobby') return;
+    const studentCount = [...room.players.values()].filter(isClassPlayer).length;
+    if (studentCount > 0) return;
+    const ttlMs = room.teacherAccountId ? CLOUD_EMPTY_LOBBY_TTL_MS : LOCAL_EMPTY_LOBBY_TTL_MS;
+    if (ageMs >= ttlMs) expired.push(room);
+  });
+  return expired.map(room => closeRoom(room, { reason: 'expired' }));
+}
+
 function processRoomTimers(now = Date.now()) {
+  cleanupExpiredRooms(now);
   state.rooms.forEach(room => {
     if (room.status === 'paused' && room.pauseRequest?.status === 'pending' && Number(room.pauseRequest.expiresAt) <= now) {
       const request = room.pauseRequest;
@@ -6729,6 +6843,7 @@ module.exports = {
   startRoomTicker,
   stopRoomTicker,
   processRoomTimers,
+  cleanupExpiredRooms,
   createRoom,
   joinRoom,
   publicRoomDirectory,
@@ -6747,6 +6862,7 @@ module.exports = {
   publicTeacherAccount,
   cloudTeacherOverview,
   handleTeacherAction,
+  closeRoom,
   archiveCompletedSession,
   listCompletedSessions,
   getCompletedSession,

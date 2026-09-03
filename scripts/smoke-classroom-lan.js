@@ -273,6 +273,22 @@ async function main() {
       throw new Error(`Student final state crossed debrief role boundary: ${JSON.stringify(finalStudentState)}`);
     }
 
+    const closed = await post('/api/server/action', {
+      roomCode: created.json.roomCode,
+      action: 'close-room',
+    });
+    if (closed.status !== 200 || closed.json.result?.status !== 'closed') {
+      throw new Error(`Server admin close lifecycle failed: ${closed.status} ${JSON.stringify(closed.json)}`);
+    }
+    const overviewAfterClose = await fetch(`${BASE_URL}/api/server/overview`).then(response => response.json());
+    const sessionsAfterClose = await fetch(`${BASE_URL}/api/server/sessions`).then(response => response.json());
+    if (overviewAfterClose.overview?.rooms?.some(room => room.code === created.json.roomCode)) {
+      throw new Error('Closed LAN room remained in the live overview.');
+    }
+    if (!sessionsAfterClose.items?.some(session => session.roomCode === created.json.roomCode)) {
+      throw new Error('Closing the LAN room removed its completed-session history.');
+    }
+
     const result = {
       ok: true,
       appMode: metaPayload.meta.appMode,
@@ -295,6 +311,7 @@ async function main() {
       teacherLifecycle: true,
       teacherDebrief: true,
       studentDebriefBoundary: true,
+      roomClosePreservesHistory: true,
       serverScreen: true,
       clientScreen: true,
     };

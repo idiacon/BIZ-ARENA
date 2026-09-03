@@ -42,6 +42,7 @@ Important responsibilities currently in the entry point:
 - teacher accounts, password hashing, teacher sessions and teacher room ownership;
 - active room persistence and restore;
 - room creation, join, serialization and hydration;
+- teacher-owned room quotas, explicit close/finish-and-close lifecycle, and stale lobby cleanup;
 - factory scenario mechanics, supplier offers, workers, assembly, market hints;
 - room summary, player summary, teacher/class dashboard read models;
 - WebSocket invalidation and HTTP routing setup.
@@ -91,6 +92,8 @@ Current storage backend:
 - normalized DB shape includes `accounts`, `teacherAccounts`, `teacherSessions`, `activeRooms`, `savedRooms`;
 - active rooms are serialized through `serializeRoom(room)` and restored through `hydrateRoom(snapshot)`;
 - mutations persist through debounce or immediate flush.
+- room snapshots carry `createdAt` and `lastActivityAt`; cleanup removes only stale empty lobbies or finished live rooms and preserves archived completed sessions;
+- create bursts are limited in the HTTP process, while owner quotas are derived from persisted active-room state and therefore survive restart.
 
 v0.6 target:
 

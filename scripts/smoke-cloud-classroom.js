@@ -416,6 +416,22 @@ async function main() {
       throw new Error(`Student final state crossed debrief role boundary: ${JSON.stringify(finalStudentState.json)}`);
     }
 
+    const closed = await postJson('/api/teacher/action', {
+      action: 'close-room',
+      roomCode,
+    }, { token: teacherToken });
+    if (closed.status !== 200 || closed.json.result?.status !== 'closed') {
+      throw new Error(`Teacher close lifecycle failed: ${closed.status} ${JSON.stringify(closed.json)}`);
+    }
+    const overviewAfterClose = await getJson('/api/teacher/overview', { token: teacherToken });
+    const sessionsAfterClose = await getJson('/api/teacher/sessions', { token: teacherToken });
+    if (overviewAfterClose.json.overview?.rooms?.some(room => room.code === roomCode)) {
+      throw new Error('Closed cloud room remained in the teacher overview.');
+    }
+    if (!sessionsAfterClose.json.items?.some(session => session.roomCode === roomCode)) {
+      throw new Error('Closing the cloud room removed its completed-session history.');
+    }
+
     const result = {
       ok: true,
       deployment: metaPayload.meta.deployment,
@@ -445,6 +461,7 @@ async function main() {
       teacherReconnectPaused: true,
       teacherDebrief: true,
       studentDebriefBoundary: true,
+      roomClosePreservesHistory: true,
     };
     console.log(JSON.stringify(result, null, 2));
   } finally {
